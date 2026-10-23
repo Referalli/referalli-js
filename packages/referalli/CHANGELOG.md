@@ -11,4 +11,4 @@ First release as `referalli`.
 - Webhooks: `webhooks.constructEvent()` (async, WebCrypto) returns typed events, and `verifyWebhook()` / `constructWebhookEvent()` (sync) work in every runtime. Both use constant-time comparison, a 5-minute tolerance and rotation-safe multiple secrets.
 - `referalli/browser`: a small referral tracker (`createTracker`, `getReferral`).
 - `referalli/attribution`: helpers for the first-party referral cookie, shared with `@referalli/next` and `@referalli/express`.
-- Dual ESM/CJS with types. Runs on Node 18+, Bun, Deno and edge runtimes.
+- Dual ESM/CJS with types. Runs on Node 20+, Bun, Deno and edge runtimes.

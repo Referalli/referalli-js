@@ -6,7 +6,7 @@ The official Referalli SDK for JavaScript and TypeScript. It calls every API ope
 - Retries with backoff and jitter that honour `Retry-After`, timeouts, idempotency keys and typed errors
 - Auto-paging with `for await`
 - Webhook verification with typed events
-- Runs on Node 18+, Bun, Deno, Cloudflare Workers, Vercel Edge and browsers (`referalli/browser`)
+- Runs on Node 20+, Bun, Deno, Cloudflare Workers, Vercel Edge and browsers (`referalli/browser`)
 - ESM and CommonJS, no dependencies
 
 ```sh
