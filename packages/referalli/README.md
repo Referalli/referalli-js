@@ -210,7 +210,7 @@ Only your public tracking token goes in the browser, never an `rk_` key.
 ```ts
 import { createTracker } from 'referalli/browser';
 
-const tracker = await createTracker({ publishableKey: 'tok_...' });
+const tracker = await createTracker({ publishableKey: 'tk_...' });
 tracker.getReferral(); // { anonId, code, clickId, ts }
 // after signup:
 await tracker.trackSignup({ customerRef: user.id, email: user.email });

@@ -1,7 +1,7 @@
 /**
  * `@referalli/react`: capture referrals, attribute signups and share links.
  *
- *   <ReferalliProvider publishableKey="tok_..." program="acme">
+ *   <ReferalliProvider publishableKey="tk_..." program="acme">
  *     <App />
  *   </ReferalliProvider>
  *

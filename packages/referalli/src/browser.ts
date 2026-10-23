@@ -5,7 +5,7 @@
  * records the visit, and attributes the visitor when they sign up.
  *
  *   import { createTracker } from 'referalli/browser';
- *   const tracker = await createTracker({ publishableKey: 'tok_...' });
+ *   const tracker = await createTracker({ publishableKey: 'tk_...' });
  *   // after signup:
  *   await tracker.trackSignup({ customerRef: user.id, email: user.email });
  *

@@ -27,7 +27,7 @@ import { captureReferral } from '@referalli/next/middleware';
 
 export function middleware(req: NextRequest, event: NextFetchEvent) {
   const res = NextResponse.next();
-  return captureReferral(req, res, { cookieDomain: '.example.com', publishableKey: 'tok_...' }, event);
+  return captureReferral(req, res, { cookieDomain: '.example.com', publishableKey: 'tk_...' }, event);
 }
 ```
 

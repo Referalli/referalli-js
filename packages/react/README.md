@@ -11,7 +11,7 @@ import { ReferalliProvider } from '@referalli/react';
 
 export default function App({ children }) {
   return (
-    <ReferalliProvider publishableKey="tok_..." program="acme">
+    <ReferalliProvider publishableKey="tk_..." program="acme">
       {children}
     </ReferalliProvider>
   );
