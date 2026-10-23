@@ -1,0 +1,15 @@
+{
+  "name": "referalli-js",
+  "private": true,
+  "description": "Generated from the Referalli monorepo; see CONTRIBUTING.md.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/referalli",
+    "packages/react",
+    "packages/next",
+    "packages/express"
+  ],
+  "engines": {
+    "node": ">=18.18"
+  }
+}

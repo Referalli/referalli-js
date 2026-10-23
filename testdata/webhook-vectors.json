@@ -1,0 +1,188 @@
+{
+  "description": "Standard Webhooks verification vectors shared by every Referalli SDK. now is unix seconds; tolerance is 300 seconds.",
+  "toleranceSec": 300,
+  "cases": [
+    {
+      "name": "valid",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792600010,
+      "valid": true
+    },
+    {
+      "name": "valid at the edge of tolerance",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792600300,
+      "valid": true
+    },
+    {
+      "name": "too old",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792600301,
+      "valid": false
+    },
+    {
+      "name": "from the future",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792599699,
+      "valid": false
+    },
+    {
+      "name": "tampered body",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_2\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792600000,
+      "valid": false
+    },
+    {
+      "name": "wrong secret",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw="
+      },
+      "secrets": [
+        "whsec_cE0sPAbmtGN5ZY3MvUn/Kk4cvE6rRZtz"
+      ],
+      "now": 1792600000,
+      "valid": false
+    },
+    {
+      "name": "different id",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_other",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792600000,
+      "valid": false
+    },
+    {
+      "name": "rotation: two signatures, new secret",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw= v1,CtZrdB17wAOnZtR8qSnaF4O7Pid4F+BJziF6BIWzxHA="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792600000,
+      "valid": true
+    },
+    {
+      "name": "rotation: two signatures, old secret",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw= v1,CtZrdB17wAOnZtR8qSnaF4O7Pid4F+BJziF6BIWzxHA="
+      },
+      "secrets": [
+        "whsec_cE0sPAbmtGN5ZY3MvUn/Kk4cvE6rRZtz"
+      ],
+      "now": 1792600000,
+      "valid": true
+    },
+    {
+      "name": "verifier holds both secrets",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v1,CtZrdB17wAOnZtR8qSnaF4O7Pid4F+BJziF6BIWzxHA="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+        "whsec_cE0sPAbmtGN5ZY3MvUn/Kk4cvE6rRZtz"
+      ],
+      "now": 1792600000,
+      "valid": true
+    },
+    {
+      "name": "unknown version only",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000",
+        "webhook-signature": "v2,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792600000,
+      "valid": false
+    },
+    {
+      "name": "missing signature",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "1792600000"
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792600000,
+      "valid": false
+    },
+    {
+      "name": "non-numeric timestamp",
+      "body": "{\"id\":\"evt_1\",\"topic\":\"referral.created\",\"orgId\":\"org_1\",\"data\":{\"partnerId\":\"ptr_1\"}}",
+      "headers": {
+        "webhook-id": "whd_01JBVECTOR00000000000000",
+        "webhook-timestamp": "abc",
+        "webhook-signature": "v1,+xJ35/YtD1Xkp8yDurdHWWys5eBy+FTQji/7DJUI8Nw="
+      },
+      "secrets": [
+        "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+      ],
+      "now": 1792600000,
+      "valid": false
+    }
+  ]
+}

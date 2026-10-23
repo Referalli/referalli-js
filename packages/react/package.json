@@ -1,0 +1,81 @@
+{
+  "name": "@referalli/react",
+  "version": "0.1.0",
+  "description": "React provider, hooks and referral widgets for Referalli: capture referrals, attribute signups, share links.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "prepack": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "referalli": "^0.1.0"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^22.9.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "jsdom": "^26.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/cjs/index.js",
+    "module": "./dist/esm/index.js",
+    "types": "./dist/esm/index.d.ts",
+    "exports": {
+      ".": {
+        "import": {
+          "types": "./dist/esm/index.d.ts",
+          "default": "./dist/esm/index.js"
+        },
+        "require": {
+          "types": "./dist/cjs/index.d.ts",
+          "default": "./dist/cjs/index.js"
+        }
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "referalli",
+    "react",
+    "referral",
+    "affiliate",
+    "attribution",
+    "hooks"
+  ],
+  "homepage": "https://referalli.com/docs/sdks",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Referalli/referalli-js.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/Referalli/referalli-js/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
