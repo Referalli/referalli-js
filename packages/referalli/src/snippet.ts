@@ -3,12 +3,15 @@ import {
   mergeReferral,
   newAnonId,
   parseReferral,
-  REFERRAL_COOKIE,
+  REFERRAL_COOKIE_NAMES,
   REFERRAL_PARAMS,
   referralFromUrl,
   type ReferralContext,
   type StoredReferral,
 } from './attribution.js';
+import { consentGate } from './consent/gate.js';
+import { AUTO_ORDER, consentConfig, type ConsentEvidence, type ConsentOptions, type ConsentState } from './consent/port.js';
+import { adapterFactories } from './consent/registry.js';
 
 /**
  * Browser tracking snippet, written against an injected environment so the
@@ -27,6 +30,11 @@ export interface SnippetEnv {
   fetchFn: (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => Promise<unknown>;
   randomId?: () => string;
   now?: () => number;
+  /**
+   * The window the consent adapters read CMP globals from and set timers on
+   * (`window` in a browser). Default `globalThis`.
+   */
+  consentWindow?: unknown;
 }
 
 export interface SnippetConfig {
@@ -47,6 +55,13 @@ export interface SnippetConfig {
   cookieDomain?: string;
   /** Older storage/cookie names to read a saved context from (it is re-saved under the current name). */
   legacyKeys?: string[];
+  /**
+   * How visitor consent is read before anything is stored or sent: a mode
+   * (`'auto'`, `'pending'`, `'onetrust'`, …) or a full config. Default
+   * `'none'` (always store, the behaviour before consent support). Until
+   * consent is granted the context is kept in memory only.
+   */
+  consent?: ConsentOptions;
 }
 
 export type { ReferralContext } from './attribution.js';
@@ -58,9 +73,20 @@ export interface AffApi {
   identify(opts: { customerRef?: string; emailHash?: string }): Promise<void>;
   /** Delete the stored context (consent withdrawn) and stop sending. */
   forget(): void;
+  /** The push path for pages without a supported CMP. Idempotent; the latest signal wins. */
+  consent(granted: boolean): void;
+  consentState(): ConsentState;
+  /** The evidence the visit beacon carried; pass it to `associate` as `consent`. Null before a decision. */
+  consentEvidence(): ConsentEvidence | null;
+  /** The adapter in use (`onetrust`, …), `auto` while looking, `no-cmp`, `none` or `pending`. */
+  readonly consentMode: string;
 }
 
-const KEY = REFERRAL_COOKIE;
+/**
+ * Every key the context is written under: `referalli_ctx` and its legacy twin
+ * `referally_ctx` (see LEGACY_REFERRAL_COOKIE for when the twin can go).
+ */
+const WRITE_KEYS = REFERRAL_COOKIE_NAMES;
 
 /** The stored shape: the context plus when it expires. */
 type StoredContext = StoredReferral;
@@ -74,7 +100,7 @@ function readCookie(doc: { cookie: string }, key: string): string | null {
 }
 
 function loadContext(env: SnippetEnv, now: number, legacyKeys: readonly string[] = []): StoredContext | null {
-  for (const key of [KEY, ...legacyKeys]) {
+  for (const key of new Set([...WRITE_KEYS, ...legacyKeys])) {
     let raw: string | null = null;
     try {
       raw = env.storage?.getItem(key) ?? null;
@@ -96,15 +122,19 @@ function cookieFlags(env: SnippetEnv, config: SnippetConfig): string {
 
 function persistContext(env: SnippetEnv, config: SnippetConfig, ctx: StoredContext, days: number): void {
   const raw = JSON.stringify(ctx);
-  try {
-    env.storage?.setItem(KEY, raw);
-  } catch {
-    /* storage may be unavailable */
-  }
-  try {
-    env.doc.cookie = `${KEY}=${encodeURIComponent(raw)}; max-age=${days * 86_400}${cookieFlags(env, config)}`;
-  } catch {
-    /* cookie write may be blocked */
+  // Same value, attributes and expiry under every name.
+  const tail = `=${encodeURIComponent(raw)}; max-age=${days * 86_400}${cookieFlags(env, config)}`;
+  for (const key of WRITE_KEYS) {
+    try {
+      env.storage?.setItem(key, raw);
+    } catch {
+      /* storage may be unavailable */
+    }
+    try {
+      env.doc.cookie = `${key}${tail}`;
+    } catch {
+      /* cookie write may be blocked */
+    }
   }
 }
 
@@ -124,9 +154,13 @@ export async function initSnippet(env: SnippetEnv, config: SnippetConfig): Promi
   });
   const active = config.persist !== 'referral-only' || referred;
   let gone = false;
+  let dropped = false;
+  let sent: Promise<unknown> | null = null;
+  let state: ConsentState = 'unknown';
+  let pendingIdentify: { customerRef?: string; emailHash?: string } | null = null;
 
   const post = (path: string, body: Record<string, unknown>) =>
-    gone
+    gone || dropped
       ? Promise.resolve()
       : env.fetchFn(`${config.baseUrl}${path}`, {
           method: 'POST',
@@ -134,19 +168,62 @@ export async function initSnippet(env: SnippetEnv, config: SnippetConfig): Promi
           body: JSON.stringify(body),
         });
 
-  if (active) {
-    persistContext(env, config, ctx, days);
-    // Server-side visit record: the session exists even if all storage is wiped.
-    await post(`/t/${config.token}/visit`, {
+  const clearStorage = () => {
+    for (const key of new Set([...WRITE_KEYS, ...(config.legacyKeys ?? [])])) {
+      try {
+        env.storage?.removeItem?.(key);
+      } catch {
+        /* storage may be unavailable */
+      }
+      try {
+        env.doc.cookie = `${key}=; max-age=0${cookieFlags(env, config)}`;
+      } catch {
+        /* cookie write may be blocked */
+      }
+    }
+  };
+
+  const sendIdentify = (opts: { customerRef?: string; emailHash?: string }) =>
+    post(`/t/${config.token}/identify`, {
       anonId: ctx.anonId,
-      code: ctx.code ?? undefined,
-      clickId: ctx.clickId ?? undefined,
-      url: env.win.location.href,
+      customerRef: opts.customerRef,
+      emailHash: opts.emailHash,
     }).catch(() => {});
-  }
+
+  const onConsent = (next: ConsentState, evidence: ConsentEvidence | null) => {
+    state = next;
+    if (next === 'granted') {
+      dropped = false;
+      if (active && !gone) {
+        persistContext(env, config, ctx, days);
+        // Server-side visit record: the session exists even if all storage is wiped.
+        sent ??= post(`/t/${config.token}/visit`, {
+          anonId: ctx.anonId,
+          code: ctx.code ?? undefined,
+          clickId: ctx.clickId ?? undefined,
+          url: env.win.location.href,
+          ...(evidence ? { consent: evidence } : {}),
+        }).catch(() => {});
+      }
+      if (pendingIdentify) {
+        const queued = pendingIdentify;
+        pendingIdentify = null;
+        void sendIdentify(queued);
+      }
+    } else if (next === 'denied') {
+      clearStorage();
+      dropped = true;
+      pendingIdentify = null;
+    }
+  };
+
+  const consentCfg = consentConfig(config.consent);
+  const gate = consentGate(env.consentWindow ?? globalThis, consentCfg, adapterFactories(AUTO_ORDER), AUTO_ORDER, onConsent);
+  gate.start();
+  if (sent) await sent;
 
   const view = (): ReferralContext =>
-    gone ? { anonId: '', code: null, clickId: null, ts: 0 } : { anonId: ctx.anonId, code: ctx.code, clickId: ctx.clickId, ts: ctx.ts };
+    gone || dropped ? { anonId: '', code: null, clickId: null, ts: 0 } : { anonId: ctx.anonId, code: ctx.code, clickId: ctx.clickId, ts: ctx.ts };
 
   return {
     getReferral: view,
@@ -164,25 +241,24 @@ export async function initSnippet(env: SnippetEnv, config: SnippetConfig): Promi
       };
     },
     identify: async (opts) => {
-      if (!active && !stored) return;
-      await post(`/t/${config.token}/identify`, {
-        anonId: ctx.anonId,
-        customerRef: opts.customerRef,
-        emailHash: opts.emailHash,
-      }).catch(() => {});
+      if (gone || dropped || (!active && !stored)) return;
+      // Before a decision, hold it: it is sent once consent is granted.
+      if (state !== 'granted') {
+        pendingIdentify = opts;
+        return;
+      }
+      await sendIdentify(opts);
     },
     forget: () => {
       gone = true;
-      try {
-        env.storage?.removeItem?.(KEY);
-      } catch {
-        /* storage may be unavailable */
-      }
-      try {
-        env.doc.cookie = `${KEY}=; max-age=0${cookieFlags(env, config)}`;
-      } catch {
-        /* cookie write may be blocked */
-      }
+      gate.stop();
+      clearStorage();
+    },
+    consent: (granted) => gate.push(granted === true),
+    consentState: () => state,
+    consentEvidence: () => gate.evidence(),
+    get consentMode() {
+      return gate.mode();
     },
   };
 }

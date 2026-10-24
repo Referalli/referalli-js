@@ -12,14 +12,18 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { webhooks, WebhookVerificationError, type VerifyOptions, type WebhookEvent } from 'referalli';
 import {
   associateFields,
+  clearReferralCookies,
   hashEmail,
   mergeReferral,
   REFERRAL_PARAMS,
   referralFromCookieHeader,
   referralFromUrl,
-  serializeReferralCookie,
+  serializeReferralCookies,
   type ReferralContext,
 } from 'referalli/attribution';
+
+/** The visitor's consent for the referral cookie, as your CMP reports it server-side. */
+export type ConsentState = 'granted' | 'denied' | 'unknown';
 
 export type { ReferralContext } from 'referalli/attribution';
 
@@ -146,6 +150,13 @@ export interface AttributionOptions {
   /** Default `https://referalli.com`. */
   baseUrl?: string;
   fetch?: typeof fetch;
+  /**
+   * Read the visitor's consent from the request (your CMP's cookie). On
+   * `unknown` no cookie is set and nothing is sent (`req.referral` still
+   * carries a URL referral for this request); on `denied` the context is
+   * deleted. Default: always granted (sites that need no opt-in).
+   */
+  consent?: (req: Req) => ConsentState;
 }
 
 function appendSetCookie(res: Res, value: string): void {
@@ -161,20 +172,38 @@ function appendSetCookie(res: Res, value: string): void {
  */
 export function referalliAttribution(opts: AttributionOptions = {}): (req: Req, res: Res, next: Next) => void {
   return (req, res, next) => {
-    const stored = referralFromCookieHeader(req.headers.cookie);
+    let consent: ConsentState = 'granted';
+    try {
+      consent = opts.consent ? opts.consent(req) : 'granted';
+    } catch {
+      consent = 'unknown';
+    }
+    const secure = opts.secure ?? (req.secure === true || req.protocol === 'https');
+    const stored = consent === 'denied' ? null : referralFromCookieHeader(req.headers.cookie);
+    if (consent === 'denied' && referralFromCookieHeader(req.headers.cookie)) {
+      for (const c of clearReferralCookies({ domain: opts.cookieDomain, secure })) appendSetCookie(res, c);
+    }
     const url = new URL(req.originalUrl ?? req.url ?? '/', 'http://localhost');
     const fromUrl = referralFromUrl(url, opts.params ?? REFERRAL_PARAMS);
     let ctx = stored;
-    if (fromUrl.code || fromUrl.clickId) {
+    if (consent !== 'denied' && (fromUrl.code || fromUrl.clickId)) {
       ctx = mergeReferral(stored, fromUrl, { cookieDays: opts.cookieDays, firstTouch: opts.firstTouch });
-      const secure = opts.secure ?? (req.secure === true || req.protocol === 'https');
-      appendSetCookie(res, serializeReferralCookie(ctx, { cookieDays: opts.cookieDays, domain: opts.cookieDomain, secure }));
+    }
+    if (consent === 'granted' && ctx && (fromUrl.code || fromUrl.clickId)) {
+      // `referalli_ctx` and its legacy twin `referally_ctx`, as the browser tracker writes them.
+      for (const c of serializeReferralCookies(ctx, { cookieDays: opts.cookieDays, domain: opts.cookieDomain, secure })) appendSetCookie(res, c);
       if (opts.publishableKey) {
         const base = (opts.baseUrl ?? 'https://referalli.com').replace(/\/+$/, '');
         void (opts.fetch ?? fetch)(`${base}/t/${encodeURIComponent(opts.publishableKey)}/visit`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'user-agent': String(req.headers['user-agent'] ?? '') },
-          body: JSON.stringify({ anonId: ctx.anonId, code: ctx.code ?? undefined, clickId: ctx.clickId ?? undefined, referer: req.headers.referer }),
+          body: JSON.stringify({
+            anonId: ctx.anonId,
+            code: ctx.code ?? undefined,
+            clickId: ctx.clickId ?? undefined,
+            referer: req.headers.referer,
+            ...(opts.consent ? { consent: { provider: 'server', state: 'granted', at: new Date().toISOString() } } : {}),
+          }),
         }).catch(() => undefined);
       }
     }

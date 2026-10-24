@@ -1,6 +1,6 @@
 {
   "name": "@referalli/express",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Express (and any Node http) middleware for Referalli: webhook signature verification with raw-body handling, and first-party referral attribution cookies.",
   "license": "MIT",
   "type": "module",
@@ -25,7 +25,7 @@
     "prepack": "node scripts/build.mjs"
   },
   "dependencies": {
-    "referalli": "^0.1.1"
+    "referalli": "^0.2.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

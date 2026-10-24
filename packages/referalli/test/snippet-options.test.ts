@@ -64,7 +64,8 @@ describe('browser snippet options', () => {
     const f = fakeEnv('https://merchant.com/?ref=dana');
     await initSnippet(f.env, { ...config, persist: 'referral-only' });
     expect(f.sent).toHaveLength(1);
-    expect(f.store.size).toBe(1);
+    // referalli_ctx and its legacy twin referally_ctx.
+    expect(f.store.size).toBe(2);
   });
 
   it('forget() deletes the context and stops sending', async () => {

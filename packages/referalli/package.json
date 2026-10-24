@@ -1,6 +1,6 @@
 {
   "name": "referalli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Official Referalli SDK for JavaScript and TypeScript: every API operation typed, webhooks, and the browser referral tracker.",
   "license": "MIT",
   "type": "module",

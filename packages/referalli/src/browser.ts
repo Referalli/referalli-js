@@ -9,10 +9,15 @@
  *   // after signup:
  *   await tracker.trackSignup({ customerRef: user.id, email: user.email });
  *
+ * Consent: pass `consent: 'auto'` (or a CMP id such as `'onetrust'`) and
+ * nothing is stored or sent until the visitor's CMP grants it; the referral
+ * still reaches `signupMetadata()` from memory. Without a CMP, call
+ * `tracker.consent(true | false)`. The default, `'none'`, always stores.
+ *
  * Only your public tracking token goes in the browser, never an `rk_` key.
  * Tree-shakeable and dependency-free.
  */
-import { hashEmail, parseReferral, REFERRAL_COOKIE, referralFromCookieHeader, type ReferralContext } from './attribution.js';
+import { hashEmail, parseReferral, REFERRAL_COOKIE_NAMES, referralFromCookieHeader, type ReferralContext, type StoredReferral } from './attribution.js';
 import { initSnippet, type AffApi, type SnippetConfig } from './snippet.js';
 
 export {
@@ -20,15 +25,29 @@ export {
   hashEmail,
   mergeReferral,
   parseReferral,
+  LEGACY_REFERRAL_COOKIE,
   REFERRAL_COOKIE,
+  REFERRAL_COOKIE_NAMES,
   REFERRAL_PARAMS,
   referralFromCookieHeader,
   referralFromUrl,
   serializeReferralCookie,
+  serializeReferralCookies,
+  clearReferralCookies,
   type ReferralContext,
   type StoredReferral,
 } from './attribution.js';
 export type { AffApi } from './snippet.js';
+export {
+  AUTO_ORDER,
+  CONSENT_ADAPTER_IDS,
+  type ConsentAdapterId,
+  type ConsentConfig,
+  type ConsentEvidence,
+  type ConsentMode,
+  type ConsentOptions,
+  type ConsentState,
+} from './consent/port.js';
 
 export interface TrackerOptions extends Omit<SnippetConfig, 'token' | 'baseUrl'> {
   /** Your org's public tracking token (Settings → Tracking). Safe to ship to browsers. */
@@ -58,6 +77,7 @@ export async function createTracker(opts: TrackerOptions): Promise<Tracker> {
       doc: document,
       storage,
       fetchFn: (url, init) => fetch(url, { ...init, keepalive: true }),
+      consentWindow: window,
     },
     { ...rest, token: publishableKey, baseUrl: (baseUrl ?? 'https://referalli.com').replace(/\/+$/, '') },
   );
@@ -71,13 +91,17 @@ export async function createTracker(opts: TrackerOptions): Promise<Tracker> {
 /** The stored referral context without starting a tracker (no network). Null on the server or when there is none. */
 export function getReferral(): ReferralContext | null {
   if (typeof document === 'undefined') return null;
-  let raw: string | null = null;
-  try {
-    raw = window.localStorage.getItem(REFERRAL_COOKIE);
-  } catch {
-    /* storage may be blocked */
+  // Either name: `referalli_ctx`, or its legacy twin `referally_ctx`.
+  let stored: StoredReferral | null = null;
+  for (const key of REFERRAL_COOKIE_NAMES) {
+    try {
+      stored = parseReferral(window.localStorage.getItem(key));
+    } catch {
+      /* storage may be blocked */
+    }
+    if (stored) break;
   }
-  const stored = parseReferral(raw) ?? referralFromCookieHeader(document.cookie);
+  stored ??= referralFromCookieHeader(document.cookie);
   if (!stored) return null;
   return { anonId: stored.anonId, code: stored.code, clickId: stored.clickId, ts: stored.ts };
 }

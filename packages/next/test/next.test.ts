@@ -125,3 +125,31 @@ describe('webhooks', () => {
     expect(await bad.json()).toMatchObject({ reason: 'signature' });
   });
 });
+
+describe('middleware: legacy twin and consent (REF-H18, REF-P01)', () => {
+  const setCookies = (res: Response) => (res.headers as Headers & { getSetCookie(): string[] }).getSetCookie();
+
+  it('writes referalli_ctx and the referally_ctx twin identically', () => {
+    const list = setCookies(referalliMiddleware(new NextRequest('https://shop.example/?via=DANA')));
+    expect(list.map((c) => c.split('=')[0])).toEqual(['referalli_ctx', 'referally_ctx']);
+    expect(list[0]!.slice('referalli_ctx'.length)).toBe(list[1]!.slice('referally_ctx'.length));
+  });
+
+  it('reads a context saved under the legacy name only', async () => {
+    const legacy = { anonId: 'a_legacy', code: 'DANA', clickId: null, ts: 1 };
+    const req = new NextRequest('https://shop.example/?ref_click_id=clk_2', { headers: { cookie: `referally_ctx=${encodeURIComponent(JSON.stringify(legacy))}` } });
+    expect(cookieValue(referalliMiddleware(req))).toMatchObject({ anonId: 'a_legacy', clickId: 'clk_2' });
+    cookieJar.clear();
+    cookieJar.set('referally_ctx', JSON.stringify(legacy));
+    expect(await getReferral()).toMatchObject({ anonId: 'a_legacy' });
+    cookieJar.clear();
+  });
+
+  it('sets nothing on unknown consent and clears both names on denied', () => {
+    const unknown = captureReferral(new NextRequest('https://shop.example/?via=DANA'), NextResponse.next(), { consent: () => 'unknown' });
+    expect(unknown.headers.get('set-cookie')).toBeNull();
+    const req = new NextRequest('https://shop.example/?via=DANA', { headers: { cookie: 'referalli_ctx=x' } });
+    const denied = setCookies(captureReferral(req, NextResponse.next(), { consent: () => 'denied' }));
+    expect(denied.map((c) => c.split(';')[0])).toEqual(['referalli_ctx=', 'referally_ctx=']);
+  });
+});

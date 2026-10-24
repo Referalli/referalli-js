@@ -9,10 +9,10 @@
  *
  * The middleware lives in `@referalli/next/middleware` (edge-safe).
  */
-import { associateFields, hashEmail, REFERRAL_COOKIE, parseReferral, referralFromCookieHeader, type ReferralContext } from 'referalli/attribution';
+import { associateFields, hashEmail, parseReferral, REFERRAL_COOKIE_NAMES, referralFromCookieHeader, type ReferralContext } from 'referalli/attribution';
 import { webhooks, WebhookVerificationError, type VerifyOptions, type WebhookEvent, type WebhookEventOf, type WebhookTopic } from 'referalli';
 
-export { captureReferral, referalliMiddleware, type CaptureOptions } from './middleware.js';
+export { captureReferral, referalliMiddleware, type CaptureOptions, type ConsentState } from './middleware.js';
 export type { ReferralContext } from 'referalli/attribution';
 
 const view = (s: ReturnType<typeof parseReferral>): ReferralContext | null =>
@@ -23,7 +23,12 @@ export async function getReferral(): Promise<ReferralContext | null> {
   const { cookies } = await import('next/headers.js');
   // `next/headers.js`: Next has no exports map, so ESM needs the file name. Next 15 returns a promise; 13/14 return the store (awaiting it is harmless).
   const store = await cookies();
-  return view(parseReferral(store.get(REFERRAL_COOKIE)?.value));
+  // Either name: `referalli_ctx`, or its legacy twin `referally_ctx`.
+  for (const name of REFERRAL_COOKIE_NAMES) {
+    const ctx = parseReferral(store.get(name)?.value);
+    if (ctx) return view(ctx);
+  }
+  return null;
 }
 
 /** The referral from any `Request` (Pages Router API routes, edge handlers, tests). */

@@ -116,3 +116,56 @@ describe('legacy storage keys', () => {
     expect(store.get('referalli_ctx')).toContain('a_old');
   });
 });
+
+describe('legacy referally_ctx twin', () => {
+  it('writes both names with the same value, attributes and expiry', async () => {
+    const writes: string[] = [];
+    const store = new Map<string, string>();
+    await initSnippet(
+      {
+        win: { location: { href: 'https://shop.example/?via=dana' } },
+        doc: {
+          get cookie() {
+            return '';
+          },
+          set cookie(v: string) {
+            writes.push(v);
+          },
+        },
+        storage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => void store.set(k, v) },
+        fetchFn: async () => ({}),
+      },
+      { token: 'tok', baseUrl: 'https://referalli.com', cookieDays: 14, cookieDomain: '.shop.example' },
+    );
+    const cur = writes.find((w) => w.startsWith('referalli_ctx='))!;
+    const old = writes.find((w) => w.startsWith('referally_ctx='))!;
+    expect(old).toBe(cur.replace(/^referalli_ctx=/, 'referally_ctx='));
+    expect(cur).toContain(`max-age=${14 * 86_400}`);
+    expect(cur).toContain('domain=.shop.example');
+    expect(store.get('referally_ctx')).toBe(store.get('referalli_ctx'));
+  });
+
+  it('reads a context saved only under referally_ctx without being told the legacy key', async () => {
+    const store = new Map<string, string>([['referally_ctx', JSON.stringify({ anonId: 'a_old', code: 'KAI', clickId: null, ts: 1 })]]);
+    const aff = await initSnippet(
+      {
+        win: { location: { href: 'https://shop.example/' } },
+        doc: { cookie: '' },
+        storage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => void store.set(k, v) },
+        fetchFn: async () => ({}),
+      },
+      { token: 'tok', baseUrl: 'https://referalli.com' },
+    );
+    expect(aff.getReferral()).toMatchObject({ anonId: 'a_old', code: 'KAI' });
+    expect(store.get('referalli_ctx')).toContain('a_old');
+  });
+
+  it('referralFromCookieHeader reads either name, the current one first', async () => {
+    const { referralFromCookieHeader } = await import('../src/attribution.js');
+    const enc = (o: object) => encodeURIComponent(JSON.stringify(o));
+    expect(referralFromCookieHeader(`referally_ctx=${enc({ anonId: 'a_1', code: 'OLD', ts: 1 })}`)?.code).toBe('OLD');
+    expect(
+      referralFromCookieHeader(`referally_ctx=${enc({ anonId: 'a_1', code: 'OLD', ts: 1 })}; referalli_ctx=${enc({ anonId: 'a_1', code: 'NEW', ts: 1 })}`)?.code,
+    ).toBe('NEW');
+  });
+});

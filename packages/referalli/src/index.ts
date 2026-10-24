@@ -39,11 +39,15 @@ export {
   mergeReferral,
   newAnonId,
   parseReferral,
+  LEGACY_REFERRAL_COOKIE,
   REFERRAL_COOKIE,
+  REFERRAL_COOKIE_NAMES,
   REFERRAL_PARAMS,
   referralFromCookieHeader,
   referralFromUrl,
   serializeReferralCookie,
+  serializeReferralCookies,
+  clearReferralCookies,
   type CookieOptions,
   type ReferralContext,
   type StoredReferral,
@@ -53,7 +57,21 @@ export type * from './generated.js';
 
 // Kept for existing integrations and the API server.
 export { initSnippet, type AffApi, type SnippetConfig, type SnippetEnv } from './snippet.js';
-export { renderSnippetJs } from './served.js';
+export { renderSnippetJs, type SnippetOptions } from './served.js';
+export {
+  AUTO_ORDER,
+  CONSENT_ADAPTER_IDS,
+  CONSENT_MODES,
+  consentConfig,
+  type ConsentAdapterId,
+  type ConsentConfig,
+  type ConsentEvidence,
+  type ConsentMode,
+  type ConsentOptions,
+  type ConsentSource,
+  type ConsentState,
+} from './consent/port.js';
+export { CONSENT_SOURCES, adapterOf, isConsentAdapterId } from './consent/registry.js';
 export {
   ReferalliClient,
   referalliAuthEvents,
@@ -63,4 +81,4 @@ export {
   type ListPage,
   type ReferalliClientOptions,
 } from './node.js';
-export { createMobileClient, type MobileClientOptions } from './mobile.js';
+export { createMobileClient, MobileApiError, type MobileClientOptions } from './mobile.js';

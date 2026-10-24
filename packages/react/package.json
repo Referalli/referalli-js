@@ -1,6 +1,6 @@
 {
   "name": "@referalli/react",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "React provider, hooks and referral widgets for Referalli: capture referrals, attribute signups, share links.",
   "license": "MIT",
   "type": "module",
@@ -25,7 +25,7 @@
     "prepack": "node scripts/build.mjs"
   },
   "dependencies": {
-    "referalli": "^0.1.1"
+    "referalli": "^0.2.0"
   },
   "peerDependencies": {
     "react": ">=18"

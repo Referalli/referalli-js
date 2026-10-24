@@ -13,14 +13,18 @@
  */
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server.js';
 import {
+  clearReferralCookies,
   mergeReferral,
-  REFERRAL_COOKIE,
+  REFERRAL_COOKIE_NAMES,
   REFERRAL_PARAMS,
   referralFromUrl,
   parseReferral,
-  serializeReferralCookie,
+  serializeReferralCookies,
   type StoredReferral,
 } from 'referalli/attribution';
+
+/** The visitor's consent for the referral cookie, as your CMP reports it server-side. */
+export type ConsentState = 'granted' | 'denied' | 'unknown';
 
 export interface CaptureOptions {
   /** Query parameters carrying a referral code. Default via, ref, aff. */
@@ -40,6 +44,12 @@ export interface CaptureOptions {
   /** Default `https://referalli.com`. */
   baseUrl?: string;
   fetch?: typeof fetch;
+  /**
+   * Read the visitor's consent from the request (your CMP's cookie). On
+   * `unknown` no cookie is set and nothing is sent; on `denied` the context
+   * is deleted. Default: always granted (sites that need no opt-in).
+   */
+  consent?: (req: Req) => ConsentState;
 }
 
 type Req = Pick<NextRequest, 'nextUrl' | 'headers' | 'cookies'>;
@@ -49,14 +59,29 @@ type Req = Pick<NextRequest, 'nextUrl' | 'headers' | 'cookies'>;
  * referral. Returns `res`. Requests without one are left alone.
  */
 export function captureReferral<R extends NextResponse>(req: Req, res: R, opts: CaptureOptions = {}, event?: Pick<NextFetchEvent, 'waitUntil'>): R {
+  const secure = req.nextUrl.protocol === 'https:';
+  let consent: ConsentState = 'granted';
+  try {
+    consent = opts.consent ? opts.consent(req) : 'granted';
+  } catch {
+    consent = 'unknown';
+  }
+  if (consent === 'denied') {
+    if (REFERRAL_COOKIE_NAMES.some((n) => req.cookies.get(n))) {
+      for (const c of clearReferralCookies({ domain: opts.cookieDomain, secure })) res.headers.append('set-cookie', c);
+    }
+    return res;
+  }
+  if (consent !== 'granted') return res;
   const fromUrl = referralFromUrl(req.nextUrl, opts.params ?? REFERRAL_PARAMS);
   if (!fromUrl.code && !fromUrl.clickId) return res;
-  const stored = parseReferral(req.cookies.get(REFERRAL_COOKIE)?.value);
+  let stored: StoredReferral | null = null;
+  for (const name of REFERRAL_COOKIE_NAMES) stored ??= parseReferral(req.cookies.get(name)?.value);
   const ctx: StoredReferral = mergeReferral(stored, fromUrl, { cookieDays: opts.cookieDays, firstTouch: opts.firstTouch });
-  res.headers.append(
-    'set-cookie',
-    serializeReferralCookie(ctx, { cookieDays: opts.cookieDays, domain: opts.cookieDomain, secure: req.nextUrl.protocol === 'https:' }),
-  );
+  // `referalli_ctx` and its legacy twin `referally_ctx`, as the browser tracker writes them.
+  for (const c of serializeReferralCookies(ctx, { cookieDays: opts.cookieDays, domain: opts.cookieDomain, secure })) {
+    res.headers.append('set-cookie', c);
+  }
   if (opts.publishableKey) {
     const base = (opts.baseUrl ?? 'https://referalli.com').replace(/\/+$/, '');
     const send = (opts.fetch ?? fetch)(`${base}/t/${encodeURIComponent(opts.publishableKey)}/visit`, {
@@ -68,6 +93,7 @@ export function captureReferral<R extends NextResponse>(req: Req, res: R, opts: 
         clickId: ctx.clickId ?? undefined,
         url: req.nextUrl.href,
         referer: req.headers.get('referer') ?? undefined,
+        ...(opts.consent ? { consent: { provider: 'server', state: 'granted', at: new Date().toISOString() } } : {}),
       }),
     }).then(
       () => undefined,

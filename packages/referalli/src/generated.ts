@@ -281,6 +281,13 @@ export type CommissionRule = {
   createdAt: string;
 };
 
+export type BillingFilter = {
+  metadata?: Record<string, string>;
+  productIds?: Array<string>;
+  priceIds?: Array<string>;
+  skus?: Array<string>;
+};
+
 export type ValueMapping = {
   cash?: string;
   creditApplied?: string;
@@ -380,6 +387,8 @@ export type BillingConnection = {
   hasCredentials: boolean;
   /** Where cash / credit / discount / cost live in this connection's payload; null uses the built-in extractor. */
   valueMapping: ValueMapping | null;
+  /** Only matching events earn; the rest are recorded as ignored_by_filter. null takes every event. */
+  filter: BillingFilter | null;
   rotation: {
     inProgress: boolean;
     previousSecretExpiresAt?: string;
@@ -393,6 +402,7 @@ export type CreatedBillingConnection = {
   webhookSecret: string;
   /** Path to register with the provider. */
   webhookUrl: string;
+  filter: BillingFilter | null;
 };
 
 export type BillingEvent = {
@@ -409,6 +419,41 @@ export type BillingEvent = {
   fees: number;
   currency: string;
   occurredAt: string;
+  connectionId: string | null;
+  productRef: string;
+  /** ignored_by_filter: recorded, never processed (product filter or internal customer). */
+  status: "processed" | "ignored_by_filter";
+  ignoredReason: ("filter" | "internal_customer") | null;
+  /** The productIds, priceIds and skus the event named. */
+  catalog: Record<string, Array<string>> | null;
+};
+
+export type InternalCustomer = {
+  customerRef: string;
+  note: string;
+  createdAt: string;
+};
+
+export type IdentityProvider = {
+  id: string;
+  label: string;
+  mechanism: "webhook" | "protocol";
+  status: "ga" | "beta";
+  docsUrl: string;
+  vendorDocsUrl: string;
+  secretKind: "hmac" | "svix" | "jwks" | "bearer";
+  secretIssuedBy: "referalli" | "vendor";
+  vendorSteps: Array<string>;
+  sampleHook: {
+    language: string;
+    filename: string;
+    code: string;
+  } | null;
+  metadataPaths: {
+    anonId: Array<string>;
+    clickId: Array<string>;
+    coupon: Array<string>;
+  };
 };
 
 export type WebhookEndpoint = {
@@ -428,7 +473,29 @@ export type WebhookEndpoint = {
   failingSince: string | null;
   disabledAt: string | null;
   disabledReason: string | null;
+  /** failing: the latest deliveries failed; alerts go out at 1 h and 24 h, and it is disabled at 72 h. */
+  health: "healthy" | "failing" | "disabled" | "paused";
+  lastSuccessAt: string | null;
+  /** The most recent failed attempt: HTTP status (null: no response) and the error or start of the response body. */
+  lastFailure: ({
+    statusCode: number | null;
+    error: string | null;
+    at: string;
+  }) | null;
+  consecutiveFailures: number;
+  /** Emailed (with the org owner) when the endpoint starts failing. */
+  alertContacts: Array<string>;
   createdAt: string;
+};
+
+export type HealthCheck = {
+  id: string;
+  ok: boolean;
+  detail: string;
+  fix?: string;
+  docs?: string;
+  /** The hop that failed on a multi-system path, such as `stripe→referalli`. */
+  hop?: string;
 };
 
 export type WebhookDelivery = {
@@ -681,8 +748,10 @@ export type CreatedAuthConnection = {
   provider: string;
   /** Returned only here. */
   secret: string;
-  /** Webhook connectors: Clerk, Supabase, WorkOS, generic. */
+  /** Webhook connectors: Clerk, Auth0, Supabase, Firebase, Cognito, Stytch, Kinde, WorkOS, generic. */
   webhookUrl?: string;
+  /** Webhook connectors: the setup guide for this provider. */
+  docsUrl?: string | null;
   metadataKeys?: Record<string, string>;
   /** Signed-protocol connections (atlas, custom). */
   programId?: string;
@@ -1938,7 +2007,7 @@ export type PrivacyRequestCompletedEvent = {
   data: PrivacyRequestCompletedEventData;
 };
 
-/** `data` of a `webhook_endpoint.disabled` event: Sent to your other active endpoints when one is disabled after every delivery failed for 5 days. */
+/** `data` of a `webhook_endpoint.disabled` event: Sent to your other active endpoints when one is disabled after every delivery failed for 72 hours (or 1000 attempts in a row). */
 export type WebhookEndpointDisabledEventData = {
   endpointId: string;
   url: string;
@@ -1957,6 +2026,50 @@ export type WebhookEndpointDisabledEvent = {
   livemode: boolean;
   createdAt: string;
   data: WebhookEndpointDisabledEventData;
+};
+
+/** `data` of a `webhook_endpoint.failing` event: Sent to your other active endpoints (never the failing one) when an endpoint has failed every delivery for 1 hour, and again at 24 hours. It's disabled at `disablesAt` unless a delivery succeeds first. */
+export type WebhookEndpointFailingEventData = {
+  endpointId: string;
+  url: string;
+  stage: "1h" | "24h";
+  failingSince: string;
+  consecutiveFailures: number;
+  lastStatusCode: number | null;
+  sampleError: string | null;
+  disablesAt: string;
+};
+
+/** A webhook endpoint keeps failing: the `webhook_endpoint.failing` delivery body. */
+export type WebhookEndpointFailingEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "webhook_endpoint.failing";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: WebhookEndpointFailingEventData;
+};
+
+/** `data` of a `webhook_endpoint.recovered` event: Sent to your active endpoints, including the recovered one, when a delivery succeeds after the endpoint was failing. */
+export type WebhookEndpointRecoveredEventData = {
+  endpointId: string;
+  url: string;
+  failingSince: string;
+  downForMs: number;
+};
+
+/** A failing webhook endpoint recovered: the `webhook_endpoint.recovered` delivery body. */
+export type WebhookEndpointRecoveredEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "webhook_endpoint.recovered";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: WebhookEndpointRecoveredEventData;
 };
 
 export type PostTOrgTokenVisitResponse = {
@@ -2061,6 +2174,68 @@ export type GetWellKnownAssetlinksJsonResponse = Array<{
   };
 }>;
 
+export type GetWellKnownForgedeckEmbedJsonResponse = {
+  schema: string;
+  product: "referalli";
+  updated: string;
+  openapi: string;
+  llms: string;
+  status: string;
+  docs: string;
+  checkers: {
+    userAgent: string;
+    egress: Array<string>;
+  };
+  org?: string;
+  surfaces: {
+    "tracking-snippet": {
+      script: string;
+      csp: Record<string, Array<string>>;
+      consentCategory: string;
+      consentFallbackCategory: string;
+      consentAdapters: Array<string>;
+      consentDefault?: Record<string, unknown>;
+      cookieDays: number | {
+        default: number;
+        max: number;
+        note: string;
+      };
+      storage: Array<{
+        name: string;
+        type: "cookie" | "localStorage";
+        category: string;
+        lifetime: string;
+        purpose: {
+          en: string;
+        };
+        legacy?: boolean;
+      }>;
+    };
+    "portal-embed": {
+      script: string;
+      csp: Record<string, Array<string>>;
+      consentCategory: string;
+      storage: Array<{
+        name: string;
+        type: "cookie" | "localStorage";
+        category: string;
+        lifetime: string;
+        purpose: {
+          en: string;
+        };
+        legacy?: boolean;
+      }>;
+    };
+  };
+  changes: Array<{
+    effective: string;
+    surface: string;
+    add?: Array<string>;
+    remove?: Array<string>;
+    note: string;
+  }>;
+};
+
 export type PostAgentsRegisterResponse = {
   agentId: string;
   wallet: string;
@@ -2108,6 +2283,10 @@ export type GetAuthProvidersResponse = {
   }>;
 };
 
+export type PostAuthBackchannelLogoutResponse = {
+  ok: true;
+};
+
 export type PostAuthLogoutResponse = {
   ok: true;
   logoutUrl: string | null;
@@ -2148,7 +2327,61 @@ export type GetMeResponse = {
   };
 };
 
-export type GetHostsCurrentResponse = {
+export type GetPortalAuthCurrentResponse = {
+  adapter: "referalli" | "oidc" | "custom";
+  /** The sign-in button label. */
+  name: string | null;
+  /** Where the button sends the partner; null for Referalli accounts. */
+  startUrl: string | null;
+};
+
+export type GetOrgPortalAuthResponse = {
+  adapter: "referalli" | "oidc" | "custom";
+  /** The stored settings; a client secret is sealed and never returned. */
+  config: Record<string, unknown>;
+  adapters: Array<{
+    id: "referalli" | "oidc" | "custom";
+    label: string;
+    status: "ga" | "beta";
+    docsUrl: string;
+  }>;
+  /** For the `custom` adapter: the `aud` your tokens must carry. */
+  jwtAudience: string;
+  /** For the `custom` adapter: send the partner here with `token=<jwt>`. */
+  jwtSignInUrl: string;
+  /** For the `oidc` adapter: the redirect URI to register at your IdP. */
+  redirectUri: string;
+  hasSecret: boolean;
+  status: string;
+  lastOkAt: string | null;
+  lastError: string | null;
+};
+
+export type PutOrgPortalAuthResponse = {
+  adapter: "referalli" | "oidc" | "custom";
+  /** The stored settings; a client secret is sealed and never returned. */
+  config: Record<string, unknown>;
+  adapters: Array<{
+    id: "referalli" | "oidc" | "custom";
+    label: string;
+    status: "ga" | "beta";
+    docsUrl: string;
+  }>;
+  /** For the `custom` adapter: the `aud` your tokens must carry. */
+  jwtAudience: string;
+  /** For the `custom` adapter: send the partner here with `token=<jwt>`. */
+  jwtSignInUrl: string;
+  /** For the `oidc` adapter: the redirect URI to register at your IdP. */
+  redirectUri: string;
+};
+
+export type PostOrgPortalAuthTestResponse = {
+  ok: boolean;
+  detail: string;
+  fix?: string;
+};
+
+export type GetHostsCurrentResponse = ({
   /** A merchant's verified partner-portal domain. */
   kind: "portal";
   orgId: string;
@@ -2162,12 +2395,51 @@ export type GetHostsCurrentResponse = {
     handle: string;
     name: string;
   }>;
-} | {
+  consent: {
+    mode: "cookiemunch" | "cmp" | "builtin" | "none";
+    provider: string;
+    tags: Array<{
+      tag: "script";
+      attrs: Record<string, string | true>;
+      inline?: string;
+    }>;
+    settingsLink: {
+      call?: string;
+      attrs?: Record<string, string>;
+    } | null;
+    builtin?: {
+      policyUrl: string;
+      text?: Record<string, string>;
+    };
+  };
+  chat: ({
+    provider: string;
+    tags: Array<{
+      tag: "script";
+      attrs: Record<string, string | true>;
+      inline?: string;
+    }>;
+  }) | null;
+  /** The Content-Security-Policy for this host's pages, built from the enabled adapters. */
+  csp: string;
+}) | {
   /** A merchant's verified link domain. */
   kind: "link";
+  csp: string;
 } | {
   /** Referalli's own app. */
   kind: "app";
+};
+
+export type GetChatlyIdentityResponse = {
+  identity: {
+    /** `merchant:<user id>` or `partner:<partner account id>`. */
+    externalId: string;
+    email: string;
+    name?: string;
+    /** HMAC-SHA256 of `externalId` (hex), for the widget's identity verification. */
+    userHash: string;
+  } | null;
 };
 
 export type PostMobilePurchasesResponse = {
@@ -2712,6 +2984,11 @@ export type GetBillingEventsResponse = {
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type PostBillingInternalCustomersResponse = {
+  customerRef: string;
+  note: string;
 };
 
 export type PutPartnersIdPayoutProfileResponse = {
@@ -3349,6 +3626,7 @@ export type PostWebhookEndpointsResponse = {
   topics: Array<string>;
   programIds: Array<string> | null;
   legacySignature: boolean;
+  alertContacts: Array<string>;
   /** Returned only here. whsec_ + base64 key (Standard Webhooks). */
   secret: string;
 };
@@ -3359,6 +3637,14 @@ export type GetWebhookEndpointsResponse = {
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type PatchWebhookEndpointsIdResponse = WebhookEndpoint & {
+  /** domain_changed: the URL moved to another host. */
+  warnings: Array<{
+    code: "domain_changed";
+    message: string;
+  }>;
 };
 
 export type PostWebhookEndpointsIdRotateSecretResponse = {
@@ -3392,7 +3678,15 @@ export type GetWebhookDeliveriesIdResponse = WebhookDelivery & ({
   lastResponseBody: string | null;
   /** The network error of the last attempt, when there was no response. */
   lastError: string | null;
+  /** The X-ForgeDeck-Trace sent with it, when the triggering request carried one. */
+  traceId: string | null;
 });
+
+export type PostWebhookEndpointsIdReplayResponse = {
+  endpointId: string;
+  since: string;
+  replayed: number;
+};
 
 export type PostSandboxSimulateResponse = {
   customerRef: string;
@@ -3431,6 +3725,15 @@ export type GetBrandingResponse = {
   /** none; pending (waiting for DNS); provisioning (routed here, certificate being issued); active (links/portal served on it). */
   linkDomainStatus: "none" | "pending" | "provisioning" | "active";
   emailFrom: string | null;
+  /** Theme colour pairs below WCAG AA (4.5:1). */
+  warnings: Array<{
+    code: "low_contrast";
+    foreground: string;
+    background: string;
+    ratio: number;
+    minimum: number;
+    message: string;
+  }>;
 };
 
 export type PostBrandingLinkDomainResponse = {
@@ -3455,6 +3758,18 @@ export type PostBrandingDomainResponse = {
   txtName: string;
   verified: false;
   instructions: string;
+};
+
+export type PutBrandingResponse = {
+  ok: true;
+  warnings: Array<{
+    code: "low_contrast";
+    foreground: string;
+    background: string;
+    ratio: number;
+    minimum: number;
+    message: string;
+  }>;
 };
 
 export type PostEmbedTokensResponse = {
@@ -3765,6 +4080,51 @@ export type PostRewardsRedeemByCodeResponse = {
   remainingMinor: number;
   /** True when the request exceeded the remaining balance. */
   capped: boolean;
+};
+
+export type PostRewardsResponse = {
+  id: string;
+  partnerId: string;
+  programId: string;
+  ruleKey: string | null;
+  reason: string;
+  /** Integer minor units (cents). */
+  amountMinor: number;
+  currency: string;
+  commissionId: string | null;
+  idempotencyKey: string;
+  createdAt: string;
+  replayed: boolean;
+};
+
+export type GetRewardsGrantedResponse = Array<{
+  id: string;
+  partnerId: string;
+  programId: string;
+  ruleKey: string | null;
+  reason: string;
+  /** Integer minor units (cents). */
+  amountMinor: number;
+  currency: string;
+  commissionId: string | null;
+  idempotencyKey: string;
+  createdAt: string;
+}>;
+
+export type PutRewardsRulesKeyResponse = {
+  key: string;
+  event: string | null;
+  programId: string | null;
+  /** Integer minor units (cents). */
+  amountMinor: number;
+  currency: string;
+  reason: string;
+  enabled: boolean;
+  updatedAt: string;
+};
+
+export type DeleteRewardsRulesKeyResponse = {
+  ok: true;
 };
 
 export type GetProgramsIdGroupsResponse = {
@@ -4500,12 +4860,22 @@ export type GetPartnerSecurityResponse = {
   totpEnabled: boolean;
 };
 
+export type GetAuthConnectionsProvidersResponse = {
+  data: Array<IdentityProvider>;
+};
+
 export type GetAuthConnectionsResponse = {
   object: "list";
   data: Array<AuthConnection>;
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type PutAuthConnectionsIdSecretResponse = {
+  id: string;
+  provider: string;
+  ok: true;
 };
 
 export type PostAuthConnectionsIdRotateSecretResponse = {
@@ -4557,6 +4927,15 @@ export type PostAuthConnectionsIdSignupsResponse = {
     link: string | null;
     /** Test signups only: true when this partner already existed; false when it exists only in this answer. */
     persisted?: boolean;
+  };
+};
+
+export type PostAuthConnectionsIdPartnersResponse = {
+  partner: {
+    id: string;
+    code: string;
+    /** Their tracked link, when the connection has a destination. */
+    link: string | null;
   };
 };
 
@@ -4636,6 +5015,26 @@ export type PostAuthConnectionsIdSignalsResponse = {
   notes?: Array<string>;
 };
 
+export type PostAuthConnectionsInstallResponse = {
+  /** Send the browser here: back to the platform with a code, or error=access_denied. */
+  redirectTo: string;
+};
+
+export type PostOauthTokenResponse = {
+  token_type: "connection_secret";
+  connectionId: string;
+  provider: string;
+  instanceId: string;
+  programId: string;
+  /** The connection signing secret. Returned only here. */
+  secret: string;
+  reinstalled: boolean;
+  signupsUrl: string;
+  partnersUrl: string;
+  eraseUrl: string;
+  exportUrl: string;
+};
+
 export type GetOrgSsoResponse = {
   configured: boolean;
   /** The deployment's SSO provider; null when SSO isn't configured. */
@@ -4701,6 +5100,21 @@ export type PatchOrgSsoResponse = {
   roleMapping: Record<string, string>;
 };
 
+export type PutOrgSsoDirectResponse = {
+  adapter: "oidc" | "workos";
+  /** The stored settings; the secret is sealed and never returned. */
+  config: Record<string, unknown>;
+  hasSecret: true;
+  /** Where members start sign-in (GET /v1/auth/sso/start?org=…). */
+  signInUrl: string;
+  /** The redirect URI to register at the IdP. */
+  redirectUri: string;
+};
+
+export type DeleteOrgSsoDirectResponse = {
+  removed: true;
+};
+
 export type PostPartnerAuthWalletNonceResponse = {
   nonce: string;
   message: string;
@@ -4757,6 +5171,318 @@ export type PostPublicProgramsHandleJoinResponse = {
   portalUrl: string;
 };
 
+export type GetIntegrationHealthResponse = {
+  ok: boolean;
+  checks: Array<HealthCheck>;
+  generatedAt: string;
+};
+
+export type GetPlansResponse = {
+  plans: Array<{
+    key: string;
+    label: string;
+    /** Integer minor units (cents). */
+    priceMinor: number;
+    currency: "usd";
+    interval: "month";
+    /** null: unlimited. */
+    maxPrograms: number | null;
+    /** null: unlimited. */
+    maxPartners: number | null;
+    marketplace: boolean;
+    discovery: boolean;
+    linkDomain: boolean;
+    portalDomain: boolean;
+    apiPerSec: number;
+    apiBurst: number;
+  }>;
+};
+
+export type GetEventsResponse = {
+  events: Array<{
+    id: string;
+    topic: string;
+    orgId: string;
+    livemode: boolean;
+    createdAt: string;
+    /** The topic's payload (see the webhooks section). */
+    data: GetOpenapiJsonResponse;
+  }>;
+  hasMore: boolean;
+  /** Pass as `after` for the next page; null on the last. */
+  nextCursor: string | null;
+};
+
+export type GetSupportContextResponse = {
+  partner: ({
+    id: string;
+    name: string;
+    status: string;
+    tier: string | null;
+    programs: Array<string>;
+    referralLink: string | null;
+    /** Integer minor units (cents). */
+    pendingMinor: number;
+    /** Integer minor units (cents). */
+    approvedMinor: number;
+    /** Integer minor units (cents). */
+    paidMinor: number;
+    currency: string;
+    nextPayoutAt: string | null;
+    flags: Array<string>;
+  }) | null;
+  customer: ({
+    referredBy: {
+      partnerId: string;
+      name: string;
+    } | null;
+    attributedAt: string | null;
+    rewardState: {
+      kind: string;
+      status: string;
+      /** Integer minor units (cents). */
+      amountMinor: number;
+      currency: string;
+      /** Integer minor units (cents). */
+      remainingMinor: number;
+    } | null;
+    /** Integer minor units (cents). */
+    commissionsMinor: number;
+    currency: string | null;
+  }) | null;
+  links: {
+    dashboard: string;
+    partner: string | null;
+    referral: string | null;
+  };
+};
+
+export type GetSupportAppsResponse = Array<{
+  id: string;
+  name: string;
+  status: "ga" | "beta";
+  docsUrl: string;
+  vendorDocsUrl: string;
+  secretSource: "vendor" | "minted" | "public_key";
+  install: {
+    kind?: "api" | "manifest" | "oauth";
+    steps: Array<string>;
+    manifestPath?: string;
+  };
+  cardUrl: string;
+  enabled: boolean;
+  configured: boolean;
+  config: {
+    subdomain: unknown;
+    cardKey: unknown;
+    hasPublicKey: boolean;
+  } | null;
+  lastOkAt: string | null;
+  lastError: string | null;
+}>;
+
+export type PutSupportAppsAdapterResponse = {
+  adapter: string;
+  enabled: boolean;
+  cardUrl: string;
+  secret?: string;
+};
+
+export type DeleteSupportAppsAdapterResponse = {
+  ok: true;
+};
+
+export type PostSupportAppsAdapterTestResponse = {
+  found: boolean;
+  context: GetSupportContextResponse | null;
+  rendered: unknown;
+};
+
+export type PostSupportCardsOrgIdAdapterResponse = Record<string, unknown>;
+
+export type GetPrivacyExecutorsResponse = Array<{
+  id: string;
+  name: string;
+  status: "ga" | "beta";
+  docsUrl: string;
+  vendorDocsUrl: string;
+  keyKind: "bearer" | "hmac" | "standard-webhooks" | "vendor-jwt";
+  install: {
+    kind?: "api" | "manifest" | "oauth";
+    steps: Array<string>;
+    manifestPath?: string;
+  };
+  url: string;
+  enabled: boolean;
+  hasKey: boolean;
+  hasVendorSecret: boolean;
+  config: ({
+    hasPublicKey: boolean;
+    algorithm: string | null;
+    sombraUrl: string | null;
+  }) | null;
+  health: {
+    ok: boolean;
+    detail: string;
+    fix: string | null;
+  };
+  lastOkAt: string | null;
+  lastError: string | null;
+}>;
+
+export type PostPrivacyExecutorKeysResponse = {
+  adapter: string;
+  url: string;
+  enabled: boolean;
+  key?: string;
+};
+
+export type DeletePrivacyExecutorsAdapterResponse = {
+  ok: true;
+};
+
+export type PostPrivacyExecutorsAdapterCheckResponse = {
+  adapter: string;
+  ok: boolean;
+  detail: string;
+  fix: string | null;
+};
+
+export type GetPrivacyExecutorRequestsResponse = Array<{
+  id: string;
+  adapter: string;
+  vendorRequestId: string | null;
+  op: string;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+}>;
+
+export type PostAccountCloseResponse = {
+  closed: true;
+};
+
+export type GetClicksConsentCoverageResponse = {
+  days: number;
+  since: string;
+  /** Attributed (non-void) sign-ups in the window. */
+  attributed: number;
+  /** Of those, how many have consent evidence on their click or association. */
+  withEvidence: number;
+  /** withEvidence / attributed, 4 decimals; null with no sign-ups. */
+  share: number | null;
+};
+
+export type GetClicksIdResponse = {
+  id: string;
+  programId: string;
+  partnerId: string;
+  linkId: string | null;
+  ts: string;
+  source: "redirect" | "snippet" | "api";
+  eligible: boolean;
+  fraudScore: number;
+  anonId: string | null;
+  /** The visitor's consent when the click was stored (a redirect click: from the first consented visit). */
+  consent: ({
+    provider: string;
+    state: "granted" | "denied" | "unknown";
+    at?: string;
+    stamp?: string;
+    tcString?: string;
+    gppString?: string;
+    purposes?: Array<string>;
+  }) | null;
+};
+
+export type GetOrgTrackingConsentResponse = {
+  /** `auto`, `none`, `pending` or a consent adapter id. */
+  mode: string;
+  noCmp?: "persist" | "memory";
+  category?: string;
+  tcfVendorId?: number;
+  gcmSignal?: "ad_storage" | "analytics_storage";
+  /** False for an org that never chose (its tag behaves as before: `none`). */
+  configured: boolean;
+  adapters: Array<{
+    id: string;
+    name: string;
+    defaultCategory: string | null;
+    status: "ga" | "beta";
+    docsUrl: string;
+  }>;
+};
+
+export type GetOrgHostedPagesResponse = {
+  consent: {
+    adapter: string;
+    config: Record<string, unknown>;
+  };
+  chat: {
+    adapter: string;
+    config: Record<string, unknown>;
+  } | null;
+  customOrigins: Record<string, Array<string>>;
+  status: "unchecked" | "ok" | "error";
+  lastOkAt: string | null;
+  lastError: string | null;
+  served: {
+    consent: {
+      mode: "cookiemunch" | "cmp" | "builtin" | "none";
+      provider: string;
+      tags: Array<{
+        tag: "script";
+        attrs: Record<string, string | true>;
+        inline?: string;
+      }>;
+      settingsLink: {
+        call?: string;
+        attrs?: Record<string, string>;
+      } | null;
+      builtin?: {
+        policyUrl: string;
+        text?: Record<string, string>;
+      };
+    };
+    chat: ({
+      provider: string;
+      tags: Array<{
+        tag: "script";
+        attrs: Record<string, string | true>;
+        inline?: string;
+      }>;
+    }) | null;
+    /** The Content-Security-Policy for this host's pages, built from the enabled adapters. */
+    csp: string;
+  };
+  adapters: {
+    consent: Array<{
+      id: string;
+      name: string;
+      status: "ga" | "beta";
+      docsUrl: string;
+      vendorDocsUrl: string;
+    }>;
+    chat: Array<{
+      id: string;
+      name: string;
+      status: "ga" | "beta";
+      docsUrl: string;
+      vendorDocsUrl: string;
+    }>;
+  };
+};
+
+export type PostOrgHostedPagesCheckResponse = {
+  ok: boolean;
+  checks: Array<{
+    id: string;
+    ok: boolean;
+    detail: string;
+    fix?: string;
+  }>;
+};
+
 export type PostWebhooksBillingConnectionIdResponse = {
   received: number;
   results: Array<{
@@ -4765,6 +5491,8 @@ export type PostWebhooksBillingConnectionIdResponse = {
     conversions: number;
     linesCreated: number;
     reversals: number;
+    /** Recorded as ignored_by_filter: earned nothing. */
+    ignored?: "filter" | "internal_customer";
   }>;
 };
 
@@ -4816,6 +5544,46 @@ export type PostWebhooksStripeBillingResponse = {
   planStatus?: string;
 };
 
+export type PostApiPrivacyLookupResponse = {
+  subjectId: string | null;
+  status: "found" | "no_match";
+};
+
+export type PostApiPrivacyRequestsResponse = {
+  id: string;
+  status: "pending" | "completed" | "no_match" | "rejected";
+  eta?: string;
+  detail?: string;
+};
+
+export type GetApiPrivacyRequestsIdResponse = {
+  id: string;
+  type: "access" | "deletion";
+  status: "pending" | "completed" | "no_match" | "rejected";
+  eta?: string;
+  detail?: string;
+  result?: GetOpenapiJsonResponse;
+};
+
+export type PostApiPrivacyOrgsOrgIdLookupResponse = {
+  subjectId: string | null;
+  status: "found" | "no_match";
+};
+
+export type PostApiPrivacyOrgsOrgIdRequestsResponse = {
+  id: string;
+  status: "pending" | "completed" | "no_match" | "rejected";
+  detail?: string;
+};
+
+export type GetApiPrivacyOrgsOrgIdRequestsIdResponse = {
+  id: string;
+  type: "access" | "deletion";
+  status: "pending" | "completed" | "no_match" | "rejected";
+  detail?: string;
+  result?: PostSupportCardsOrgIdAdapterResponse;
+};
+
 export type GetGraphqlResponse = {
   data?: GetOpenapiJsonResponse | null;
   errors?: Array<GetOpenapiJsonResponse>;
@@ -4827,6 +5595,9 @@ export type PostGraphqlResponse = {
 };
 
 /** GET /t/{orgToken}/aff.js: Get the tracking script */
+export type GetTOrgTokenAffJsQuery = {
+  consent?: string;
+};
 export type GetTOrgTokenAffJsResponse = string;
 
 /** GET /go/{orgToken}/{code}: Follow a tracked link */
@@ -4842,6 +5613,19 @@ export type PostTOrgTokenVisitBody = {
   code?: string;
   url?: string;
   referer?: string;
+  /** The visitor's consent as the tracker read it from the site's CMP (`aff.consentEvidence()`). Stored on the click and the visit. */
+  consent?: {
+    /** The adapter that read it (`onetrust`, `tcf`, `cookiemunch`, …), `custom` for `aff.consent()`, `none`, or `no-cmp`. */
+    provider: string;
+    state: "granted" | "denied" | "unknown";
+    /** When the tracker read it. */
+    at?: string;
+    /** The CMP's consent record id, when it has one. */
+    stamp?: string;
+    tcString?: string;
+    gppString?: string;
+    purposes?: Array<string>;
+  };
 };
 
 /** GET /t/{orgToken}/codes/{code}: Look up a referral code */
@@ -4881,6 +5665,14 @@ export type PostTOrgTokenMobileEventResponse = void;
 /** GET /.well-known/apple-app-site-association: Get the iOS universal links file */
 
 /** GET /.well-known/assetlinks.json: Get the Android App Links file */
+
+/** GET /.well-known/forgedeck-embed.json: Get the embed manifest */
+
+/** GET /v1/embed: Get one org's embed manifest */
+export type GetEmbedQuery = {
+  token: string;
+};
+export type GetEmbedResponse = GetWellKnownForgedeckEmbedJsonResponse;
 
 /** POST /v1/agents/register: Register an AI agent */
 export type PostAgentsRegisterBody = {
@@ -4933,6 +5725,7 @@ export type GetAuthOidcStartQuery = {
   recruiter?: string;
   login_hint?: string;
   return_host?: string;
+  prompt?: "login";
 };
 export type GetAuthOidcStartResponse = void;
 
@@ -4944,6 +5737,7 @@ export type GetAuthAtlasStartQuery = {
   recruiter?: string;
   login_hint?: string;
   return_host?: string;
+  prompt?: "login";
 };
 export type GetAuthAtlasStartResponse = void;
 
@@ -4973,6 +5767,11 @@ export type GetAuthHandoffResponse = void;
 
 /** GET /v1/auth/providers: List sign-in providers */
 
+/** POST /v1/auth/backchannel-logout: Receive an OpenID Connect back-channel logout */
+export type PostAuthBackchannelLogoutBody = {
+  logout_token: string;
+};
+
 /** POST /v1/auth/logout: Sign out */
 
 /** POST /v1/orgs: Create an organization */
@@ -4981,6 +5780,71 @@ export type PostOrgsBody = {
 };
 
 /** GET /v1/me: Get the current caller */
+
+/** GET /v1/auth/sso/start: Start sign-in with an org's own identity provider */
+export type GetAuthSsoStartQuery = {
+  org: string;
+  next?: string;
+  login_hint?: string;
+  link?: "1";
+};
+export type GetAuthSsoStartResponse = void;
+
+/** GET /v1/portal-auth/{orgId}/oidc/start: Start partner sign-in with the merchant's identity provider */
+export type GetPortalAuthOrgIdOidcStartQuery = {
+  next?: string;
+  link?: "1";
+  return_host?: string;
+};
+export type GetPortalAuthOrgIdOidcStartResponse = void;
+
+/** GET /v1/auth/sso/callback: Complete sign-in with an org's own identity provider */
+export type GetAuthSsoCallbackQuery = {
+  code?: string;
+  state?: string;
+  error?: string;
+  error_description?: string;
+};
+export type GetAuthSsoCallbackResponse = void;
+
+/** GET /v1/portal-auth/{orgId}/jwt: Sign a partner in with the merchant's token */
+export type GetPortalAuthOrgIdJwtQuery = {
+  token?: string;
+  next?: string;
+  link?: "1";
+};
+export type GetPortalAuthOrgIdJwtResponse = void;
+
+/** GET /v1/portal-auth/current: What a merchant's portal sign-in offers */
+export type GetPortalAuthCurrentQuery = {
+  org?: string;
+};
+
+/** GET /v1/org/portal-auth: Get partner sign-in settings */
+
+/** PUT /v1/org/portal-auth: Set partner sign-in */
+export type PutOrgPortalAuthBody = {
+  adapter: "referalli";
+} | ({
+  issuer: string;
+  clientId: string;
+  clientSecret?: string;
+  scopes?: string;
+  name?: string;
+  trustEmailVerified?: boolean;
+  adapter: "oidc";
+  autoEnrollProgramId?: string | null;
+}) | ({
+  adapter: "custom";
+  issuer: string;
+  jwksUrl: string;
+  trustEmailVerified?: boolean;
+  autoEnrollProgramId?: string | null;
+  name?: string;
+  loginUrl?: string;
+});
+
+/** POST /v1/org/portal-auth/test: Test partner sign-in */
 
 /** GET /v1/hosts/current: Describe the current host */
 
@@ -4995,6 +5859,8 @@ export type GetAuthForumulateQuery = {
   spaceId?: string;
 };
 export type GetAuthForumulateResponse = void;
+
+/** GET /v1/chatly/identity: Get the support-chat identity */
 
 /** POST /v1/mobile/purchases: Report an in-app purchase */
 export type PostMobilePurchasesBody = {
@@ -5601,6 +6467,18 @@ export type PostReferralsAssociateBody = {
   idempotencyKey?: string;
   occurredAt?: string;
   emailDomain?: string;
+  consent?: {
+    /** The adapter that read it (`onetrust`, `tcf`, `cookiemunch`, …), `custom` for `aff.consent()`, `none`, or `no-cmp`. */
+    provider: string;
+    state: "granted" | "denied" | "unknown";
+    /** When the tracker read it. */
+    at?: string;
+    /** The CMP's consent record id, when it has one. */
+    stamp?: string;
+    tcString?: string;
+    gppString?: string;
+    purposes?: Array<string>;
+  };
 };
 export type PostReferralsAssociateResponse = AssociateResponse;
 
@@ -5803,6 +6681,12 @@ export type PostBillingConnectionsBody = {
   provider: "stripe" | "paddle" | "lemonsqueezy" | "polar" | "chargebee" | "shopify" | "generic" | "recurly" | "braintree" | "woocommerce" | "bigcommerce";
   name?: string;
   webhookSecret?: string;
+  filter?: {
+    metadata?: Record<string, string>;
+    productIds?: Array<string>;
+    priceIds?: Array<string>;
+    skus?: Array<string>;
+  };
 };
 export type PostBillingConnectionsResponse = CreatedBillingConnection;
 
@@ -5835,6 +6719,12 @@ export type GetBillingConnectionsIdResponse = BillingConnection;
 export type PatchBillingConnectionsIdBody = {
   status?: "active" | "paused";
   name?: string;
+  filter?: {
+    metadata?: Record<string, string>;
+    productIds?: Array<string>;
+    priceIds?: Array<string>;
+    skus?: Array<string>;
+  } | null;
 };
 export type PatchBillingConnectionsIdResponse = BillingConnection;
 
@@ -5871,12 +6761,25 @@ export type PostBillingConnectionsIdValueMappingPreviewResponse = ValueMappingPr
 /** GET /v1/billing/events: List billing events */
 export type GetBillingEventsQuery = {
   customerRef?: string;
+  status?: "processed" | "ignored_by_filter";
   limit?: number;
   starting_after?: string;
   ending_before?: string;
   "created[gte]"?: string;
   "created[lte]"?: string;
 };
+
+/** GET /v1/billing/internal-customers: List internal customers */
+export type GetBillingInternalCustomersResponse = Array<InternalCustomer>;
+
+/** POST /v1/billing/internal-customers: Add an internal customer */
+export type PostBillingInternalCustomersBody = {
+  customerRef: string;
+  note?: string;
+};
+
+/** DELETE /v1/billing/internal-customers/{customerRef}: Remove an internal customer */
+export type DeleteBillingInternalCustomersCustomerRefResponse = Ok;
 
 /** PUT /v1/partners/{id}/payout-profile: Set a partner's payout profile */
 export type PutPartnersIdPayoutProfileBody = {
@@ -6243,7 +7146,50 @@ export type GetRoiDataQualityQuery = {
 
 /** POST /v1/value/events: Record value events */
 export type PostValueEventsBody = {
-  events: Array<unknown>;
+  events: Array<{
+    kind: "payment" | "refund" | "credit_granted" | "credit_redeemed" | "credit_expired" | "credit_revoked" | "cost" | "adjustment";
+    /** Your id for the customer. One of customerRef, partnerId or partnerExternalRef is required. */
+    customerRef?: string;
+    /** A Referalli partner id. */
+    partnerId?: string;
+    /** Your id for the partner (the partner's externalRef). */
+    partnerExternalRef?: string;
+    /** The credit grant this event draws on. */
+    creditGrantId?: string;
+    /** The referral it belongs to. */
+    referralId?: string;
+    /** The program it belongs to. */
+    programId?: string;
+    /** Your product or plan id. */
+    productRef?: string;
+    /** ISO 4217 code. */
+    currency: string;
+    /** Cash paid (a refund is stored negative). Integer minor units. */
+    cashMinor?: number;
+    /** Credit applied to this payment. Integer minor units. */
+    creditAppliedMinor?: number;
+    /** Discount given. Integer minor units. */
+    discountMinor?: number;
+    /** Tax included. Integer minor units. */
+    taxMinor?: number;
+    /** Payment fees. Integer minor units. */
+    feesMinor?: number;
+    /** Cost to you (cost events). Integer minor units. */
+    costMinor?: number;
+    /** Face value of the credit (required for credit_granted). Integer minor units. */
+    faceMinor?: number;
+    /** Your idempotency id for this fact: the same externalId is recorded once. */
+    externalId: string;
+    /** Your invoice id. */
+    invoiceRef?: string;
+    /** Where the fact came from (stripe, your billing system…). */
+    provider?: string;
+    /** ISO 8601 date or date-time. */
+    occurredAt: string;
+    /** credit_granted only: who received the credit. */
+    role?: "referee" | "referrer";
+    metadata?: Record<string, unknown>;
+  }>;
 };
 
 /** POST /v1/value/import: Import value events from CSV */
@@ -6370,6 +7316,7 @@ export type PostWebhookEndpointsBody = {
   topics?: Array<string>;
   legacySignature?: boolean;
   programIds?: Array<string> | null;
+  alertContacts?: Array<string>;
 };
 
 /** GET /v1/webhook-endpoints: List webhook endpoints */
@@ -6388,8 +7335,8 @@ export type PatchWebhookEndpointsIdBody = {
   topics?: Array<string>;
   legacySignature?: boolean;
   programIds?: Array<string> | null;
+  alertContacts?: Array<string>;
 };
-export type PatchWebhookEndpointsIdResponse = WebhookEndpoint;
 
 /** DELETE /v1/webhook-endpoints/{id}: Delete a webhook endpoint */
 export type DeleteWebhookEndpointsIdResponse = Ok;
@@ -6419,6 +7366,11 @@ export type GetWebhookEndpointsIdDeliveriesQuery = {
 };
 
 /** GET /v1/webhook-deliveries/{id}: Get a webhook delivery */
+
+/** POST /v1/webhook-endpoints/{id}/replay: Replay failed deliveries */
+export type PostWebhookEndpointsIdReplayQuery = {
+  since: string;
+};
 
 /** POST /v1/webhook-deliveries/{id}/replay: Replay a webhook delivery */
 export type PostWebhookDeliveriesIdReplayResponse = Ok;
@@ -6456,7 +7408,6 @@ export type PutBrandingBody = {
   theme?: Record<string, string>;
   emailFrom?: string;
 };
-export type PutBrandingResponse = Ok;
 
 /** POST /v1/branding/link-domain: Set a custom link domain */
 export type PostBrandingLinkDomainBody = {
@@ -6718,6 +7669,19 @@ export type GetRewardsQuery = {
   "created[lte]"?: string;
 };
 
+/** POST /v1/rewards: Reward a partner */
+export type PostRewardsBody = {
+  partnerId?: string;
+  partnerExternalRef?: string;
+  reason: string;
+  amountMinor?: number;
+  currency?: string;
+  ruleKey?: string;
+  event?: string;
+  programId?: string;
+  idempotencyKey: string;
+};
+
 /** GET /v1/rewards/lookup/{code}: Look up a reward code */
 
 /** POST /v1/rewards/redeem-by-code: Redeem a reward by code */
@@ -6739,6 +7703,24 @@ export type PostRewardsIdRedeemBody = {
   occurredAt?: unknown;
 };
 export type PostRewardsIdRedeemResponse = PostRewardsRedeemByCodeResponse;
+
+/** GET /v1/rewards/granted: List partner rewards */
+
+/** GET /v1/rewards/rules: List reward rules */
+export type GetRewardsRulesResponse = Array<PutRewardsRulesKeyResponse>;
+
+/** PUT /v1/rewards/rules/{key}: Save a reward rule */
+export type PutRewardsRulesKeyBody = {
+  /** An inbound event this rule rewards, e.g. community.answer_accepted. Unique per org. */
+  event?: string | null;
+  programId?: string | null;
+  amountMinor: number;
+  currency?: string;
+  reason: string;
+  enabled?: boolean;
+};
+
+/** DELETE /v1/rewards/rules/{key}: Delete a reward rule */
 
 /** GET /v1/programs/{id}/groups: List partner groups */
 export type GetProgramsIdGroupsQuery = {
@@ -7269,7 +8251,7 @@ export type PutEmailTemplatesEventLocaleBody = {
 
 /** POST /v1/email/preview: Preview an email */
 export type PostEmailPreviewBody = {
-  event: "payout_sent" | "payout_failed" | "invitation_received" | "partner_approved" | "contract_sent" | "webhook_endpoint_disabled" | "tax_document_ready";
+  event: "payout_sent" | "payout_failed" | "invitation_received" | "partner_approved" | "contract_sent" | "webhook_endpoint_disabled" | "webhook_endpoint_failing" | "tax_document_ready";
   locale: "en" | "es" | "de" | "fr" | "pt" | "it" | "nl" | "sv" | "ja" | "zh";
   draft?: {
     subject: string;
@@ -7281,7 +8263,7 @@ export type PostEmailPreviewResponse = EmailRendered;
 
 /** POST /v1/email/test: Send a test email */
 export type PostEmailTestBody = {
-  event: "payout_sent" | "payout_failed" | "invitation_received" | "partner_approved" | "contract_sent" | "webhook_endpoint_disabled" | "tax_document_ready";
+  event: "payout_sent" | "payout_failed" | "invitation_received" | "partner_approved" | "contract_sent" | "webhook_endpoint_disabled" | "webhook_endpoint_failing" | "tax_document_ready";
   locale: "en" | "es" | "de" | "fr" | "pt" | "it" | "nl" | "sv" | "ja" | "zh";
   to: string;
 };
@@ -7399,7 +8381,7 @@ export type PostPartnerSecurityTotpDisableBody = {
 
 /** POST /v1/auth/connections: Connect an auth platform */
 export type PostAuthConnectionsBody = {
-  provider: "clerk" | "supabase" | "workos" | "generic" | "atlas" | "custom";
+  provider: "atlas" | "clerk" | "auth0" | "supabase" | "firebase" | "cognito" | "stytch" | "kinde" | "workos" | "generic" | "custom";
   programId: string;
   instanceId?: string;
   autoEnrollUsers?: boolean;
@@ -7423,6 +8405,13 @@ export type GetAuthConnectionsQuery = {
   ending_before?: string;
   "created[gte]"?: string;
   "created[lte]"?: string;
+};
+
+/** GET /v1/auth/connections/providers: List identity connectors */
+
+/** PUT /v1/auth/connections/{id}/secret: Set a vendor-issued secret */
+export type PutAuthConnectionsIdSecretBody = {
+  secret: string;
 };
 
 /** POST /v1/auth/connections/{id}/rotate-secret: Rotate an auth connection secret */
@@ -7474,6 +8463,14 @@ export type PostAuthConnectionsIdSignupsBody = {
   test?: boolean;
 };
 
+/** POST /v1/auth/connections/{id}/partners: Enrol a user as a partner (signed protocol) */
+export type PostAuthConnectionsIdPartnersBody = {
+  customerRef: string;
+  email: string;
+  name?: string;
+  code?: string;
+};
+
 /** POST /v1/auth/connections/{id}/erase: Erase a user (signed protocol) */
 export type PostAuthConnectionsIdEraseBody = {
   customerRef: string;
@@ -7509,6 +8506,40 @@ export type PostAuthConnectionsIdSignalsBody = {
   details?: Record<string, unknown>;
 };
 
+/** POST /v1/auth/connections/install: Approve a one-click install */
+export type PostAuthConnectionsInstallBody = {
+  clientId: string;
+  scope: string;
+  redirectUri: string;
+  state?: string;
+  codeChallenge: string;
+  instanceId: string;
+  programId?: string;
+  decision: "allow" | "deny";
+};
+
+/** GET /v1/oauth/authorize: Start a one-click install */
+export type GetOauthAuthorizeQuery = {
+  client_id: string;
+  scope: string;
+  redirect_uri: string;
+  state?: string;
+  response_type?: "code";
+  code_challenge: string;
+  code_challenge_method: "S256";
+  instance_id: string;
+};
+export type GetOauthAuthorizeResponse = void;
+
+/** POST /v1/oauth/token: Exchange an install code */
+export type PostOauthTokenBody = {
+  grant_type: "authorization_code";
+  code: string;
+  code_verifier: string;
+  client_id: string;
+  redirect_uri: string;
+};
+
 /** GET /v1/org/sso: Get SSO settings */
 
 /** PATCH /v1/org/sso: Update SSO settings */
@@ -7527,6 +8558,35 @@ export type PostOrgSsoTicketsBody = {
 /** POST /v1/org/sso/tickets/{id}/revoke: Revoke an SSO setup link */
 
 /** GET /v1/org/sso/connections/{id}/saml-metadata: Get SAML metadata */
+
+/** PUT /v1/org/sso/direct: Connect your own identity provider */
+export type PutOrgSsoDirectBody = ({
+  adapter: "oidc";
+  issuer: string;
+  clientId: string;
+  clientSecret?: string;
+  scopes?: string;
+  roleClaim?: string;
+  name?: string;
+  domains?: Array<string>;
+  roleMapping?: Record<string, "admin" | "finance" | "analyst" | "support">;
+  defaultRole?: ("admin" | "finance" | "analyst" | "support") | null;
+  trustEmailVerified?: boolean;
+}) | ({
+  adapter: "workos";
+  clientId: string;
+  apiKey?: string;
+  organizationId: string;
+  domains?: Array<string>;
+  roleMapping?: Record<string, "admin" | "finance" | "analyst" | "support">;
+  defaultRole?: ("admin" | "finance" | "analyst" | "support") | null;
+  trustEmailVerified?: boolean;
+});
+
+/** DELETE /v1/org/sso/direct: Remove your identity provider */
+
+/** POST /v1/org/sso/direct/test: Test your identity provider */
+export type PostOrgSsoDirectTestResponse = PostOrgPortalAuthTestResponse;
 
 /** POST /v1/partner/auth/wallet/nonce: Get a wallet sign-in nonce */
 export type PostPartnerAuthWalletNonceBody = {
@@ -7565,6 +8625,133 @@ export type PostPublicProgramsHandleJoinBody = {
   destinationUrl?: string | "";
 };
 
+/** GET /v1/integration-health: Check integration health */
+
+/** GET /v1/plans: List public plans */
+
+/** GET /v1/events: List past events */
+export type GetEventsQuery = {
+  since?: string;
+  topics?: string;
+  after?: string;
+  limit?: number;
+};
+
+/** GET /v1/support/context: Get referral context for a support contact */
+export type GetSupportContextQuery = {
+  email?: string;
+  customerRef?: string;
+  partnerExternalRef?: string;
+  ext?: string;
+};
+
+/** GET /v1/support/apps: List support tool connections */
+
+/** PUT /v1/support/apps/{adapter}: Connect a support tool */
+export type PutSupportAppsAdapterBody = {
+  enabled?: boolean;
+  /** The vendor-issued signing secret (Chatly, Intercom, HubSpot, Front, Help Scout). Write-only. */
+  secret?: string;
+  /** custom: mint a new secret (shown once). */
+  rotate?: boolean;
+  config?: {
+    publicKeyPem?: string;
+    subdomain?: string;
+    cardKey?: string;
+  };
+};
+
+/** DELETE /v1/support/apps/{adapter}: Disconnect a support tool */
+
+/** POST /v1/support/apps/{adapter}/test: Preview a support card */
+export type PostSupportAppsAdapterTestBody = {
+  /** Used only when no stronger key is given. */
+  email?: string;
+  customerRef?: string;
+  partnerExternalRef?: string;
+  /** A support tool's verified external id: matched as a partner externalRef, then as a customer ref. */
+  ext?: string;
+};
+
+/** POST /v1/support/cards/{orgId}/{adapter}: Render a support card for a tool */
+export type PostSupportCardsOrgIdAdapterBody = Record<string, unknown>;
+
+/** GET /v1/support/cards/{orgId}/{adapter}: Render a support card for a tool (GET) */
+export type GetSupportCardsOrgIdAdapterQuery = {
+  email?: string;
+  externalId?: string;
+};
+export type GetSupportCardsOrgIdAdapterResponse = PostSupportCardsOrgIdAdapterResponse;
+
+/** GET /v1/privacy/executors: List connected DSAR tools */
+
+/** POST /v1/privacy/executor-keys: Mint a DSAR executor key */
+export type PostPrivacyExecutorKeysBody = {
+  adapter: "cm-standard-v1" | "onetrust" | "transcend" | "datagrail" | "ketch" | "osano" | "custom";
+  /** A credential from the vendor (Transcend API key, Osano webhook secret). Write-only. */
+  vendorSecret?: string;
+  config?: {
+    publicKeyPem?: string;
+    algorithm?: "ES384" | "ES256" | "RS256";
+    sombraUrl?: string;
+  };
+  /** Mint a new executor key (the old one stops working). false keeps the current key and only updates the settings. */
+  rotate?: boolean;
+  enabled?: boolean;
+};
+
+/** DELETE /v1/privacy/executors/{adapter}: Disconnect a DSAR tool */
+
+/** POST /v1/privacy/executors/{adapter}/check: Check a DSAR tool connection */
+
+/** GET /v1/privacy/executor-requests: List DSAR tool requests */
+
+/** POST /v1/account/close: Close your own account */
+export type PostAccountCloseBody = {
+  /** The account's email address, typed out, to confirm. */
+  confirm: string;
+};
+
+/** GET /v1/clicks/consent-coverage: Get consent coverage */
+export type GetClicksConsentCoverageQuery = {
+  days?: number;
+};
+
+/** GET /v1/clicks/{id}: Get a click */
+
+/** GET /v1/org/tracking-consent: Get the tracker's consent default */
+
+/** PUT /v1/org/tracking-consent: Set the tracker's consent default */
+export type PutOrgTrackingConsentBody = {
+  /** `auto` detects the CMP, `none` always stores, `pending` waits for `aff.consent()`, or an adapter id. */
+  mode: "auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm";
+  /** The CMP category, group, purpose or service to require (each adapter has a default). */
+  category?: string;
+  tcfVendorId?: number;
+  gcmSignal?: "ad_storage" | "analytics_storage";
+  /** `auto` with no CMP on the page: `persist` stores, `memory` never does. */
+  noCmp?: "persist" | "memory";
+};
+export type PutOrgTrackingConsentResponse = GetOrgTrackingConsentResponse;
+
+/** GET /v1/org/hosted-pages: Get the hosted-page consent and chat */
+
+/** PUT /v1/org/hosted-pages: Set the hosted-page consent and chat */
+export type PutOrgHostedPagesBody = {
+  consent: {
+    adapter: "none" | "builtin" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "iubenda" | "custom";
+    config?: Record<string, unknown>;
+  };
+  chat?: ({
+    adapter: "chatly" | "intercom" | "crisp" | "custom";
+    config?: Record<string, unknown>;
+  }) | null;
+  customOrigins?: Record<string, Array<string>>;
+};
+export type PutOrgHostedPagesResponse = GetOrgHostedPagesResponse;
+
+/** POST /v1/org/hosted-pages/check: Check the hosted-page adapters */
+
 /** POST /webhooks/billing/{connectionId}: Receive a billing provider webhook */
 export type PostWebhooksBillingConnectionIdBody = {
   /** Generic connections only. */
@@ -7602,6 +8789,36 @@ export type GetEmbedJsResponse = string;
 
 /** GET /embed-signup.js: Get the embedded partner sign-up script */
 export type GetEmbedSignupJsResponse = string;
+
+/** POST /api/privacy/lookup: Find a Referalli account for a data-rights request */
+export type PostApiPrivacyLookupBody = {
+  email: string;
+};
+
+/** POST /api/privacy/requests: Open an access or deletion request */
+export type PostApiPrivacyRequestsBody = {
+  subjectId: string;
+  type: "access" | "deletion";
+};
+
+/** GET /api/privacy/requests/{id}: Poll a data-rights request */
+
+/** POST /api/privacy/orgs/{orgId}/lookup: Find a data subject in a merchant's program */
+export type PostApiPrivacyOrgsOrgIdLookupBody = {
+  email: string;
+};
+
+/** POST /api/privacy/orgs/{orgId}/requests: Open a data-subject request in a merchant's program */
+export type PostApiPrivacyOrgsOrgIdRequestsBody = {
+  subjectId: string;
+  type: "access" | "deletion";
+};
+
+/** GET /api/privacy/orgs/{orgId}/requests/{id}: Poll a data-subject request in a merchant's program */
+
+/** POST /api/privacy/orgs/{orgId}/dsar/{adapter}: Run a vendor DSAR request in a merchant's program */
+export type PostApiPrivacyOrgsOrgIdDsarAdapterBody = Record<string, unknown>;
+export type PostApiPrivacyOrgsOrgIdDsarAdapterResponse = PostSupportCardsOrgIdAdapterResponse;
 
 /** GET /lead/{orgToken}/{code}: Show a hosted lead form */
 export type GetLeadOrgTokenCodeResponse = string;
@@ -7689,6 +8906,10 @@ export type WebhookPayloads = {
   "privacy.request_completed": PrivacyRequestCompletedEvent;
   /** A failing webhook endpoint was disabled */
   "webhook_endpoint.disabled": WebhookEndpointDisabledEvent;
+  /** A webhook endpoint keeps failing */
+  "webhook_endpoint.failing": WebhookEndpointFailingEvent;
+  /** A failing webhook endpoint recovered */
+  "webhook_endpoint.recovered": WebhookEndpointRecoveredEvent;
 };
 
 /** Every operation, by operationId. */
@@ -7705,6 +8926,8 @@ export const operations = {
   postTOrgTokenMobileEvent: { method: 'POST', path: '/t/{orgToken}/mobile/event' },
   getWellKnownAppleAppSiteAssociation: { method: 'GET', path: '/.well-known/apple-app-site-association' },
   getWellKnownAssetlinksJson: { method: 'GET', path: '/.well-known/assetlinks.json' },
+  getWellKnownForgedeckEmbedJson: { method: 'GET', path: '/.well-known/forgedeck-embed.json' },
+  getV1Embed: { method: 'GET', path: '/v1/embed' },
   postV1AgentsRegister: { method: 'POST', path: '/v1/agents/register' },
   postTOrgTokenAgentAttribute: { method: 'POST', path: '/t/{orgToken}/agent/attribute' },
   postTOrgTokenAgentNegotiate: { method: 'POST', path: '/t/{orgToken}/agent/negotiate' },
@@ -7717,12 +8940,22 @@ export const operations = {
   getV1AuthAtlasCallback: { method: 'GET', path: '/v1/auth/atlas/callback' },
   getV1AuthHandoff: { method: 'GET', path: '/v1/auth/handoff' },
   getV1AuthProviders: { method: 'GET', path: '/v1/auth/providers' },
+  postV1AuthBackchannelLogout: { method: 'POST', path: '/v1/auth/backchannel-logout' },
   postV1AuthLogout: { method: 'POST', path: '/v1/auth/logout' },
   postV1Orgs: { method: 'POST', path: '/v1/orgs' },
   getV1Me: { method: 'GET', path: '/v1/me' },
+  getV1AuthSsoStart: { method: 'GET', path: '/v1/auth/sso/start' },
+  getV1PortalAuthOrgIdOidcStart: { method: 'GET', path: '/v1/portal-auth/{orgId}/oidc/start' },
+  getV1AuthSsoCallback: { method: 'GET', path: '/v1/auth/sso/callback' },
+  getV1PortalAuthOrgIdJwt: { method: 'GET', path: '/v1/portal-auth/{orgId}/jwt' },
+  getV1PortalAuthCurrent: { method: 'GET', path: '/v1/portal-auth/current' },
+  getV1OrgPortalAuth: { method: 'GET', path: '/v1/org/portal-auth' },
+  putV1OrgPortalAuth: { method: 'PUT', path: '/v1/org/portal-auth' },
+  postV1OrgPortalAuthTest: { method: 'POST', path: '/v1/org/portal-auth/test' },
   getV1HostsCurrent: { method: 'GET', path: '/v1/hosts/current' },
   getV1HostsCurrentThemeCss: { method: 'GET', path: '/v1/hosts/current/theme.css' },
   getV1AuthForumulate: { method: 'GET', path: '/v1/auth/forumulate' },
+  getV1ChatlyIdentity: { method: 'GET', path: '/v1/chatly/identity' },
   postV1MobilePurchases: { method: 'POST', path: '/v1/mobile/purchases' },
   getV1Org: { method: 'GET', path: '/v1/org' },
   patchV1Org: { method: 'PATCH', path: '/v1/org' },
@@ -7830,6 +9063,9 @@ export const operations = {
   postV1BillingConnectionsIdValueMappingPreview: { method: 'POST', path: '/v1/billing/connections/{id}/value-mapping/preview' },
   postV1BillingConnectionsIdRotateSecret: { method: 'POST', path: '/v1/billing/connections/{id}/rotate-secret' },
   getV1BillingEvents: { method: 'GET', path: '/v1/billing/events' },
+  getV1BillingInternalCustomers: { method: 'GET', path: '/v1/billing/internal-customers' },
+  postV1BillingInternalCustomers: { method: 'POST', path: '/v1/billing/internal-customers' },
+  deleteV1BillingInternalCustomersCustomerRef: { method: 'DELETE', path: '/v1/billing/internal-customers/{customerRef}' },
   putV1PartnersIdPayoutProfile: { method: 'PUT', path: '/v1/partners/{id}/payout-profile' },
   getV1PartnersIdPayoutProfile: { method: 'GET', path: '/v1/partners/{id}/payout-profile' },
   patchV1PartnersIdPayoutProfile: { method: 'PATCH', path: '/v1/partners/{id}/payout-profile' },
@@ -7909,6 +9145,7 @@ export const operations = {
   getV1WebhookDeliveries: { method: 'GET', path: '/v1/webhook-deliveries' },
   getV1WebhookEndpointsIdDeliveries: { method: 'GET', path: '/v1/webhook-endpoints/{id}/deliveries' },
   getV1WebhookDeliveriesId: { method: 'GET', path: '/v1/webhook-deliveries/{id}' },
+  postV1WebhookEndpointsIdReplay: { method: 'POST', path: '/v1/webhook-endpoints/{id}/replay' },
   postV1WebhookDeliveriesIdReplay: { method: 'POST', path: '/v1/webhook-deliveries/{id}/replay' },
   postV1SandboxSimulate: { method: 'POST', path: '/v1/sandbox/simulate' },
   postV1ImportProvider: { method: 'POST', path: '/v1/import/{provider}' },
@@ -7956,9 +9193,14 @@ export const operations = {
   getV1ProgramsIdRefereeReward: { method: 'GET', path: '/v1/programs/{id}/referee-reward' },
   putV1ProgramsIdRefereeReward: { method: 'PUT', path: '/v1/programs/{id}/referee-reward' },
   getV1Rewards: { method: 'GET', path: '/v1/rewards' },
+  postV1Rewards: { method: 'POST', path: '/v1/rewards' },
   getV1RewardsLookupCode: { method: 'GET', path: '/v1/rewards/lookup/{code}' },
   postV1RewardsRedeemByCode: { method: 'POST', path: '/v1/rewards/redeem-by-code' },
   postV1RewardsIdRedeem: { method: 'POST', path: '/v1/rewards/{id}/redeem' },
+  getV1RewardsGranted: { method: 'GET', path: '/v1/rewards/granted' },
+  getV1RewardsRules: { method: 'GET', path: '/v1/rewards/rules' },
+  putV1RewardsRulesKey: { method: 'PUT', path: '/v1/rewards/rules/{key}' },
+  deleteV1RewardsRulesKey: { method: 'DELETE', path: '/v1/rewards/rules/{key}' },
   getV1ProgramsIdGroups: { method: 'GET', path: '/v1/programs/{id}/groups' },
   postV1ProgramsIdGroups: { method: 'POST', path: '/v1/programs/{id}/groups' },
   patchV1PartnerGroupsId: { method: 'PATCH', path: '/v1/partner-groups/{id}' },
@@ -8066,29 +9308,61 @@ export const operations = {
   getV1PartnerSecurity: { method: 'GET', path: '/v1/partner/security' },
   postV1AuthConnections: { method: 'POST', path: '/v1/auth/connections' },
   getV1AuthConnections: { method: 'GET', path: '/v1/auth/connections' },
+  getV1AuthConnectionsProviders: { method: 'GET', path: '/v1/auth/connections/providers' },
+  putV1AuthConnectionsIdSecret: { method: 'PUT', path: '/v1/auth/connections/{id}/secret' },
   postV1AuthConnectionsIdRotateSecret: { method: 'POST', path: '/v1/auth/connections/{id}/rotate-secret' },
   patchV1AuthConnectionsId: { method: 'PATCH', path: '/v1/auth/connections/{id}' },
   deleteV1AuthConnectionsId: { method: 'DELETE', path: '/v1/auth/connections/{id}' },
   postV1AuthConnectionsIdRevokePreviousSecret: { method: 'POST', path: '/v1/auth/connections/{id}/revoke-previous-secret' },
   postV1AuthConnectionsIdSignups: { method: 'POST', path: '/v1/auth/connections/{id}/signups' },
+  postV1AuthConnectionsIdPartners: { method: 'POST', path: '/v1/auth/connections/{id}/partners' },
   postV1AuthConnectionsIdErase: { method: 'POST', path: '/v1/auth/connections/{id}/erase' },
   getV1AuthConnectionsIdExport: { method: 'GET', path: '/v1/auth/connections/{id}/export' },
   postV1AuthConnectionsIdPing: { method: 'POST', path: '/v1/auth/connections/{id}/ping' },
   postV1AuthConnectionsIdAliases: { method: 'POST', path: '/v1/auth/connections/{id}/aliases' },
   postV1AuthConnectionsIdUsers: { method: 'POST', path: '/v1/auth/connections/{id}/users' },
   postV1AuthConnectionsIdSignals: { method: 'POST', path: '/v1/auth/connections/{id}/signals' },
+  postV1AuthConnectionsInstall: { method: 'POST', path: '/v1/auth/connections/install' },
+  getV1OauthAuthorize: { method: 'GET', path: '/v1/oauth/authorize' },
+  postV1OauthToken: { method: 'POST', path: '/v1/oauth/token' },
   getV1OrgSso: { method: 'GET', path: '/v1/org/sso' },
   patchV1OrgSso: { method: 'PATCH', path: '/v1/org/sso' },
   postV1OrgSsoLink: { method: 'POST', path: '/v1/org/sso/link' },
   postV1OrgSsoTickets: { method: 'POST', path: '/v1/org/sso/tickets' },
   postV1OrgSsoTicketsIdRevoke: { method: 'POST', path: '/v1/org/sso/tickets/{id}/revoke' },
   getV1OrgSsoConnectionsIdSamlMetadata: { method: 'GET', path: '/v1/org/sso/connections/{id}/saml-metadata' },
+  putV1OrgSsoDirect: { method: 'PUT', path: '/v1/org/sso/direct' },
+  deleteV1OrgSsoDirect: { method: 'DELETE', path: '/v1/org/sso/direct' },
+  postV1OrgSsoDirectTest: { method: 'POST', path: '/v1/org/sso/direct/test' },
   postV1PartnerAuthWalletNonce: { method: 'POST', path: '/v1/partner/auth/wallet/nonce' },
   postV1PartnerAuthWalletVerify: { method: 'POST', path: '/v1/partner/auth/wallet/verify' },
   postV1OnchainConnections: { method: 'POST', path: '/v1/onchain/connections' },
   getV1OnchainConnections: { method: 'GET', path: '/v1/onchain/connections' },
   getV1PublicProgramsHandle: { method: 'GET', path: '/v1/public/programs/{handle}' },
   postV1PublicProgramsHandleJoin: { method: 'POST', path: '/v1/public/programs/{handle}/join' },
+  getV1IntegrationHealth: { method: 'GET', path: '/v1/integration-health' },
+  getV1Plans: { method: 'GET', path: '/v1/plans' },
+  getV1Events: { method: 'GET', path: '/v1/events' },
+  getV1SupportContext: { method: 'GET', path: '/v1/support/context' },
+  getV1SupportApps: { method: 'GET', path: '/v1/support/apps' },
+  putV1SupportAppsAdapter: { method: 'PUT', path: '/v1/support/apps/{adapter}' },
+  deleteV1SupportAppsAdapter: { method: 'DELETE', path: '/v1/support/apps/{adapter}' },
+  postV1SupportAppsAdapterTest: { method: 'POST', path: '/v1/support/apps/{adapter}/test' },
+  postV1SupportCardsOrgIdAdapter: { method: 'POST', path: '/v1/support/cards/{orgId}/{adapter}' },
+  getV1SupportCardsOrgIdAdapter: { method: 'GET', path: '/v1/support/cards/{orgId}/{adapter}' },
+  getV1PrivacyExecutors: { method: 'GET', path: '/v1/privacy/executors' },
+  postV1PrivacyExecutorKeys: { method: 'POST', path: '/v1/privacy/executor-keys' },
+  deleteV1PrivacyExecutorsAdapter: { method: 'DELETE', path: '/v1/privacy/executors/{adapter}' },
+  postV1PrivacyExecutorsAdapterCheck: { method: 'POST', path: '/v1/privacy/executors/{adapter}/check' },
+  getV1PrivacyExecutorRequests: { method: 'GET', path: '/v1/privacy/executor-requests' },
+  postV1AccountClose: { method: 'POST', path: '/v1/account/close' },
+  getV1ClicksConsentCoverage: { method: 'GET', path: '/v1/clicks/consent-coverage' },
+  getV1ClicksId: { method: 'GET', path: '/v1/clicks/{id}' },
+  getV1OrgTrackingConsent: { method: 'GET', path: '/v1/org/tracking-consent' },
+  putV1OrgTrackingConsent: { method: 'PUT', path: '/v1/org/tracking-consent' },
+  getV1OrgHostedPages: { method: 'GET', path: '/v1/org/hosted-pages' },
+  putV1OrgHostedPages: { method: 'PUT', path: '/v1/org/hosted-pages' },
+  postV1OrgHostedPagesCheck: { method: 'POST', path: '/v1/org/hosted-pages/check' },
   postWebhooksBillingConnectionId: { method: 'POST', path: '/webhooks/billing/{connectionId}' },
   postWebhooksAuthConnectionId: { method: 'POST', path: '/webhooks/auth/{connectionId}' },
   postWebhooksSsoProvider: { method: 'POST', path: '/webhooks/sso/{provider}' },
@@ -8099,6 +9373,13 @@ export const operations = {
   getTOrgTokenThemeCss: { method: 'GET', path: '/t/{orgToken}/theme.css' },
   getEmbedJs: { method: 'GET', path: '/embed.js' },
   getEmbedSignupJs: { method: 'GET', path: '/embed-signup.js' },
+  postApiPrivacyLookup: { method: 'POST', path: '/api/privacy/lookup' },
+  postApiPrivacyRequests: { method: 'POST', path: '/api/privacy/requests' },
+  getApiPrivacyRequestsId: { method: 'GET', path: '/api/privacy/requests/{id}' },
+  postApiPrivacyOrgsOrgIdLookup: { method: 'POST', path: '/api/privacy/orgs/{orgId}/lookup' },
+  postApiPrivacyOrgsOrgIdRequests: { method: 'POST', path: '/api/privacy/orgs/{orgId}/requests' },
+  getApiPrivacyOrgsOrgIdRequestsId: { method: 'GET', path: '/api/privacy/orgs/{orgId}/requests/{id}' },
+  postApiPrivacyOrgsOrgIdDsarAdapter: { method: 'POST', path: '/api/privacy/orgs/{orgId}/dsar/{adapter}' },
   getLeadOrgTokenCode: { method: 'GET', path: '/lead/{orgToken}/{code}' },
   postLeadOrgTokenCode: { method: 'POST', path: '/lead/{orgToken}/{code}' },
   getV1Graphql: { method: 'GET', path: '/v1/graphql' },

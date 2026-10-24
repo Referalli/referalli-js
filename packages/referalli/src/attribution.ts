@@ -8,6 +8,23 @@
 
 /** Cookie (and localStorage key) holding the context. A wire name shared with every `aff.js` install; don't change it. */
 export const REFERRAL_COOKIE = 'referalli_ctx';
+/**
+ * The pre-rename name of the same context. The browser tracker (`aff.js`,
+ * `referalli/browser`) writes the context under BOTH names, with the same
+ * value, attributes and expiry, and reads either.
+ *
+ * Why: Atlas's built-in Referalli connector (`context_cookie` default) and
+ * Cookie Munch's declaration preset for us (still under the old brand name) still read `referally_ctx`
+ * (Atlas ATL-B01, Cookie Munch CMU-B08), so without the twin every new
+ * visitor reaches an Atlas sign-up unattributed.
+ *
+ * TODO(legacy-ctx): drop the legacy name (stop writing it, keep reading it for
+ * one cookie window) once Atlas's connector and Cookie Munch's preset read
+ * `referalli_ctx`.
+ */
+export const LEGACY_REFERRAL_COOKIE = 'referally_ctx';
+/** Every name the context is written and read under, current first. */
+export const REFERRAL_COOKIE_NAMES: readonly string[] = [REFERRAL_COOKIE, LEGACY_REFERRAL_COOKIE];
 /** Query parameters that carry a partner's referral code, in priority order. */
 export const REFERRAL_PARAMS: readonly string[] = ['via', 'ref', 'aff'];
 /** Query parameter carrying a click id from a Referalli redirect link (`/go/...`). */
@@ -99,13 +116,13 @@ export function parseReferral(raw: string | null | undefined, now: number = Date
 
 /**
  * The context from a `Cookie` request header. `names` are tried in order
- * (default: `REFERRAL_COOKIE`); add an older cookie name to keep reading
- * contexts saved under it.
+ * (default: `REFERRAL_COOKIE_NAMES`, the current name then the legacy one);
+ * add an older cookie name to keep reading contexts saved under it.
  */
 export function referralFromCookieHeader(
   cookieHeader: string | null | undefined,
   now: number = Date.now(),
-  names: readonly string[] = [REFERRAL_COOKIE],
+  names: readonly string[] = REFERRAL_COOKIE_NAMES,
 ): StoredReferral | null {
   if (!cookieHeader) return null;
   const jar = new Map<string, string>();
@@ -162,6 +179,24 @@ export function serializeReferralCookie(ctx: StoredReferral, opts: CookieOptions
   const domain = opts.domain && /^\.?[a-z0-9.-]+$/i.test(opts.domain) ? `; Domain=${opts.domain}` : '';
   const secure = opts.secure === false ? '' : '; Secure';
   return `${REFERRAL_COOKIE}=${encodeURIComponent(JSON.stringify(ctx))}; Path=/; Max-Age=${days * 86_400}; SameSite=Lax${domain}${secure}`;
+}
+
+/**
+ * `Set-Cookie` values for the context under every name: `referalli_ctx` and
+ * its legacy twin `referally_ctx`, same value, attributes and expiry (see
+ * LEGACY_REFERRAL_COOKIE). Server kits append each one.
+ */
+export function serializeReferralCookies(ctx: StoredReferral, opts: CookieOptions = {}): string[] {
+  const value = serializeReferralCookie(ctx, opts);
+  const tail = value.slice(REFERRAL_COOKIE.length);
+  return REFERRAL_COOKIE_NAMES.map((name) => `${name}${tail}`);
+}
+
+/** `Set-Cookie` values that delete the context under every name (consent denied or withdrawn). */
+export function clearReferralCookies(opts: Pick<CookieOptions, 'domain' | 'secure'> = {}): string[] {
+  const domain = opts.domain && /^\.?[a-z0-9.-]+$/i.test(opts.domain) ? `; Domain=${opts.domain}` : '';
+  const secure = opts.secure === false ? '' : '; Secure';
+  return REFERRAL_COOKIE_NAMES.map((name) => `${name}=; Path=/; Max-Age=0; SameSite=Lax${domain}${secure}`);
 }
 
 /** Fields for `associate` (server-side attribution at signup) from a context. */

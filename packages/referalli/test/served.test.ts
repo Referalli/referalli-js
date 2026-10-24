@@ -86,7 +86,8 @@ describe('served aff.js', () => {
     const b = browser('https://shop.example.com/?ref=dana', { 'data-persist': 'referral-only' });
     b.load();
     expect(b.sent).toHaveLength(1);
-    expect(b.store.size).toBe(1);
+    // referalli_ctx and its legacy twin referally_ctx.
+    expect(b.store.size).toBe(2);
     // A later unreferred page reads the context without sending or rewriting it.
     const aff = b.load('https://shop.example.com/signup');
     expect(aff.getReferral().code).toBe('dana');
@@ -147,7 +148,47 @@ describe('served aff.js', () => {
     const b = browser('https://shop.example.com/?via=first', {}, { firstTouch: true, cookieDays: 1 });
     b.load();
     const saved = JSON.parse(b.store.get('referalli_ctx')!);
-    b.store.set('referalli_ctx', JSON.stringify({ ...saved, exp: Date.now() - 1 }));
+    // Both names expire together (they are written as twins).
+    for (const k of ['referalli_ctx', 'referally_ctx']) b.store.set(k, JSON.stringify({ ...saved, exp: Date.now() - 1 }));
+    b.cookies.clear();
     expect(b.load('https://shop.example.com/?via=second').getReferral().code).toBe('second');
+  });
+});
+
+describe('served aff.js: legacy referally_ctx twin', () => {
+  it('writes referalli_ctx and referally_ctx with the same value, attributes and expiry', () => {
+    const b = browser('https://shop.example.com/?via=dana', { 'data-cookie-domain': '.example.com' }, { cookieDays: 30 });
+    b.load();
+    const cur = b.cookieWrites.find((w) => w.startsWith('referalli_ctx='))!;
+    const old = b.cookieWrites.find((w) => w.startsWith('referally_ctx='))!;
+    expect(cur).toBeTruthy();
+    expect(old).toBe(cur.replace(/^referalli_ctx=/, 'referally_ctx='));
+    expect(cur).toContain(`max-age=${30 * 86400}`);
+    expect(cur).toContain('domain=.example.com');
+    expect(b.store.get('referally_ctx')).toBe(b.store.get('referalli_ctx'));
+    expect(JSON.parse(b.store.get('referalli_ctx')!).code).toBe('dana');
+  });
+
+  it('reads a context saved only under the legacy name, and re-saves both', () => {
+    const b = browser('https://shop.example.com/docs');
+    b.cookies.set('referally_ctx', encodeURIComponent(JSON.stringify({ anonId: 'a_legacy', code: 'KAI', clickId: null, ts: 1 })));
+    const aff = b.load();
+    expect(aff.getReferral()).toMatchObject({ anonId: 'a_legacy', code: 'KAI' });
+    expect(b.store.get('referalli_ctx')).toContain('a_legacy');
+    expect(b.store.get('referally_ctx')).toContain('a_legacy');
+  });
+
+  it('forget() clears both names', () => {
+    const b = browser('https://shop.example.com/?via=dana');
+    b.load().forget();
+    expect(b.store.has('referalli_ctx')).toBe(false);
+    expect(b.store.has('referally_ctx')).toBe(false);
+    expect(b.cookies.has('referalli_ctx')).toBe(false);
+    expect(b.cookies.has('referally_ctx')).toBe(false);
+  });
+
+  it('does not list a name twice when the API also passes it as a legacy key', () => {
+    const js = renderSnippetJs('tk_1', 'https://x', { legacyKeys: ['referally_ctx', 'old_ctx'] });
+    expect(js).toContain('var KEYS=WKEYS.concat(["old_ctx"])');
   });
 });

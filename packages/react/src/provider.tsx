@@ -43,7 +43,11 @@ export interface ReferalliProviderProps extends Omit<TrackerOptions, 'publishabl
   program?: string;
   /** Default `https://referalli.com`, or your tracking domain. */
   baseUrl?: string;
-  /** Start the tracker (record the visit, keep the cookie). Default true; set false until consent. */
+  /**
+   * Start the tracker (record the visit, keep the cookie). Default true. To
+   * follow the site's CMP instead of toggling this, pass `consent: 'auto'`
+   * (or a CMP id): nothing is stored until the visitor grants it.
+   */
   track?: boolean;
   /** Look up the partner behind a referral code ("Invited by Dana"). Default true. */
   resolvePartner?: boolean;

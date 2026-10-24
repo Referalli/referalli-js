@@ -94,3 +94,33 @@ describe('referalliAttribution', () => {
     expect(await res.json()).toEqual({ referral: null });
   });
 });
+
+describe('referalliAttribution: legacy twin and consent (REF-H18, REF-P01)', () => {
+  const run = (url: string, opts: Parameters<typeof referalliAttribution>[0], cookie?: string) => {
+    const headers: Record<string, unknown> = {};
+    const res = { getHeader: (n: string) => headers[n], setHeader: (n: string, v: unknown) => void (headers[n] = v) };
+    const req = { url, headers: cookie ? { cookie } : {} } as unknown as Parameters<ReturnType<typeof referalliAttribution>>[0];
+    referalliAttribution(opts)(req, res as never, () => {});
+    return { referral: req.referral, cookies: (headers['set-cookie'] as string[] | undefined) ?? [] };
+  };
+
+  it('writes referalli_ctx and the referally_ctx twin with the same value and attributes', () => {
+    const { cookies } = run('/?via=DANA', { secure: true });
+    expect(cookies.map((c) => c.split('=')[0])).toEqual(['referalli_ctx', 'referally_ctx']);
+    expect(cookies[0]!.slice('referalli_ctx'.length)).toBe(cookies[1]!.slice('referally_ctx'.length));
+  });
+
+  it('unknown consent: no cookie, but req.referral carries the URL referral', () => {
+    const { cookies, referral } = run('/?via=DANA', { consent: () => 'unknown' });
+    expect(cookies).toEqual([]);
+    expect(referral).toMatchObject({ code: 'DANA' });
+  });
+
+  it('denied consent deletes both names and drops the referral', () => {
+    const stored = encodeURIComponent(JSON.stringify({ anonId: 'a_1', code: 'OLD', clickId: null, ts: 1 }));
+    const { cookies, referral } = run('/?via=DANA', { consent: () => 'denied' }, `referalli_ctx=${stored}`);
+    expect(cookies.map((c) => c.split(';')[0])).toEqual(['referalli_ctx=', 'referally_ctx=']);
+    expect(cookies[0]).toContain('Max-Age=0');
+    expect(referral).toBeNull();
+  });
+});

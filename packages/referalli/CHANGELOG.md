@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-10-24
+
+- API 2026-11-01 additions: 56 new operations (inbound signup connectors, billing product filters, per-org SSO and partner-portal sign-in, support-tool context cards, data-rights executors, account closure, rewards, integration health, plans, the event feed and bulk webhook replay) and 2 webhook topics (`webhook_endpoint.failing`, `webhook_endpoint.recovered`).
+- New error code `reauth_required` (401): sign in again before changing payout details.
+- Consent: `aff.js` and `referalli/browser` follow the merchant's consent manager (Cookie Munch, IAB TCF v2.2/GPP, Google Consent Mode v2, OneTrust, Cookiebot, Usercentrics, Didomi, Osano, Termly or a custom callback).
+- The attribution cookie is written as `referalli_ctx` and the legacy `referally_ctx` twin, and either is read.
+
 ## 0.1.1
 
 - Fixed: the published package now points at the built `dist/` output. 0.1.0 was published with its entry points at TypeScript source and could not be imported; it is deprecated.

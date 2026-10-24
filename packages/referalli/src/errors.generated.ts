@@ -27,6 +27,11 @@ export class StepUpRequiredError extends ApiError {
   override readonly name: string = "StepUpRequiredError";
 }
 
+/** `reauth_required` (HTTP 401). */
+export class ReauthRequiredError extends ApiError {
+  override readonly name: string = "ReauthRequiredError";
+}
+
 /** `payment_required` (HTTP 402). */
 export class PaymentRequiredError extends ApiError {
   override readonly name: string = "PaymentRequiredError";
@@ -139,6 +144,7 @@ export const errorClasses: Record<string, typeof ApiError> = {
   bad_request: BadRequestError,
   unauthorized: AuthenticationError,
   step_up_required: StepUpRequiredError,
+  reauth_required: ReauthRequiredError,
   payment_required: PaymentRequiredError,
   forbidden: PermissionDeniedError,
   webhooks_disabled: WebhooksDisabledError,
