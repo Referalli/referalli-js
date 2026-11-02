@@ -193,6 +193,7 @@ export const operations = {
   getProgramsIdRefereeReward: { method: "GET", path: "/v1/programs/{id}/referee-reward", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdStripeCredits: { method: "GET", path: "/v1/programs/{id}/stripe-credits", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdStripeCreditsLog: { method: "GET", path: "/v1/programs/{id}/stripe-credits/log", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getProgramsIdTerms: { method: "GET", path: "/v1/programs/{id}/terms", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdTermsAcceptances: { method: "GET", path: "/v1/programs/{id}/terms-acceptances", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProspects: { method: "GET", path: "/v1/prospects", pathParams: [], query: ["status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPublicProgramsHandle: { method: "GET", path: "/v1/public/programs/{handle}", pathParams: ["handle"], query: [], body: false, kind: "json", public: true },
@@ -1448,6 +1449,8 @@ export function buildResources(t: Transport) {
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdResponse> => t.op("getProgramsId", { path: { id } }, options),
       /** Get the referral tree. GET /v1/programs/{id}/graph */
       graph: (id: string, query: T.GetProgramsIdGraphQuery, options?: RequestOptions): Promise<T.GetProgramsIdGraphResponse> => t.op("getProgramsIdGraph", { path: { id }, query }, options),
+      /** Get a program's terms. GET /v1/programs/{id}/terms */
+      terms: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdTermsResponse> => t.op("getProgramsIdTerms", { path: { id } }, options),
       /** List terms acceptances. GET /v1/programs/{id}/terms-acceptances */
       termsAcceptances: (id: string, query?: (T.GetProgramsIdTermsAcceptancesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdTermsAcceptancesResponse['data'][number], T.GetProgramsIdTermsAcceptancesResponse> => t.list("getProgramsIdTermsAcceptances", { path: { id }, query }, options),
       /** Update a program. PATCH /v1/programs/{id} */

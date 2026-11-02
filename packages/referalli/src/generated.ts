@@ -283,6 +283,36 @@ export type CommissionRule = {
   createdAt: string;
 };
 
+export type ProgramTerms = {
+  programId: string;
+  /** The commission rule version these terms come from (the latest). */
+  ruleVersion: number;
+  base: {
+    kind: "percent";
+    /** Basis points: 2000 is 20%. */
+    percentBps: number;
+  } | {
+    kind: "fixed";
+    /** Integer minor units (cents). */
+    amountMinor: number;
+    currency: string;
+  };
+  recurring: {
+    type: "one_time";
+  } | {
+    type: "lifetime";
+  } | {
+    type: "months";
+    months: number;
+  };
+  holdDays: number;
+  /** Overrides, tiers or new-vs-expansion rates can change the rate a partner earns. */
+  ratesVary: boolean;
+  summary: {
+    en: string;
+  };
+};
+
 export type BillingFilter = {
   metadata?: Record<string, string>;
   productIds?: Array<string>;
@@ -380,8 +410,10 @@ export type BillingConnection = {
   id: string;
   provider: string;
   name: string;
-  /** paused: its webhook URL refuses events until resumed. */
-  status: "active" | "paused";
+  /** paused: its webhook URL refuses events until resumed. awaiting_secret: a provider that issues its own signing secret (Stripe, Paddle, Polar, Shopify, Recurly, Braintree) was connected without it; its events fail 401 until PUT …/secret stores it. */
+  status: "active" | "paused" | "awaiting_secret";
+  /** Only referrals in these programs earn from this connection's events; null = every program. */
+  programIds: Array<string> | null;
   createdAt: string;
   webhookUrl: string;
   /** The provider sends thin webhooks: set API credentials (Recurly, BigCommerce). */
@@ -393,6 +425,8 @@ export type BillingConnection = {
   filter: BillingFilter | null;
   /** The provider metadata key that holds your customerRef, when it is not referalli_customer_ref. */
   customerRefMetadataKey?: string | null;
+  /** The Stripe webhook endpoint (`we_…`) Referalli registered for this connection with `stripeKey`. */
+  stripeWebhookEndpointId?: string | null;
   rotation: {
     inProgress: boolean;
     previousSecretExpiresAt?: string;
@@ -402,6 +436,8 @@ export type BillingConnection = {
 export type CreatedBillingConnection = {
   id: string;
   provider: string;
+  /** awaiting_secret until PUT …/secret stores the secret a provider issues itself. */
+  status: "active" | "awaiting_secret";
   /** Returned only here. */
   webhookSecret: string;
   /** Path to register with the provider. */
@@ -409,6 +445,12 @@ export type CreatedBillingConnection = {
   filter: BillingFilter | null;
   /** The provider metadata key that holds your customerRef, when it is not referalli_customer_ref. */
   customerRefMetadataKey?: string | null;
+  /** Only referrals in these programs earn from this connection's events; null = every program. */
+  programIds: Array<string> | null;
+  /** With `stripeKey`: the Stripe webhook endpoint (`we_…`) registered or reused. */
+  stripeWebhookEndpointId?: string;
+  /** With `stripeKey`: true when an endpoint on the account already pointed at one of your Stripe connections, which is returned instead of a new one. */
+  reused?: boolean;
 };
 
 export type BillingEvent = {
@@ -429,7 +471,8 @@ export type BillingEvent = {
   productRef: string;
   /** ignored_by_filter: recorded, never processed (product filter or internal customer). */
   status: "processed" | "ignored_by_filter";
-  ignoredReason: ("filter" | "internal_customer") | null;
+  /** Why it earned nothing. no_referral_in_scope (status processed): the customer is referred only in programs outside the connection's programIds. */
+  ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope") | null;
   /** The productIds, priceIds and skus the event named. */
   catalog: Record<string, Array<string>> | null;
 };
@@ -3138,6 +3181,8 @@ export type GetPartnersIdSummaryResponse = {
   code: string | null;
   /** Their newest link in the program; null when they have only a coupon. */
   linkUrl: string | null;
+  /** The program's terms (as `GET /v1/programs/{id}/terms`); null when it has no rule yet. */
+  terms: ProgramTerms | null;
 };
 
 export type PostCommissionsApproveDueResponse = {
@@ -6943,6 +6988,8 @@ export type GetProgramsIdStripeCreditsResponse = {
   createCustomerIfMissing: {
     metadata?: Record<string, string>;
   } | null;
+  /** A credit with no matching Stripe customer stays pending (no attempt cap) until one is billing-linked, instead of no_customer. */
+  waitForCustomer: boolean;
   keyConnected: boolean;
   hasOwnKey: boolean;
 };
@@ -8260,6 +8307,9 @@ export type GetCommissionRulesQuery = {
   "created[lte]"?: string;
 };
 
+/** GET /v1/programs/{id}/terms: Get a program's terms */
+export type GetProgramsIdTermsResponse = ProgramTerms;
+
 /** GET /v1/commissions: List commission ledger events */
 export type GetCommissionsQuery = {
   partnerId?: string;
@@ -8324,6 +8374,20 @@ export type PostBillingConnectionsBody = {
     skus?: Array<string>;
   };
   customerRefMetadataKey?: string | null;
+  programIds?: Array<string> | null;
+  stripeKey?: string;
+  creditRail?: {
+    enabled?: boolean;
+    referrerMatch?: "billing_link" | "metadata" | "email";
+    metadataKey?: string;
+    refereeRewards?: boolean;
+    balanceCurrency?: string | null;
+    createCustomerIfMissing?: {
+      metadata?: Record<string, string>;
+    } | null;
+    waitForCustomer?: boolean;
+    programId: string;
+  };
 };
 export type PostBillingConnectionsResponse = CreatedBillingConnection;
 
@@ -8363,6 +8427,7 @@ export type PatchBillingConnectionsIdBody = {
     skus?: Array<string>;
   } | null;
   customerRefMetadataKey?: string | null;
+  programIds?: Array<string> | null;
 };
 export type PatchBillingConnectionsIdResponse = BillingConnection;
 
@@ -10577,6 +10642,7 @@ export type PutProgramsIdStripeCreditsBody = {
   createCustomerIfMissing?: {
     metadata?: Record<string, string>;
   } | null;
+  waitForCustomer?: boolean;
   secretKey?: string | null;
 };
 export type PutProgramsIdStripeCreditsResponse = GetProgramsIdStripeCreditsResponse;
@@ -10924,6 +10990,7 @@ export const operations = {
   postV1TrackEvents: { method: 'POST', path: '/v1/track/events' },
   postV1CommissionRules: { method: 'POST', path: '/v1/commission-rules' },
   getV1CommissionRules: { method: 'GET', path: '/v1/commission-rules' },
+  getV1ProgramsIdTerms: { method: 'GET', path: '/v1/programs/{id}/terms' },
   getV1Commissions: { method: 'GET', path: '/v1/commissions' },
   getV1CommissionsId: { method: 'GET', path: '/v1/commissions/{id}' },
   getV1PartnersIdBalances: { method: 'GET', path: '/v1/partners/{id}/balances' },
