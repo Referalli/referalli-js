@@ -57,6 +57,16 @@ export class AccessSuspendedError extends ApiError {
   override readonly name: string = "AccessSuspendedError";
 }
 
+/** `program_scoped_key` (HTTP 403). */
+export class ProgramScopedKeyError extends ApiError {
+  override readonly name: string = "ProgramScopedKeyError";
+}
+
+/** `restricted_session` (HTTP 403). */
+export class RestrictedSessionError extends ApiError {
+  override readonly name: string = "RestrictedSessionError";
+}
+
 /** `not_found` (HTTP 404). */
 export class NotFoundError extends ApiError {
   override readonly name: string = "NotFoundError";
@@ -70,6 +80,11 @@ export class ConflictError extends ApiError {
 /** `idempotency_in_progress` (HTTP 409). */
 export class IdempotencyInProgressError extends ApiError {
   override readonly name: string = "IdempotencyInProgressError";
+}
+
+/** `stripe_key_required` (HTTP 409). */
+export class StripeKeyRequiredError extends ApiError {
+  override readonly name: string = "StripeKeyRequiredError";
 }
 
 /** `replay` (HTTP 409). */
@@ -150,9 +165,12 @@ export const errorClasses: Record<string, typeof ApiError> = {
   webhooks_disabled: WebhooksDisabledError,
   sso_required: SsoRequiredError,
   access_suspended: AccessSuspendedError,
+  program_scoped_key: ProgramScopedKeyError,
+  restricted_session: RestrictedSessionError,
   not_found: NotFoundError,
   conflict: ConflictError,
   idempotency_in_progress: IdempotencyInProgressError,
+  stripe_key_required: StripeKeyRequiredError,
   replay: ReplayError,
   live_mode_only: LiveModeOnlyError,
   test_mode_only: TestModeOnlyError,

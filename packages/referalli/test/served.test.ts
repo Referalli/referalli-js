@@ -110,7 +110,10 @@ describe('served aff.js', () => {
     const aff = b.load();
     expect(b.cookieWrites[0]).toContain('; domain=.example.com');
     aff.forget();
-    expect(b.cookieWrites.at(-1)).toContain('max-age=0; SameSite=Lax; domain=.example.com');
+    const expiries = b.cookieWrites.filter((w: string) => w.startsWith('referalli_ctx=;'));
+    // Both copies: the shared one and a host-only one an earlier visit may have left.
+    expect(expiries.some((w: string) => w.includes('; domain=.example.com'))).toBe(true);
+    expect(expiries.some((w: string) => !w.includes('domain='))).toBe(true);
   });
 
   it('ignores a malformed cookie domain', () => {

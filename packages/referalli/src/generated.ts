@@ -103,6 +103,8 @@ export type Enrollment = {
   id: string;
   programId: string;
   partnerId: string;
+  /** This program's own externalRef for the partner, or null. */
+  externalRef: string | null;
   status: "applied" | "approved" | "rejected" | "removed";
 };
 
@@ -389,6 +391,8 @@ export type BillingConnection = {
   valueMapping: ValueMapping | null;
   /** Only matching events earn; the rest are recorded as ignored_by_filter. null takes every event. */
   filter: BillingFilter | null;
+  /** The provider metadata key that holds your customerRef, when it is not referalli_customer_ref. */
+  customerRefMetadataKey?: string | null;
   rotation: {
     inProgress: boolean;
     previousSecretExpiresAt?: string;
@@ -403,6 +407,8 @@ export type CreatedBillingConnection = {
   /** Path to register with the provider. */
   webhookUrl: string;
   filter: BillingFilter | null;
+  /** The provider metadata key that holds your customerRef, when it is not referalli_customer_ref. */
+  customerRefMetadataKey?: string | null;
 };
 
 export type BillingEvent = {
@@ -671,6 +677,18 @@ export type Org = {
   payoutKycRequired: boolean;
   /** False for the org's test org (test mode). */
   livemode: boolean;
+  /** The plan's caps (null: unlimited). A test org runs on its live org's plan. */
+  limits: {
+    programs: number | null;
+    partners: number | null;
+  };
+  /** What counts against the caps: programs that are not archived, and partners. */
+  usage: {
+    programs: number;
+    partners: number;
+  };
+  /** Where partners sign in: the org's verified portal domain, else Referalli's own portal. */
+  portalUrl: string;
   /** On a test org: the live org it belongs to. */
   liveOrgId?: string;
 };
@@ -695,6 +713,8 @@ export type IssuedApiKey = {
   owner: string | null;
   expiresAt: string | null;
   pairId: string | null;
+  /** The programs this key is limited to; null = the whole org. */
+  programIds: Array<string> | null;
 };
 
 export type ApiKey = {
@@ -711,6 +731,8 @@ export type ApiKey = {
   owner: string | null;
   /** Shared by a live/test pair minted together. */
   pairId: string | null;
+  /** The programs this key is limited to; null = the whole org. */
+  programIds: Array<string> | null;
   createdBy: ({
     type: "api_key" | "user";
     id: string;
@@ -736,6 +758,8 @@ export type AuthConnection = {
   };
   /** Signed-protocol connections: the Atlas instance, or a custom label. */
   instanceId?: string | null;
+  /** Atlas connections serving an Atlas ID app instead of an instance. */
+  appId?: string | null;
   autoEnrollUsers?: boolean;
   destinationUrl?: string | null;
   signatureVersion?: "v1+v2" | "v2";
@@ -756,6 +780,7 @@ export type CreatedAuthConnection = {
   /** Signed-protocol connections (atlas, custom). */
   programId?: string;
   instanceId?: string;
+  appId?: string;
   autoEnrollUsers?: boolean;
   destinationUrl?: string | null;
   signupsUrl?: string;
@@ -1590,6 +1615,15 @@ export type CommissionSettledEventData = {
   currency: string;
   method: "store_credit" | "merchant_credit";
   reference: string;
+  customerRef: string | null;
+  billingEventId: string | null;
+  /** The billing provider's own event id. */
+  providerEventId: string | null;
+  invoiceRef: string | null;
+  /** Your own id for the customer when known (an auth-connection user id), or null. */
+  customerExternalRef: string | null;
+  /** Your own id for the partner to credit: this program's externalRef for them, else the partner's. */
+  partnerExternalRef: string | null;
 };
 
 /** A commission line was settled by the merchant: the `commission.settled` delivery body. */
@@ -2052,6 +2086,74 @@ export type WebhookEndpointFailingEvent = {
   data: WebhookEndpointFailingEventData;
 };
 
+/** `data` of a `stripe_credit.applied` event: The Stripe balance credit rail applied a credit (or a reversal debit) to a Stripe customer balance with your key. `stripeBalanceTransactionId` is the Stripe balance transaction. */
+export type StripeCreditAppliedEventData = {
+  id: string;
+  programId: string;
+  /** The settled commission line, the reversal, or the referee reward this applies. */
+  sourceEventId: string;
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  commissionId: string | null;
+  partnerId: string | null;
+  customerRef: string | null;
+  /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
+  amountMinor: number;
+  currency: string;
+  stripeCustomerId: string | null;
+  status: "pending" | "applied" | "failed" | "no_customer" | "canceled";
+  attempts: number;
+  stripeBalanceTransactionId: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** A Stripe balance credit or debit was applied: the `stripe_credit.applied` delivery body. */
+export type StripeCreditAppliedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "stripe_credit.applied";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: StripeCreditAppliedEventData;
+};
+
+/** `data` of a `stripe_credit.failed` event: The Stripe balance credit rail stopped retrying a credit or debit after its last attempt: no Stripe customer matched (`no_customer`) or Stripe refused it (`failed`). `lastError` says why. */
+export type StripeCreditFailedEventData = {
+  id: string;
+  programId: string;
+  /** The settled commission line, the reversal, or the referee reward this applies. */
+  sourceEventId: string;
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  commissionId: string | null;
+  partnerId: string | null;
+  customerRef: string | null;
+  /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
+  amountMinor: number;
+  currency: string;
+  stripeCustomerId: string | null;
+  status: "pending" | "applied" | "failed" | "no_customer" | "canceled";
+  attempts: number;
+  stripeBalanceTransactionId: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** A Stripe balance credit or debit gave up: the `stripe_credit.failed` delivery body. */
+export type StripeCreditFailedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "stripe_credit.failed";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: StripeCreditFailedEventData;
+};
+
 /** `data` of a `webhook_endpoint.recovered` event: Sent to your active endpoints, including the recovered one, when a delivery succeeds after the endpoint was failing. */
 export type WebhookEndpointRecoveredEventData = {
   endpointId: string;
@@ -2154,6 +2256,30 @@ export type PostTOrgTokenMobileInstallResponse = {
   programId: string;
 };
 
+/** An embed-v1 manifest (https://cookiemunch.net/schemas/embed-v1.json). */
+export type GetWellKnownReferalliEmbedJsonResponse = {
+  schema: "https://cookiemunch.net/schemas/embed-v1.json";
+  product: "referalli";
+  updated: string;
+  openapi: string;
+  status: string;
+  docs: string;
+  surfaces: Record<string, {
+    csp: Record<string, Array<string>>;
+    consentCategory: string;
+    storage: Array<{
+      name: string;
+      type: "cookie" | "localStorage" | "sessionStorage" | "indexedDB";
+      category: string;
+      lifetime: string;
+      purpose: Record<string, string>;
+      [key: string]: unknown;
+    }>;
+    [key: string]: unknown;
+  }>;
+  changes: Array<unknown>;
+};
+
 export type GetWellKnownAppleAppSiteAssociationResponse = {
   applinks: {
     details: Array<{
@@ -2173,68 +2299,6 @@ export type GetWellKnownAssetlinksJsonResponse = Array<{
     sha256_cert_fingerprints: Array<string>;
   };
 }>;
-
-export type GetWellKnownForgedeckEmbedJsonResponse = {
-  schema: string;
-  product: "referalli";
-  updated: string;
-  openapi: string;
-  llms: string;
-  status: string;
-  docs: string;
-  checkers: {
-    userAgent: string;
-    egress: Array<string>;
-  };
-  org?: string;
-  surfaces: {
-    "tracking-snippet": {
-      script: string;
-      csp: Record<string, Array<string>>;
-      consentCategory: string;
-      consentFallbackCategory: string;
-      consentAdapters: Array<string>;
-      consentDefault?: Record<string, unknown>;
-      cookieDays: number | {
-        default: number;
-        max: number;
-        note: string;
-      };
-      storage: Array<{
-        name: string;
-        type: "cookie" | "localStorage";
-        category: string;
-        lifetime: string;
-        purpose: {
-          en: string;
-        };
-        legacy?: boolean;
-      }>;
-    };
-    "portal-embed": {
-      script: string;
-      csp: Record<string, Array<string>>;
-      consentCategory: string;
-      storage: Array<{
-        name: string;
-        type: "cookie" | "localStorage";
-        category: string;
-        lifetime: string;
-        purpose: {
-          en: string;
-        };
-        legacy?: boolean;
-      }>;
-    };
-  };
-  changes: Array<{
-    effective: string;
-    surface: string;
-    add?: Array<string>;
-    remove?: Array<string>;
-    note: string;
-  }>;
-};
 
 export type PostAgentsRegisterResponse = {
   agentId: string;
@@ -2320,6 +2384,8 @@ export type GetMeResponse = {
     publishable: boolean;
     owner: string | null;
     expiresAt: string | null;
+    /** The programs this key is limited to; null = the whole org. */
+    programIds: Array<string> | null;
   };
   org?: {
     id: string;
@@ -2395,6 +2461,8 @@ export type GetHostsCurrentResponse = ({
     handle: string;
     name: string;
   }>;
+  /** Portal design: colour scheme, brand lockup, font stylesheet, announcement, header and footer, home and navigation layout, string overrides, embed switches (the look itself is /v1/hosts/current/theme.css). */
+  portalTheme: Record<string, unknown>;
   consent: {
     mode: "cookiemunch" | "cmp" | "builtin" | "none";
     provider: string;
@@ -2433,12 +2501,10 @@ export type GetHostsCurrentResponse = ({
 
 export type GetChatlyIdentityResponse = {
   identity: {
-    /** `merchant:<user id>` or `partner:<partner account id>`. */
+    /** `merchant:<user id>` or `partner:<partner account id>`: kept on the page to notice an account switch, not sent to Chatly. */
     externalId: string;
-    email: string;
-    name?: string;
-    /** HMAC-SHA256 of `externalId` (hex), for the widget's identity verification. */
-    userHash: string;
+    /** Atlas's Chatly token for this session (at most 120 s): pass it to the widget as `userToken`. */
+    userToken: string;
   } | null;
 };
 
@@ -2619,6 +2685,14 @@ export type GetProgramsResponse = {
   next_cursor: string | null;
 };
 
+export type PostProgramsIdReferrersResponse = {
+  partnerId: string;
+  programId: string;
+  externalRef: string;
+  code: string;
+  linkUrl: string | null;
+};
+
 export type GetProgramsIdEnrollmentsResponse = {
   object: "list";
   data: Array<{
@@ -2626,6 +2700,8 @@ export type GetProgramsIdEnrollmentsResponse = {
     partnerId: string;
     partnerEmail: string;
     partnerName: string;
+    /** This program's own externalRef for the partner, when it differs from the partner's. */
+    externalRef: string | null;
     status: string;
     createdAt: string;
     networkWarning: NetworkWarning;
@@ -2665,6 +2741,8 @@ export type GetPartnersIdEnrollmentsResponse = {
     programName: string;
     status: string;
     groupId: string | null;
+    /** This program's own externalRef for the partner, or null (the partner's own applies). */
+    externalRef: string | null;
     createdAt: string;
   }>;
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
@@ -2696,6 +2774,7 @@ export type PatchApiKeysIdResponse = {
   apiVersion: string;
   owner: string | null;
   expiresAt: string | null;
+  programIds: Array<string> | null;
 };
 
 export type DeleteApiKeysIdResponse = {
@@ -2935,6 +3014,44 @@ export type GetPartnersIdBalancesResponse = {
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type GetPartnersIdStatsResponse = {
+  partnerId: string;
+  programId: string | null;
+  /** Eligible clicks on their links. */
+  clicks: number;
+  referrals: {
+    total: number;
+    active: number;
+    pendingReview: number;
+    paused: number;
+    void: number;
+  };
+  /** Referred customers (not void) with at least one payment. */
+  convertedCustomers: number;
+  balances: Array<Balance>;
+};
+
+export type GetPartnersIdSummaryResponse = {
+  partnerId: string;
+  programId: string | null;
+  /** Eligible clicks on their links. */
+  clicks: number;
+  referrals: {
+    total: number;
+    active: number;
+    pendingReview: number;
+    paused: number;
+    void: number;
+  };
+  /** Referred customers (not void) with at least one payment. */
+  convertedCustomers: number;
+  balances: Array<Balance>;
+  /** Their current code in the program (coupon, else link). */
+  code: string | null;
+  /** Their newest link in the program; null when they have only a coupon. */
+  linkUrl: string | null;
 };
 
 export type PostCommissionsApproveDueResponse = {
@@ -3462,6 +3579,14 @@ export type GetPartnerMeResponse = {
     email: string;
     name: string | null;
   };
+  restricted?: {
+    orgId: string;
+    orgName: string;
+    partnerId: string;
+    partnerName: string;
+    programId: string;
+    programName: string;
+  };
   memberships: Array<{
     orgId: string;
     orgName: string;
@@ -3618,6 +3743,45 @@ export type GetPartnerProgramsProgramIdLeaderboardResponse = {
 export type PostPartnerProgramsProgramIdApplyResponse = {
   enrollmentId: string;
   status: "applied";
+};
+
+export type GetPartnerApiTokensResponse = {
+  object: "list";
+  data: Array<{
+    id: string;
+    name: string;
+    /** The first characters, to tell tokens apart. */
+    prefix: string;
+    scopes: Array<"read" | "write">;
+    createdAt: string;
+    lastUsedAt: string | null;
+    expiresAt: string | null;
+  }>;
+  has_more: boolean;
+};
+
+export type PostPartnerApiTokensResponse = {
+  id: string;
+  name: string;
+  /** The first characters, to tell tokens apart. */
+  prefix: string;
+  scopes: Array<"read" | "write">;
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  /** The rpt_ token. Shown once. */
+  token: string;
+};
+
+export type DeletePartnerApiTokensIdResponse = {
+  id: string;
+  revoked: true;
+};
+
+export type PostPartnersIdPortalLinkResponse = {
+  /** Single-use; opens the portal signed in, read-only, for this partner and program. */
+  url: string;
+  expiresAt: string;
 };
 
 export type PostWebhookEndpointsResponse = {
@@ -4965,6 +5129,10 @@ export type PostAuthConnectionsIdPingResponse = {
   orgName: string;
   autoEnrollUsers: boolean;
   serverTime: string;
+  /** What the connection takes beyond sign-ups: `partners` is user-chosen referral codes through `/partners`. */
+  capabilities: {
+    partners: boolean;
+  };
 };
 
 export type PostAuthConnectionsIdAliasesResponse = {
@@ -5033,6 +5201,60 @@ export type PostOauthTokenResponse = {
   partnersUrl: string;
   eraseUrl: string;
   exportUrl: string;
+  /** A one-hour `rat_…` token for this org, scoped `connections:write webhooks:write`: require v2 signatures and register the sync webhook. */
+  access_token: string;
+  expires_in: number;
+  scope: string;
+} | {
+  /** A one-hour `rat_…` bearer token (client_credentials or token exchange, REF-S28). */
+  access_token: string;
+  token_type: "Bearer";
+  expires_in: number;
+  scope: string;
+  issued_token_type?: string;
+  resource?: string;
+};
+
+export type GetProductLinksResponse = {
+  object: "list";
+  data: Array<DeleteProductLinksIdResponse>;
+  next_cursor: string | null;
+};
+
+export type PostProductLinksResponse = {
+  object: "partner_link";
+  id: string;
+  client_id: string;
+  partner: string;
+  name: string | null;
+  scopes: Array<string>;
+  client_secret_prefix: string;
+  token_endpoint: string;
+  auth_methods: Array<string>;
+  status: "active" | "expired" | "revoked";
+  expires_at: number;
+  revoked_at: number | null;
+  last_used_at: number | null;
+  created_at: number;
+  /** Shown once. */
+  client_secret: string;
+};
+
+export type DeleteProductLinksIdResponse = {
+  object: "partner_link";
+  id: string;
+  client_id: string;
+  partner: string;
+  name: string | null;
+  scopes: Array<string>;
+  client_secret_prefix: string;
+  token_endpoint: string;
+  auth_methods: Array<string>;
+  status: "active" | "expired" | "revoked";
+  expires_at: number;
+  revoked_at: number | null;
+  last_used_at: number | null;
+  created_at: number;
 };
 
 export type GetOrgSsoResponse = {
@@ -5298,7 +5520,7 @@ export type PostSupportAppsAdapterTestResponse = {
   rendered: unknown;
 };
 
-export type PostSupportCardsOrgIdAdapterResponse = Record<string, unknown>;
+export type GetSupportPlatformChatlyAnswersResponse = Record<string, unknown>;
 
 export type GetPrivacyExecutorsResponse = Array<{
   id: string;
@@ -5413,6 +5635,96 @@ export type GetOrgTrackingConsentResponse = {
   }>;
 };
 
+export type GetOrgConsentPartnersCookiemunchResponse = {
+  provider: "cookiemunch";
+  /** Your org id: the externalId of the `referalli` partner link in Cookie Munch. */
+  externalId: string;
+  receiverUrl: string;
+  sites: Array<string>;
+  stampCheck: {
+    /** `live`: stamps are checked with Cookie Munch; `not_configured`: no partner token, stamps are kept as received. */
+    status: "live" | "not_configured";
+    detail: string;
+  };
+  /** Per registered site: whether its owner granted Referalli that site in Cookie Munch (GET /v1/partner/links). */
+  grants: Array<{
+    cbid: string;
+    state: "granted" | "waiting_on_partner" | "revoked" | "expired" | "none" | "unknown";
+    linkId: string | null;
+    label: string | null;
+  }>;
+  grantCheck: {
+    status: "live" | "not_configured" | "error";
+    detail: string | null;
+  };
+};
+
+export type GetOrgConsentPartnersCookiemunchEventsResponse = {
+  data: Array<{
+    id: string;
+    /** Cookie Munch's event id (`evt_…`). */
+    eventId: string;
+    type: "consent.recorded" | "consent.withdrawn";
+    cbid: string;
+    /** The visitor's consent-receipt id. */
+    stamp: string | null;
+    choices: Record<string, boolean>;
+    withdrawn: Array<string>;
+    region: string | null;
+    /** The Cookie Munch key that signed the delivery. */
+    keyId: string;
+    occurredAt: string;
+    receivedAt: string;
+  }>;
+  stampCheck: {
+    /** `live`: stamps are checked with Cookie Munch; `not_configured`: no partner token, stamps are kept as received. */
+    status: "live" | "not_configured";
+    detail: string;
+  };
+  /** With `stamp`: what Cookie Munch said about it, newest first. */
+  checks?: Array<{
+    cbid: string;
+    /** `consented` only when Cookie Munch found the stamp with `referrals` on. */
+    verdict: "consented" | "not_consented" | "withdrawn" | "not_found" | "no_grant" | "error";
+    categories: Record<string, boolean>;
+    withdrawn: Array<string>;
+    withdrawnAt: string | null;
+    decidedAt: string | null;
+    detail: string | null;
+    checkedAt: string;
+    stamp: string;
+    credited: boolean;
+    clickId: string | null;
+    eventId: string | null;
+  }>;
+};
+
+export type PostOrgConsentPartnersCookiemunchStampsCheckResponse = {
+  stamp: string;
+  credited: boolean;
+  cbid: string;
+  /** `consented` only when Cookie Munch found the stamp with `referrals` on. */
+  verdict: "consented" | "not_consented" | "withdrawn" | "not_found" | "no_grant" | "error";
+  categories: Record<string, boolean>;
+  withdrawn: Array<string>;
+  withdrawnAt: string | null;
+  decidedAt: string | null;
+  detail: string | null;
+  checkedAt: string;
+};
+
+export type PostOrgsOrgIdPrivacyExecutorKeyResponse = {
+  /** The cm-standard-v2 bearer key for `executorUrl`. Shown once. */
+  secret: string;
+  executorUrl: string;
+  contract: "cm-standard-v2";
+  orgId: string;
+  linkId: string;
+  cbid: string;
+  /** An earlier key existed and stopped working. */
+  rotated: boolean;
+};
+
 export type GetOrgHostedPagesResponse = {
   consent: {
     adapter: string;
@@ -5483,6 +5795,1055 @@ export type PostOrgHostedPagesCheckResponse = {
   }>;
 };
 
+export type GetHostsCurrentChatIdentityResponse = {
+  /** The merchant's chat adapter on this portal domain, or null. */
+  provider: string | null;
+  /** Head tags that identify the signed-in partner to that chat (empty when there is nothing to identify). */
+  tags: Array<{
+    tag: "script";
+    attrs: Record<string, string | true>;
+    inline?: string;
+  }>;
+};
+
+export type GetPortalThemeResponse = {
+  /** What partners see now. */
+  published: {
+    primaryColor?: string;
+    primaryColorDark?: string;
+    accentColor?: string;
+    palette?: {
+      background?: string;
+      surface?: string;
+      surfaceAlt?: string;
+      ink?: string;
+      muted?: string;
+      faint?: string;
+      line?: string;
+      lineStrong?: string;
+      primary?: string;
+      onPrimary?: string;
+      primarySoft?: string;
+      header_background?: string;
+      header_primary?: string;
+      sidebar?: string;
+      footer_background?: string;
+      footer_primary?: string;
+      success?: string;
+      warning?: string;
+      danger?: string;
+      info?: string;
+      chart?: string;
+      money?: string;
+    };
+    paletteDark?: {
+      background?: string;
+      surface?: string;
+      surfaceAlt?: string;
+      ink?: string;
+      muted?: string;
+      faint?: string;
+      line?: string;
+      lineStrong?: string;
+      primary?: string;
+      onPrimary?: string;
+      primarySoft?: string;
+      header_background?: string;
+      header_primary?: string;
+      sidebar?: string;
+      footer_background?: string;
+      footer_primary?: string;
+      success?: string;
+      warning?: string;
+      danger?: string;
+      info?: string;
+      chart?: string;
+      money?: string;
+    };
+    colorScheme?: "system" | "light" | "dark";
+    colorSchemeStrict?: boolean;
+    contentWidth?: "standard" | "wide" | "full";
+    density?: "compact" | "cozy" | "comfortable";
+    font?: "sans" | "serif" | "mono" | "system";
+    customFontUrl?: string | "";
+    customFontFamily?: string;
+    headingFontFamily?: string;
+    bodyFontFamily?: string;
+    moneyFontFamily?: string;
+    monoFontFamily?: string;
+    fonts?: {
+      faces?: Array<{
+        family: string;
+        src: string;
+        format?: "woff2" | "woff" | "truetype" | "opentype";
+        weight?: number | string;
+        style?: "normal" | "italic" | "oblique";
+        display?: "auto" | "block" | "swap" | "fallback" | "optional";
+      }>;
+    };
+    typography?: {
+      baseSize?: number;
+      headingScale?: number;
+      headingWeight?: number;
+      bodyWeight?: number;
+      headingTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+      headingTracking?: number;
+      bodyLeading?: number;
+      numerals?: "proportional" | "tabular";
+    };
+    brandName?: string | false;
+    logoUrl?: string;
+    logoUrlLight?: string;
+    logoUrlDark?: string;
+    logoMark?: string;
+    logoIncludesName?: boolean;
+    logoDarkMode?: "none" | "invert" | "plate";
+    logoHeight?: number;
+    faviconUrl?: string;
+    pageTitle?: string;
+    components?: {
+      radius?: number;
+      radiusSmall?: number;
+      shadow?: "none" | "soft" | "medium" | "strong";
+      cards?: {
+        border?: boolean;
+        elevation?: "flat" | "raised";
+      };
+      buttons?: {
+        radius?: number;
+        case?: "none" | "uppercase";
+        weight?: number;
+        style?: "solid" | "outline" | "soft";
+      };
+      inputs?: {
+        radius?: number;
+        style?: "outline" | "filled" | "underline";
+      };
+      focusRing?: {
+        color?: string;
+        width?: number;
+      };
+      links?: {
+        underline?: "always" | "hover" | "none";
+        color?: string;
+        colorDark?: string;
+      };
+    };
+    announcement?: {
+      text: string;
+      level?: "info" | "success" | "warning" | "danger";
+      link?: {
+        label: string;
+        href: string;
+        newTab?: boolean;
+        translations?: Record<string, string>;
+      };
+      dismissible?: boolean;
+      background?: string;
+      ink?: string;
+      startsAt?: string;
+      endsAt?: string;
+    };
+    chrome?: {
+      header?: {
+        links?: Array<{
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        }>;
+        cta?: {
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        };
+        sticky?: boolean;
+        showLocaleSwitcher?: boolean;
+        showThemeToggle?: boolean;
+        brandAlign?: "start" | "center";
+        border?: boolean;
+      };
+      footer?: {
+        columns?: Array<{
+          heading: string;
+          links: Array<{
+            label: string;
+            href: string;
+            newTab?: boolean;
+            translations?: Record<string, string>;
+          }>;
+        }>;
+        text?: string;
+        social?: Array<{
+          platform: "x" | "linkedin" | "instagram" | "facebook" | "youtube" | "tiktok" | "github" | "discord" | "threads" | "bluesky" | "mastodon";
+          href: string;
+        }>;
+        showPoweredBy?: boolean;
+      };
+    };
+    portal?: {
+      sections?: Array<{
+        id: "welcome" | "earnings" | "link" | "stats" | "groups" | "milestones" | "programs";
+        enabled?: boolean;
+        title?: string;
+        description?: string;
+      }>;
+      welcome?: {
+        title: string;
+        body?: string;
+        image?: string;
+        cta?: {
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        };
+      };
+      navigation?: {
+        primary?: Array<"links" | "earnings" | "payouts" | "assets" | "deals" | "marketplace" | "invitations" | "contracts" | "disputes" | "financing" | "passport">;
+        hidden?: Array<"links" | "earnings" | "payouts" | "assets" | "deals" | "marketplace" | "invitations" | "contracts" | "disputes" | "financing" | "passport">;
+        labels?: Record<string, string>;
+        style?: "topbar" | "sidebar";
+      };
+      signIn?: {
+        title?: string;
+        subtitle?: string;
+        image?: string;
+        layout?: "centered" | "split";
+        footnote?: string;
+      };
+      money?: {
+        showCurrencyCode?: boolean;
+        compact?: boolean;
+      };
+    };
+    stringOverrides?: Record<string, Record<string, string>>;
+    settingsSchema?: Array<{
+      key: string;
+      type: "bool" | "int" | "string" | "enum" | "color";
+      label?: string;
+      default?: string | number | boolean;
+      options?: Array<string>;
+    }>;
+    settings?: Record<string, string | number | boolean>;
+    customCss?: string;
+    cssSnippets?: Array<{
+      name: string;
+      css: string;
+      enabled?: boolean;
+    }>;
+    mobile?: {
+      fontScale?: number;
+      density?: "compact" | "cozy";
+      logoUrl?: string;
+      hideSections?: Array<"welcome" | "earnings" | "link" | "stats" | "groups" | "milestones" | "programs">;
+      css?: string;
+    };
+    embed?: {
+      enabled?: boolean;
+      allowedOrigins?: Array<string>;
+      hideChrome?: boolean;
+    };
+  };
+  /** The theme being edited, or null. */
+  draft: ({
+    primaryColor?: string;
+    primaryColorDark?: string;
+    accentColor?: string;
+    palette?: {
+      background?: string;
+      surface?: string;
+      surfaceAlt?: string;
+      ink?: string;
+      muted?: string;
+      faint?: string;
+      line?: string;
+      lineStrong?: string;
+      primary?: string;
+      onPrimary?: string;
+      primarySoft?: string;
+      header_background?: string;
+      header_primary?: string;
+      sidebar?: string;
+      footer_background?: string;
+      footer_primary?: string;
+      success?: string;
+      warning?: string;
+      danger?: string;
+      info?: string;
+      chart?: string;
+      money?: string;
+    };
+    paletteDark?: {
+      background?: string;
+      surface?: string;
+      surfaceAlt?: string;
+      ink?: string;
+      muted?: string;
+      faint?: string;
+      line?: string;
+      lineStrong?: string;
+      primary?: string;
+      onPrimary?: string;
+      primarySoft?: string;
+      header_background?: string;
+      header_primary?: string;
+      sidebar?: string;
+      footer_background?: string;
+      footer_primary?: string;
+      success?: string;
+      warning?: string;
+      danger?: string;
+      info?: string;
+      chart?: string;
+      money?: string;
+    };
+    colorScheme?: "system" | "light" | "dark";
+    colorSchemeStrict?: boolean;
+    contentWidth?: "standard" | "wide" | "full";
+    density?: "compact" | "cozy" | "comfortable";
+    font?: "sans" | "serif" | "mono" | "system";
+    customFontUrl?: string | "";
+    customFontFamily?: string;
+    headingFontFamily?: string;
+    bodyFontFamily?: string;
+    moneyFontFamily?: string;
+    monoFontFamily?: string;
+    fonts?: {
+      faces?: Array<{
+        family: string;
+        src: string;
+        format?: "woff2" | "woff" | "truetype" | "opentype";
+        weight?: number | string;
+        style?: "normal" | "italic" | "oblique";
+        display?: "auto" | "block" | "swap" | "fallback" | "optional";
+      }>;
+    };
+    typography?: {
+      baseSize?: number;
+      headingScale?: number;
+      headingWeight?: number;
+      bodyWeight?: number;
+      headingTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+      headingTracking?: number;
+      bodyLeading?: number;
+      numerals?: "proportional" | "tabular";
+    };
+    brandName?: string | false;
+    logoUrl?: string;
+    logoUrlLight?: string;
+    logoUrlDark?: string;
+    logoMark?: string;
+    logoIncludesName?: boolean;
+    logoDarkMode?: "none" | "invert" | "plate";
+    logoHeight?: number;
+    faviconUrl?: string;
+    pageTitle?: string;
+    components?: {
+      radius?: number;
+      radiusSmall?: number;
+      shadow?: "none" | "soft" | "medium" | "strong";
+      cards?: {
+        border?: boolean;
+        elevation?: "flat" | "raised";
+      };
+      buttons?: {
+        radius?: number;
+        case?: "none" | "uppercase";
+        weight?: number;
+        style?: "solid" | "outline" | "soft";
+      };
+      inputs?: {
+        radius?: number;
+        style?: "outline" | "filled" | "underline";
+      };
+      focusRing?: {
+        color?: string;
+        width?: number;
+      };
+      links?: {
+        underline?: "always" | "hover" | "none";
+        color?: string;
+        colorDark?: string;
+      };
+    };
+    announcement?: {
+      text: string;
+      level?: "info" | "success" | "warning" | "danger";
+      link?: {
+        label: string;
+        href: string;
+        newTab?: boolean;
+        translations?: Record<string, string>;
+      };
+      dismissible?: boolean;
+      background?: string;
+      ink?: string;
+      startsAt?: string;
+      endsAt?: string;
+    };
+    chrome?: {
+      header?: {
+        links?: Array<{
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        }>;
+        cta?: {
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        };
+        sticky?: boolean;
+        showLocaleSwitcher?: boolean;
+        showThemeToggle?: boolean;
+        brandAlign?: "start" | "center";
+        border?: boolean;
+      };
+      footer?: {
+        columns?: Array<{
+          heading: string;
+          links: Array<{
+            label: string;
+            href: string;
+            newTab?: boolean;
+            translations?: Record<string, string>;
+          }>;
+        }>;
+        text?: string;
+        social?: Array<{
+          platform: "x" | "linkedin" | "instagram" | "facebook" | "youtube" | "tiktok" | "github" | "discord" | "threads" | "bluesky" | "mastodon";
+          href: string;
+        }>;
+        showPoweredBy?: boolean;
+      };
+    };
+    portal?: {
+      sections?: Array<{
+        id: "welcome" | "earnings" | "link" | "stats" | "groups" | "milestones" | "programs";
+        enabled?: boolean;
+        title?: string;
+        description?: string;
+      }>;
+      welcome?: {
+        title: string;
+        body?: string;
+        image?: string;
+        cta?: {
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        };
+      };
+      navigation?: {
+        primary?: Array<"links" | "earnings" | "payouts" | "assets" | "deals" | "marketplace" | "invitations" | "contracts" | "disputes" | "financing" | "passport">;
+        hidden?: Array<"links" | "earnings" | "payouts" | "assets" | "deals" | "marketplace" | "invitations" | "contracts" | "disputes" | "financing" | "passport">;
+        labels?: Record<string, string>;
+        style?: "topbar" | "sidebar";
+      };
+      signIn?: {
+        title?: string;
+        subtitle?: string;
+        image?: string;
+        layout?: "centered" | "split";
+        footnote?: string;
+      };
+      money?: {
+        showCurrencyCode?: boolean;
+        compact?: boolean;
+      };
+    };
+    stringOverrides?: Record<string, Record<string, string>>;
+    settingsSchema?: Array<{
+      key: string;
+      type: "bool" | "int" | "string" | "enum" | "color";
+      label?: string;
+      default?: string | number | boolean;
+      options?: Array<string>;
+    }>;
+    settings?: Record<string, string | number | boolean>;
+    customCss?: string;
+    cssSnippets?: Array<{
+      name: string;
+      css: string;
+      enabled?: boolean;
+    }>;
+    mobile?: {
+      fontScale?: number;
+      density?: "compact" | "cozy";
+      logoUrl?: string;
+      hideSections?: Array<"welcome" | "earnings" | "link" | "stats" | "groups" | "milestones" | "programs">;
+      css?: string;
+    };
+    embed?: {
+      enabled?: boolean;
+      allowedOrigins?: Array<string>;
+      hideChrome?: boolean;
+    };
+  }) | null;
+  hasDraft: boolean;
+  publishedAt: string | null;
+  updatedAt: string | null;
+  previewExpiresAt: string | null;
+};
+
+/** The theme as JSON Schema (draft 2020-12), for editors and validators. */
+export type GetPortalThemeSchemaResponse = Record<string, unknown>;
+
+export type GetPortalThemeCompiledResponse = {
+  css: string;
+  view: Record<string, unknown>;
+};
+
+export type GetPortalThemeVersionsResponse = {
+  data: Array<{
+    id: string;
+    publishedBy: string | null;
+    note: string | null;
+    createdAt: string;
+  }>;
+};
+
+export type PostPortalThemePreviewResponse = {
+  token: string;
+  expiresAt: string;
+  /** The preview on your verified portal domain, or null without one. */
+  url: string | null;
+};
+
+export type PostPortalThemeImportBrandResponse = {
+  /** What partners see now. */
+  published: {
+    primaryColor?: string;
+    primaryColorDark?: string;
+    accentColor?: string;
+    palette?: {
+      background?: string;
+      surface?: string;
+      surfaceAlt?: string;
+      ink?: string;
+      muted?: string;
+      faint?: string;
+      line?: string;
+      lineStrong?: string;
+      primary?: string;
+      onPrimary?: string;
+      primarySoft?: string;
+      header_background?: string;
+      header_primary?: string;
+      sidebar?: string;
+      footer_background?: string;
+      footer_primary?: string;
+      success?: string;
+      warning?: string;
+      danger?: string;
+      info?: string;
+      chart?: string;
+      money?: string;
+    };
+    paletteDark?: {
+      background?: string;
+      surface?: string;
+      surfaceAlt?: string;
+      ink?: string;
+      muted?: string;
+      faint?: string;
+      line?: string;
+      lineStrong?: string;
+      primary?: string;
+      onPrimary?: string;
+      primarySoft?: string;
+      header_background?: string;
+      header_primary?: string;
+      sidebar?: string;
+      footer_background?: string;
+      footer_primary?: string;
+      success?: string;
+      warning?: string;
+      danger?: string;
+      info?: string;
+      chart?: string;
+      money?: string;
+    };
+    colorScheme?: "system" | "light" | "dark";
+    colorSchemeStrict?: boolean;
+    contentWidth?: "standard" | "wide" | "full";
+    density?: "compact" | "cozy" | "comfortable";
+    font?: "sans" | "serif" | "mono" | "system";
+    customFontUrl?: string | "";
+    customFontFamily?: string;
+    headingFontFamily?: string;
+    bodyFontFamily?: string;
+    moneyFontFamily?: string;
+    monoFontFamily?: string;
+    fonts?: {
+      faces?: Array<{
+        family: string;
+        src: string;
+        format?: "woff2" | "woff" | "truetype" | "opentype";
+        weight?: number | string;
+        style?: "normal" | "italic" | "oblique";
+        display?: "auto" | "block" | "swap" | "fallback" | "optional";
+      }>;
+    };
+    typography?: {
+      baseSize?: number;
+      headingScale?: number;
+      headingWeight?: number;
+      bodyWeight?: number;
+      headingTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+      headingTracking?: number;
+      bodyLeading?: number;
+      numerals?: "proportional" | "tabular";
+    };
+    brandName?: string | false;
+    logoUrl?: string;
+    logoUrlLight?: string;
+    logoUrlDark?: string;
+    logoMark?: string;
+    logoIncludesName?: boolean;
+    logoDarkMode?: "none" | "invert" | "plate";
+    logoHeight?: number;
+    faviconUrl?: string;
+    pageTitle?: string;
+    components?: {
+      radius?: number;
+      radiusSmall?: number;
+      shadow?: "none" | "soft" | "medium" | "strong";
+      cards?: {
+        border?: boolean;
+        elevation?: "flat" | "raised";
+      };
+      buttons?: {
+        radius?: number;
+        case?: "none" | "uppercase";
+        weight?: number;
+        style?: "solid" | "outline" | "soft";
+      };
+      inputs?: {
+        radius?: number;
+        style?: "outline" | "filled" | "underline";
+      };
+      focusRing?: {
+        color?: string;
+        width?: number;
+      };
+      links?: {
+        underline?: "always" | "hover" | "none";
+        color?: string;
+        colorDark?: string;
+      };
+    };
+    announcement?: {
+      text: string;
+      level?: "info" | "success" | "warning" | "danger";
+      link?: {
+        label: string;
+        href: string;
+        newTab?: boolean;
+        translations?: Record<string, string>;
+      };
+      dismissible?: boolean;
+      background?: string;
+      ink?: string;
+      startsAt?: string;
+      endsAt?: string;
+    };
+    chrome?: {
+      header?: {
+        links?: Array<{
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        }>;
+        cta?: {
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        };
+        sticky?: boolean;
+        showLocaleSwitcher?: boolean;
+        showThemeToggle?: boolean;
+        brandAlign?: "start" | "center";
+        border?: boolean;
+      };
+      footer?: {
+        columns?: Array<{
+          heading: string;
+          links: Array<{
+            label: string;
+            href: string;
+            newTab?: boolean;
+            translations?: Record<string, string>;
+          }>;
+        }>;
+        text?: string;
+        social?: Array<{
+          platform: "x" | "linkedin" | "instagram" | "facebook" | "youtube" | "tiktok" | "github" | "discord" | "threads" | "bluesky" | "mastodon";
+          href: string;
+        }>;
+        showPoweredBy?: boolean;
+      };
+    };
+    portal?: {
+      sections?: Array<{
+        id: "welcome" | "earnings" | "link" | "stats" | "groups" | "milestones" | "programs";
+        enabled?: boolean;
+        title?: string;
+        description?: string;
+      }>;
+      welcome?: {
+        title: string;
+        body?: string;
+        image?: string;
+        cta?: {
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        };
+      };
+      navigation?: {
+        primary?: Array<"links" | "earnings" | "payouts" | "assets" | "deals" | "marketplace" | "invitations" | "contracts" | "disputes" | "financing" | "passport">;
+        hidden?: Array<"links" | "earnings" | "payouts" | "assets" | "deals" | "marketplace" | "invitations" | "contracts" | "disputes" | "financing" | "passport">;
+        labels?: Record<string, string>;
+        style?: "topbar" | "sidebar";
+      };
+      signIn?: {
+        title?: string;
+        subtitle?: string;
+        image?: string;
+        layout?: "centered" | "split";
+        footnote?: string;
+      };
+      money?: {
+        showCurrencyCode?: boolean;
+        compact?: boolean;
+      };
+    };
+    stringOverrides?: Record<string, Record<string, string>>;
+    settingsSchema?: Array<{
+      key: string;
+      type: "bool" | "int" | "string" | "enum" | "color";
+      label?: string;
+      default?: string | number | boolean;
+      options?: Array<string>;
+    }>;
+    settings?: Record<string, string | number | boolean>;
+    customCss?: string;
+    cssSnippets?: Array<{
+      name: string;
+      css: string;
+      enabled?: boolean;
+    }>;
+    mobile?: {
+      fontScale?: number;
+      density?: "compact" | "cozy";
+      logoUrl?: string;
+      hideSections?: Array<"welcome" | "earnings" | "link" | "stats" | "groups" | "milestones" | "programs">;
+      css?: string;
+    };
+    embed?: {
+      enabled?: boolean;
+      allowedOrigins?: Array<string>;
+      hideChrome?: boolean;
+    };
+  };
+  /** The theme being edited, or null. */
+  draft: ({
+    primaryColor?: string;
+    primaryColorDark?: string;
+    accentColor?: string;
+    palette?: {
+      background?: string;
+      surface?: string;
+      surfaceAlt?: string;
+      ink?: string;
+      muted?: string;
+      faint?: string;
+      line?: string;
+      lineStrong?: string;
+      primary?: string;
+      onPrimary?: string;
+      primarySoft?: string;
+      header_background?: string;
+      header_primary?: string;
+      sidebar?: string;
+      footer_background?: string;
+      footer_primary?: string;
+      success?: string;
+      warning?: string;
+      danger?: string;
+      info?: string;
+      chart?: string;
+      money?: string;
+    };
+    paletteDark?: {
+      background?: string;
+      surface?: string;
+      surfaceAlt?: string;
+      ink?: string;
+      muted?: string;
+      faint?: string;
+      line?: string;
+      lineStrong?: string;
+      primary?: string;
+      onPrimary?: string;
+      primarySoft?: string;
+      header_background?: string;
+      header_primary?: string;
+      sidebar?: string;
+      footer_background?: string;
+      footer_primary?: string;
+      success?: string;
+      warning?: string;
+      danger?: string;
+      info?: string;
+      chart?: string;
+      money?: string;
+    };
+    colorScheme?: "system" | "light" | "dark";
+    colorSchemeStrict?: boolean;
+    contentWidth?: "standard" | "wide" | "full";
+    density?: "compact" | "cozy" | "comfortable";
+    font?: "sans" | "serif" | "mono" | "system";
+    customFontUrl?: string | "";
+    customFontFamily?: string;
+    headingFontFamily?: string;
+    bodyFontFamily?: string;
+    moneyFontFamily?: string;
+    monoFontFamily?: string;
+    fonts?: {
+      faces?: Array<{
+        family: string;
+        src: string;
+        format?: "woff2" | "woff" | "truetype" | "opentype";
+        weight?: number | string;
+        style?: "normal" | "italic" | "oblique";
+        display?: "auto" | "block" | "swap" | "fallback" | "optional";
+      }>;
+    };
+    typography?: {
+      baseSize?: number;
+      headingScale?: number;
+      headingWeight?: number;
+      bodyWeight?: number;
+      headingTransform?: "none" | "uppercase" | "lowercase" | "capitalize";
+      headingTracking?: number;
+      bodyLeading?: number;
+      numerals?: "proportional" | "tabular";
+    };
+    brandName?: string | false;
+    logoUrl?: string;
+    logoUrlLight?: string;
+    logoUrlDark?: string;
+    logoMark?: string;
+    logoIncludesName?: boolean;
+    logoDarkMode?: "none" | "invert" | "plate";
+    logoHeight?: number;
+    faviconUrl?: string;
+    pageTitle?: string;
+    components?: {
+      radius?: number;
+      radiusSmall?: number;
+      shadow?: "none" | "soft" | "medium" | "strong";
+      cards?: {
+        border?: boolean;
+        elevation?: "flat" | "raised";
+      };
+      buttons?: {
+        radius?: number;
+        case?: "none" | "uppercase";
+        weight?: number;
+        style?: "solid" | "outline" | "soft";
+      };
+      inputs?: {
+        radius?: number;
+        style?: "outline" | "filled" | "underline";
+      };
+      focusRing?: {
+        color?: string;
+        width?: number;
+      };
+      links?: {
+        underline?: "always" | "hover" | "none";
+        color?: string;
+        colorDark?: string;
+      };
+    };
+    announcement?: {
+      text: string;
+      level?: "info" | "success" | "warning" | "danger";
+      link?: {
+        label: string;
+        href: string;
+        newTab?: boolean;
+        translations?: Record<string, string>;
+      };
+      dismissible?: boolean;
+      background?: string;
+      ink?: string;
+      startsAt?: string;
+      endsAt?: string;
+    };
+    chrome?: {
+      header?: {
+        links?: Array<{
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        }>;
+        cta?: {
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        };
+        sticky?: boolean;
+        showLocaleSwitcher?: boolean;
+        showThemeToggle?: boolean;
+        brandAlign?: "start" | "center";
+        border?: boolean;
+      };
+      footer?: {
+        columns?: Array<{
+          heading: string;
+          links: Array<{
+            label: string;
+            href: string;
+            newTab?: boolean;
+            translations?: Record<string, string>;
+          }>;
+        }>;
+        text?: string;
+        social?: Array<{
+          platform: "x" | "linkedin" | "instagram" | "facebook" | "youtube" | "tiktok" | "github" | "discord" | "threads" | "bluesky" | "mastodon";
+          href: string;
+        }>;
+        showPoweredBy?: boolean;
+      };
+    };
+    portal?: {
+      sections?: Array<{
+        id: "welcome" | "earnings" | "link" | "stats" | "groups" | "milestones" | "programs";
+        enabled?: boolean;
+        title?: string;
+        description?: string;
+      }>;
+      welcome?: {
+        title: string;
+        body?: string;
+        image?: string;
+        cta?: {
+          label: string;
+          href: string;
+          newTab?: boolean;
+          translations?: Record<string, string>;
+        };
+      };
+      navigation?: {
+        primary?: Array<"links" | "earnings" | "payouts" | "assets" | "deals" | "marketplace" | "invitations" | "contracts" | "disputes" | "financing" | "passport">;
+        hidden?: Array<"links" | "earnings" | "payouts" | "assets" | "deals" | "marketplace" | "invitations" | "contracts" | "disputes" | "financing" | "passport">;
+        labels?: Record<string, string>;
+        style?: "topbar" | "sidebar";
+      };
+      signIn?: {
+        title?: string;
+        subtitle?: string;
+        image?: string;
+        layout?: "centered" | "split";
+        footnote?: string;
+      };
+      money?: {
+        showCurrencyCode?: boolean;
+        compact?: boolean;
+      };
+    };
+    stringOverrides?: Record<string, Record<string, string>>;
+    settingsSchema?: Array<{
+      key: string;
+      type: "bool" | "int" | "string" | "enum" | "color";
+      label?: string;
+      default?: string | number | boolean;
+      options?: Array<string>;
+    }>;
+    settings?: Record<string, string | number | boolean>;
+    customCss?: string;
+    cssSnippets?: Array<{
+      name: string;
+      css: string;
+      enabled?: boolean;
+    }>;
+    mobile?: {
+      fontScale?: number;
+      density?: "compact" | "cozy";
+      logoUrl?: string;
+      hideSections?: Array<"welcome" | "earnings" | "link" | "stats" | "groups" | "milestones" | "programs">;
+      css?: string;
+    };
+    embed?: {
+      enabled?: boolean;
+      allowedOrigins?: Array<string>;
+      hideChrome?: boolean;
+    };
+  }) | null;
+  hasDraft: boolean;
+  publishedAt: string | null;
+  updatedAt: string | null;
+  previewExpiresAt: string | null;
+  /** The design tokens that mapped onto the theme. */
+  applied: Array<string>;
+};
+
+export type GetStripeCreditsConnectionResponse = {
+  connected: boolean;
+  /** Which stored key the rail uses: its own, or your Stripe payout connection. */
+  source: ("stripe_credits" | "payout_connection") | null;
+  connectedAt: string | null;
+};
+
+export type GetProgramsIdStripeCreditsResponse = {
+  programId: string;
+  enabled: boolean;
+  referrerMatch: "billing_link" | "metadata" | "email";
+  metadataKey: string | null;
+  refereeRewards: boolean;
+  keyConnected: boolean;
+};
+
+export type GetProgramsIdStripeCreditsLogResponse = {
+  object: "list";
+  data: Array<{
+    id: string;
+    programId: string;
+    /** The settled commission line, the reversal, or the referee reward this applies. */
+    sourceEventId: string;
+    kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+    commissionId: string | null;
+    partnerId: string | null;
+    customerRef: string | null;
+    /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
+    amountMinor: number;
+    currency: string;
+    stripeCustomerId: string | null;
+    status: "pending" | "applied" | "failed" | "no_customer" | "canceled";
+    attempts: number;
+    stripeBalanceTransactionId: string | null;
+    lastError: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
 export type PostWebhooksBillingConnectionIdResponse = {
   received: number;
   results: Array<{
@@ -5544,25 +6905,50 @@ export type PostWebhooksStripeBillingResponse = {
   planStatus?: string;
 };
 
+export type PostWebhooksCookiemunchConsentResponse = {
+  received: true;
+  /** This event id was already kept. */
+  duplicate?: boolean;
+  ignored?: boolean;
+  reason?: "event_not_handled" | "site_not_registered";
+};
+
 export type PostApiPrivacyLookupResponse = {
   subjectId: string | null;
   status: "found" | "no_match";
 };
 
-export type PostApiPrivacyRequestsResponse = {
+export type PostApiPrivacyRequestsResponse = ({
   id: string;
   status: "pending" | "completed" | "no_match" | "rejected";
   eta?: string;
   detail?: string;
-};
+}) | PostApiPrivacyRequestsIdCancelResponse;
 
-export type GetApiPrivacyRequestsIdResponse = {
+export type GetApiPrivacyRequestsIdResponse = ({
   id: string;
-  type: "access" | "deletion";
   status: "pending" | "completed" | "no_match" | "rejected";
   eta?: string;
   detail?: string;
+  type: "access" | "deletion";
   result?: GetOpenapiJsonResponse;
+}) | PostApiPrivacyRequestsIdCancelResponse;
+
+export type PostApiPrivacyRequestsIdCancelResponse = {
+  id: string;
+  /** The word the caller used (erasure, export, …). */
+  type: string;
+  canonicalType: "access" | "deletion" | "closure" | "restriction" | "rectification";
+  status: "pending" | "scheduled" | "processing" | "completed" | "completed_with_retention" | "rejected" | "no_match" | "cancelled";
+  /** While scheduled: the executeAfter nothing is erased before. */
+  eta?: string;
+  detail?: string;
+  retention?: Array<{
+    category: string;
+    basis: "legal_obligation" | "legal_claims" | "contract" | "public_interest";
+    until?: string;
+  }>;
+  result?: GetOpenapiJsonResponse | null;
 };
 
 export type PostApiPrivacyOrgsOrgIdLookupResponse = {
@@ -5581,7 +6967,7 @@ export type GetApiPrivacyOrgsOrgIdRequestsIdResponse = {
   type: "access" | "deletion";
   status: "pending" | "completed" | "no_match" | "rejected";
   detail?: string;
-  result?: PostSupportCardsOrgIdAdapterResponse;
+  result?: GetSupportPlatformChatlyAnswersResponse;
 };
 
 export type GetGraphqlResponse = {
@@ -5662,17 +7048,11 @@ export type PostTOrgTokenMobileInstallBody = {
 /** POST /t/{orgToken}/mobile/event: Report an in-app purchase (retired) */
 export type PostTOrgTokenMobileEventResponse = void;
 
+/** GET /.well-known/referalli-embed.json: Get Referalli's embed manifest */
+
 /** GET /.well-known/apple-app-site-association: Get the iOS universal links file */
 
 /** GET /.well-known/assetlinks.json: Get the Android App Links file */
-
-/** GET /.well-known/forgedeck-embed.json: Get the embed manifest */
-
-/** GET /v1/embed: Get one org's embed manifest */
-export type GetEmbedQuery = {
-  token: string;
-};
-export type GetEmbedResponse = GetWellKnownForgedeckEmbedJsonResponse;
 
 /** POST /v1/agents/register: Register an AI agent */
 export type PostAgentsRegisterBody = {
@@ -5815,6 +7195,22 @@ export type GetPortalAuthOrgIdJwtQuery = {
 };
 export type GetPortalAuthOrgIdJwtResponse = void;
 
+/** GET /v1/portal-auth/{orgId}/atlas: Sign a partner in with an Atlas integration token */
+export type GetPortalAuthOrgIdAtlasQuery = {
+  token?: string;
+  next?: string;
+  link?: "1";
+};
+export type GetPortalAuthOrgIdAtlasResponse = void;
+
+/** POST /v1/portal-auth/{orgId}/atlas: Sign a partner in with an Atlas integration token (form post) */
+export type PostPortalAuthOrgIdAtlasBody = {
+  token?: string;
+  next?: string;
+  link?: "1";
+};
+export type PostPortalAuthOrgIdAtlasResponse = void;
+
 /** GET /v1/portal-auth/current: What a merchant's portal sign-in offers */
 export type GetPortalAuthCurrentQuery = {
   org?: string;
@@ -5836,19 +7232,45 @@ export type PutOrgPortalAuthBody = {
   autoEnrollProgramId?: string | null;
 }) | ({
   adapter: "custom";
-  issuer: string;
-  jwksUrl: string;
+  preset?: "clerk" | "supabase" | "firebase" | "auth0" | "cognito" | "stytch" | "kinde" | "okta" | "entra" | "google" | "keycloak" | "descope" | "fusionauth";
+  tenant?: string;
+  issuer?: string;
+  jwksUrl?: string;
+  keyType?: "jwks" | "hs256";
+  sharedSecret?: string;
+  audience?: string;
+  maxAgeS?: number;
+  claims?: {
+    sub?: string;
+    email?: string;
+    name?: string;
+    emailVerified?: string;
+  };
   trustEmailVerified?: boolean;
   autoEnrollProgramId?: string | null;
   name?: string;
   loginUrl?: string;
+}) | ({
+  adapter: "atlas-suite";
+  instanceId: string;
+  trustEmailVerified?: boolean;
+  autoEnrollProgramId?: string | null;
+  name?: string;
+  loginUrl?: string;
+  verifyErrorsSecret?: string;
 });
 
 /** POST /v1/org/portal-auth/test: Test partner sign-in */
 
 /** GET /v1/hosts/current: Describe the current host */
+export type GetHostsCurrentQuery = {
+  themePreview?: string;
+};
 
 /** GET /v1/hosts/current/theme.css: Get the current host's theme stylesheet */
+export type GetHostsCurrentThemeCssQuery = {
+  themePreview?: string;
+};
 export type GetHostsCurrentThemeCssResponse = string;
 
 /** GET /v1/auth/forumulate: Sign in to the docs and community */
@@ -5857,6 +7279,7 @@ export type GetAuthForumulateQuery = {
   return_to?: string;
   space?: "docs" | "guides" | "blog" | "community" | "status" | "legal";
   spaceId?: string;
+  reauth?: "1";
 };
 export type GetAuthForumulateResponse = void;
 
@@ -6153,6 +7576,7 @@ export type PostProgramsResponse = Program;
 
 /** GET /v1/programs: List programs */
 export type GetProgramsQuery = {
+  slug?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -6207,18 +7631,66 @@ export type PatchProgramsIdBody = {
       sha256CertFingerprints: Array<string>;
     } | null;
   }) | null;
+  settings?: {
+    publicHandle?: string | null;
+    publicPage?: {
+      pitch?: string;
+      autoApprove?: boolean;
+    };
+    probabilisticPolicy?: "auto" | "review" | "off";
+    selfReferralPolicy?: "review" | "reject";
+    splitCommissions?: boolean;
+    utmTemplate?: Record<string, string>;
+    allowPaidSearch?: boolean;
+    challengeLinks?: boolean;
+    settlement?: "payout" | "merchant_credit";
+    riskPolicy?: {
+      holdBotScore?: number;
+      holdRiskScore?: number;
+      holdHighRiskLevel?: boolean;
+      holdDisposableEmail?: boolean;
+      holdVelocity?: number;
+      holdUnverifiedEmail?: boolean;
+      holdSelfReferral?: boolean;
+    };
+    widget?: {
+      autoEnroll?: boolean;
+      destinationUrl?: string | null;
+    };
+    mobileApp?: ({
+      ios?: {
+        teamId: string;
+        bundleId: string;
+      } | null;
+      android?: {
+        packageName: string;
+        sha256CertFingerprints: Array<string>;
+      } | null;
+    }) | null;
+  };
+  destinationUrl?: string;
 };
 export type PatchProgramsIdResponse = Program;
+
+/** POST /v1/programs/{id}/referrers: Make a user a referrer */
+export type PostProgramsIdReferrersBody = {
+  externalRef: string;
+  email?: string;
+  name?: string;
+  code?: string;
+};
 
 /** POST /v1/programs/{id}/enrollments: Enroll a partner */
 export type PostProgramsIdEnrollmentsBody = {
   partnerId: string;
+  externalRef?: string;
 };
 export type PostProgramsIdEnrollmentsResponse = Enrollment;
 
 /** GET /v1/programs/{id}/enrollments: List program enrollments */
 export type GetProgramsIdEnrollmentsQuery = {
   status?: "applied" | "approved" | "rejected" | "removed";
+  partnerId?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -6255,6 +7727,9 @@ export type GetPartnersQuery = {
 };
 
 /** GET /v1/partners/{id}: Get a partner */
+export type GetPartnersIdQuery = {
+  programId?: string;
+};
 
 /** PATCH /v1/partners/{id}: Update a partner */
 export type PatchPartnersIdBody = {
@@ -6294,6 +7769,7 @@ export type PostApiKeysBody = {
   mode?: "live" | "test" | "both";
   owner?: string;
   expiresInDays?: number;
+  programIds?: Array<string>;
 };
 
 /** GET /v1/api-keys: List API keys */
@@ -6315,6 +7791,7 @@ export type PatchApiKeysIdBody = {
   apiVersion?: string;
   owner?: string | null;
   expiresInDays?: number | null;
+  programIds?: Array<string> | null;
 };
 
 /** DELETE /v1/api-keys/{id}: Revoke an API key */
@@ -6659,6 +8136,16 @@ export type GetPartnersIdBalancesQuery = {
   "created[lte]"?: string;
 };
 
+/** GET /v1/partners/{id}/stats: Get a partner's stats */
+export type GetPartnersIdStatsQuery = {
+  programId?: string;
+};
+
+/** GET /v1/partners/{id}/summary: Get a partner's referrer summary */
+export type GetPartnersIdSummaryQuery = {
+  programId: string;
+};
+
 /** POST /v1/commissions/approve-due: Approve due commissions */
 
 /** POST /v1/commissions/{id}/adjust: Adjust a commission */
@@ -6687,6 +8174,7 @@ export type PostBillingConnectionsBody = {
     priceIds?: Array<string>;
     skus?: Array<string>;
   };
+  customerRefMetadataKey?: string | null;
 };
 export type PostBillingConnectionsResponse = CreatedBillingConnection;
 
@@ -6725,6 +8213,7 @@ export type PatchBillingConnectionsIdBody = {
     priceIds?: Array<string>;
     skus?: Array<string>;
   } | null;
+  customerRefMetadataKey?: string | null;
 };
 export type PatchBillingConnectionsIdResponse = BillingConnection;
 
@@ -7309,6 +8798,26 @@ export type PostPartnerOrgsOrgIdTaxFormResponse = Ok;
 /** GET /v1/partner/programs/{programId}/leaderboard: Get a program leaderboard */
 
 /** POST /v1/partner/programs/{programId}/apply: Apply to a program */
+
+/** GET /v1/partner/api-tokens: List your partner API tokens */
+
+/** POST /v1/partner/api-tokens: Create a partner API token */
+export type PostPartnerApiTokensBody = {
+  name: string;
+  scopes?: Array<"read" | "write">;
+  expiresInDays?: number;
+};
+
+/** DELETE /v1/partner/api-tokens/{id}: Revoke a partner API token */
+
+/** POST /v1/partners/{id}/portal-link: Create a portal sign-in link */
+export type PostPartnersIdPortalLinkBody = {
+  programId: string;
+  returnUrl?: string;
+};
+
+/** GET /v1/portal-links/{token}: Open a portal sign-in link */
+export type GetPortalLinksTokenResponse = void;
 
 /** POST /v1/webhook-endpoints: Create a webhook endpoint */
 export type PostWebhookEndpointsBody = {
@@ -8384,6 +9893,7 @@ export type PostAuthConnectionsBody = {
   provider: "atlas" | "clerk" | "auth0" | "supabase" | "firebase" | "cognito" | "stytch" | "kinde" | "workos" | "generic" | "custom";
   programId: string;
   instanceId?: string;
+  appId?: string;
   autoEnrollUsers?: boolean;
   destinationUrl?: string;
   name?: string;
@@ -8466,7 +9976,8 @@ export type PostAuthConnectionsIdSignupsBody = {
 /** POST /v1/auth/connections/{id}/partners: Enrol a user as a partner (signed protocol) */
 export type PostAuthConnectionsIdPartnersBody = {
   customerRef: string;
-  email: string;
+  email?: string;
+  emailHash?: string;
   name?: string;
   code?: string;
 };
@@ -8531,14 +10042,41 @@ export type GetOauthAuthorizeQuery = {
 };
 export type GetOauthAuthorizeResponse = void;
 
-/** POST /v1/oauth/token: Exchange an install code */
+/** POST /v1/oauth/token: Token endpoint: install codes, partner links, Atlas operator token exchange */
 export type PostOauthTokenBody = {
   grant_type: "authorization_code";
   code: string;
   code_verifier: string;
   client_id: string;
   redirect_uri: string;
+} | {
+  grant_type: "client_credentials";
+  client_id?: string;
+  client_secret?: string;
+  scope?: string;
+} | {
+  grant_type: "urn:ietf:params:oauth:grant-type:token-exchange";
+  subject_token: string;
+  subject_token_type: "urn:ietf:params:oauth:token-type:access_token";
+  requested_token_type?: "urn:ietf:params:oauth:token-type:access_token";
+  audience?: "referalli";
+  /** The Referalli org id the token is for. */
+  resource: string;
+  scope?: string;
 };
+
+/** GET /v1/product-links: List partner links */
+
+/** POST /v1/product-links: Create a partner link */
+export type PostProductLinksBody = {
+  partner: string;
+  name?: string;
+  scopes: Array<string>;
+  /** Unix ms or ISO 8601, at most a year away. Default one year. */
+  expires_at?: number | string;
+};
+
+/** DELETE /v1/product-links/{id}: Revoke a partner link */
 
 /** GET /v1/org/sso: Get SSO settings */
 
@@ -8673,15 +10211,27 @@ export type PostSupportAppsAdapterTestBody = {
   ext?: string;
 };
 
+/** GET /v1/support/platform/chatly-answers: Answer a partner's question for Referalli's own support desk */
+export type GetSupportPlatformChatlyAnswersQuery = {
+  subject?: string;
+  principal?: string;
+  question?: string;
+};
+
+/** POST /v1/support/platform/chatly-card: Render the card for Referalli's own support desk */
+export type PostSupportPlatformChatlyCardBody = Record<string, unknown>;
+export type PostSupportPlatformChatlyCardResponse = GetSupportPlatformChatlyAnswersResponse;
+
 /** POST /v1/support/cards/{orgId}/{adapter}: Render a support card for a tool */
 export type PostSupportCardsOrgIdAdapterBody = Record<string, unknown>;
+export type PostSupportCardsOrgIdAdapterResponse = GetSupportPlatformChatlyAnswersResponse;
 
 /** GET /v1/support/cards/{orgId}/{adapter}: Render a support card for a tool (GET) */
 export type GetSupportCardsOrgIdAdapterQuery = {
   email?: string;
   externalId?: string;
 };
-export type GetSupportCardsOrgIdAdapterResponse = PostSupportCardsOrgIdAdapterResponse;
+export type GetSupportCardsOrgIdAdapterResponse = GetSupportPlatformChatlyAnswersResponse;
 
 /** GET /v1/privacy/executors: List connected DSAR tools */
 
@@ -8734,23 +10284,136 @@ export type PutOrgTrackingConsentBody = {
 };
 export type PutOrgTrackingConsentResponse = GetOrgTrackingConsentResponse;
 
+/** GET /v1/org/consent-partners/cookiemunch: Get the Cookie Munch consent-event link */
+
+/** PUT /v1/org/consent-partners/cookiemunch: Set the Cookie Munch sites to accept consent events for */
+export type PutOrgConsentPartnersCookiemunchBody = {
+  /** Every Cookie Munch site (cbid) whose consent events this org accepts. Replaces the list. */
+  sites: Array<string>;
+};
+export type PutOrgConsentPartnersCookiemunchResponse = GetOrgConsentPartnersCookiemunchResponse;
+
+/** GET /v1/org/consent-partners/cookiemunch/events: List received Cookie Munch consent events */
+export type GetOrgConsentPartnersCookiemunchEventsQuery = {
+  stamp?: string;
+  limit?: number;
+};
+
+/** POST /v1/org/consent-partners/cookiemunch/stamps/check: Check a visitor's consent stamp with Cookie Munch */
+export type PostOrgConsentPartnersCookiemunchStampsCheckBody = {
+  /** The visitor's Cookie Munch consent stamp (from the CookieMunch cookie, or `aff.consentEvidence().stamp`). */
+  stamp: string;
+  /** The site it was recorded on; default: every registered site in turn. */
+  cbid?: string;
+};
+
+/** POST /v1/orgs/{orgId}/privacy/executor-key: Mint an executor key under a Cookie Munch partner link */
+export type PostOrgsOrgIdPrivacyExecutorKeyBody = {
+  /** The Cookie Munch site the partner link is on. Without it, any live link to a site this org registered will do. */
+  cbid?: string;
+  /** The partner link it is minted under; checked with Cookie Munch. */
+  linkId?: string;
+  /** Always `referalli`. */
+  partner?: string;
+  /** The Referalli org id the link names; must equal the path. */
+  externalId?: string;
+  /** The Cookie Munch organisation that owns the site. */
+  orgId?: string;
+  /** Never reused; a seen nonce is refused. */
+  nonce?: string;
+  iat?: number;
+};
+
 /** GET /v1/org/hosted-pages: Get the hosted-page consent and chat */
 
 /** PUT /v1/org/hosted-pages: Set the hosted-page consent and chat */
 export type PutOrgHostedPagesBody = {
   consent: {
-    adapter: "none" | "builtin" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "iubenda" | "custom";
+    adapter: "none" | "builtin" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "iubenda" | "cookieyes" | "trustarc" | "ketch" | "transcend" | "cookiefirst" | "consentmanager" | "cookieinformation" | "cookiescript" | "cookiehub" | "googlefc" | "axeptio" | "sourcepoint" | "inmobi" | "securiti" | "enzuzo" | "cookiepro" | "trustcommander" | "klaro" | "cookiecontrol" | "custom";
     config?: Record<string, unknown>;
   };
   chat?: ({
-    adapter: "chatly" | "intercom" | "crisp" | "custom";
+    adapter: "chatly" | "intercom" | "crisp" | "zendesk" | "hubspot" | "drift" | "livechat" | "tawk" | "freshchat" | "tidio" | "helpscout" | "front" | "chatwoot" | "olark" | "smartsupp" | "jivochat" | "gorgias" | "pylon" | "plain" | "userlike" | "zoho-salesiq" | "reamaze" | "chatra" | "kustomer" | "gladly" | "brevo" | "trengo" | "dixa" | "gist" | "freshdesk" | "liveagent" | "chatbase" | "voiceflow" | "botpress" | "salesforce" | "microsoft-omnichannel" | "custom";
     config?: Record<string, unknown>;
+    identitySecret?: string | null;
   }) | null;
   customOrigins?: Record<string, Array<string>>;
 };
 export type PutOrgHostedPagesResponse = GetOrgHostedPagesResponse;
 
 /** POST /v1/org/hosted-pages/check: Check the hosted-page adapters */
+
+/** GET /v1/hosts/current/chat-identity: Identify the signed-in partner to the chat */
+
+/** GET /v1/portal/theme: Get the portal design */
+
+/** GET /v1/portal/theme/schema: Get the portal design schema */
+
+/** GET /v1/portal/theme/compiled: Preview the compiled portal design */
+export type GetPortalThemeCompiledQuery = {
+  which?: "draft" | "published";
+};
+
+/** PUT /v1/portal/theme/draft: Replace the portal design draft */
+export type PutPortalThemeDraftBody = Record<string, unknown>;
+export type PutPortalThemeDraftResponse = GetPortalThemeResponse;
+
+/** PATCH /v1/portal/theme/draft: Change part of the portal design draft */
+export type PatchPortalThemeDraftBody = Record<string, unknown>;
+export type PatchPortalThemeDraftResponse = GetPortalThemeResponse;
+
+/** DELETE /v1/portal/theme/draft: Discard the portal design draft */
+export type DeletePortalThemeDraftResponse = GetPortalThemeResponse;
+
+/** POST /v1/portal/theme/publish: Publish the portal design */
+export type PostPortalThemePublishBody = {
+  note?: string;
+};
+export type PostPortalThemePublishResponse = GetPortalThemeResponse;
+
+/** GET /v1/portal/theme/versions: List published portal designs */
+
+/** POST /v1/portal/theme/versions/{id}/restore: Restore a portal design version */
+export type PostPortalThemeVersionsIdRestoreResponse = GetPortalThemeResponse;
+
+/** POST /v1/portal/theme/preview: Get a preview link for the portal design draft */
+
+/** POST /v1/portal/theme/import-brand: Import a brand file into the portal design */
+export type PostPortalThemeImportBrandBody = {
+  document?: Record<string, unknown>;
+  url?: string;
+};
+
+/** GET /v1/stripe-credits/connection: Get the Stripe balance credit key status */
+
+/** PUT /v1/stripe-credits/connection: Connect a Stripe key for balance credits */
+export type PutStripeCreditsConnectionBody = {
+  secretKey: string;
+};
+export type PutStripeCreditsConnectionResponse = GetStripeCreditsConnectionResponse;
+
+/** DELETE /v1/stripe-credits/connection: Remove the Stripe balance credit key */
+export type DeleteStripeCreditsConnectionResponse = GetStripeCreditsConnectionResponse;
+
+/** GET /v1/programs/{id}/stripe-credits: Get a program's Stripe balance credit settings */
+
+/** PUT /v1/programs/{id}/stripe-credits: Set a program's Stripe balance credit settings */
+export type PutProgramsIdStripeCreditsBody = {
+  enabled: boolean;
+  referrerMatch?: "billing_link" | "metadata" | "email";
+  metadataKey?: string;
+  refereeRewards?: boolean;
+};
+export type PutProgramsIdStripeCreditsResponse = GetProgramsIdStripeCreditsResponse;
+
+/** GET /v1/programs/{id}/stripe-credits/log: List a program's Stripe balance credits */
+export type GetProgramsIdStripeCreditsLogQuery = {
+  limit?: number;
+  starting_after?: string;
+  ending_before?: string;
+  "created[gte]"?: string;
+  "created[lte]"?: string;
+};
 
 /** POST /webhooks/billing/{connectionId}: Receive a billing provider webhook */
 export type PostWebhooksBillingConnectionIdBody = {
@@ -8781,6 +10444,8 @@ export type PostWebhooksAtlasResponse = PostWebhooksSsoProviderResponse;
 
 /** POST /webhooks/stripe-billing: Receive Referalli's own subscription events */
 
+/** POST /webhooks/cookiemunch/consent: Receive Cookie Munch consent events */
+
 /** GET /t/{orgToken}/theme.css: Get the white-label theme stylesheet */
 export type GetTOrgTokenThemeCssResponse = string;
 
@@ -8793,15 +10458,37 @@ export type GetEmbedSignupJsResponse = string;
 /** POST /api/privacy/lookup: Find a Referalli account for a data-rights request */
 export type PostApiPrivacyLookupBody = {
   email: string;
+} | {
+  emails: Array<string>;
+  identity?: {
+    iss: string;
+    sub: string;
+    ext?: string;
+    principal?: string;
+  };
+  atlas?: {
+    iss: string;
+    sub: string;
+    ext?: string;
+    principal?: string;
+  };
 };
 
-/** POST /api/privacy/requests: Open an access or deletion request */
-export type PostApiPrivacyRequestsBody = {
+/** POST /api/privacy/requests: Open a data-rights request */
+export type PostApiPrivacyRequestsBody = ({
   subjectId: string;
   type: "access" | "deletion";
+}) | {
+  subjectId: string;
+  type: string;
+  executeAfter?: string;
+  caseId: string;
+  reason?: string;
 };
 
 /** GET /api/privacy/requests/{id}: Poll a data-rights request */
+
+/** POST /api/privacy/requests/{id}/cancel: Cancel a data-rights request (cm-standard-v2) */
 
 /** POST /api/privacy/orgs/{orgId}/lookup: Find a data subject in a merchant's program */
 export type PostApiPrivacyOrgsOrgIdLookupBody = {
@@ -8818,7 +10505,7 @@ export type PostApiPrivacyOrgsOrgIdRequestsBody = {
 
 /** POST /api/privacy/orgs/{orgId}/dsar/{adapter}: Run a vendor DSAR request in a merchant's program */
 export type PostApiPrivacyOrgsOrgIdDsarAdapterBody = Record<string, unknown>;
-export type PostApiPrivacyOrgsOrgIdDsarAdapterResponse = PostSupportCardsOrgIdAdapterResponse;
+export type PostApiPrivacyOrgsOrgIdDsarAdapterResponse = GetSupportPlatformChatlyAnswersResponse;
 
 /** GET /lead/{orgToken}/{code}: Show a hosted lead form */
 export type GetLeadOrgTokenCodeResponse = string;
@@ -8908,6 +10595,10 @@ export type WebhookPayloads = {
   "webhook_endpoint.disabled": WebhookEndpointDisabledEvent;
   /** A webhook endpoint keeps failing */
   "webhook_endpoint.failing": WebhookEndpointFailingEvent;
+  /** A Stripe balance credit or debit was applied */
+  "stripe_credit.applied": StripeCreditAppliedEvent;
+  /** A Stripe balance credit or debit gave up */
+  "stripe_credit.failed": StripeCreditFailedEvent;
   /** A failing webhook endpoint recovered */
   "webhook_endpoint.recovered": WebhookEndpointRecoveredEvent;
 };
@@ -8924,10 +10615,9 @@ export const operations = {
   getTOrgTokenMobileResolve: { method: 'GET', path: '/t/{orgToken}/mobile/resolve' },
   postTOrgTokenMobileInstall: { method: 'POST', path: '/t/{orgToken}/mobile/install' },
   postTOrgTokenMobileEvent: { method: 'POST', path: '/t/{orgToken}/mobile/event' },
+  getWellKnownReferalliEmbedJson: { method: 'GET', path: '/.well-known/referalli-embed.json' },
   getWellKnownAppleAppSiteAssociation: { method: 'GET', path: '/.well-known/apple-app-site-association' },
   getWellKnownAssetlinksJson: { method: 'GET', path: '/.well-known/assetlinks.json' },
-  getWellKnownForgedeckEmbedJson: { method: 'GET', path: '/.well-known/forgedeck-embed.json' },
-  getV1Embed: { method: 'GET', path: '/v1/embed' },
   postV1AgentsRegister: { method: 'POST', path: '/v1/agents/register' },
   postTOrgTokenAgentAttribute: { method: 'POST', path: '/t/{orgToken}/agent/attribute' },
   postTOrgTokenAgentNegotiate: { method: 'POST', path: '/t/{orgToken}/agent/negotiate' },
@@ -8948,6 +10638,8 @@ export const operations = {
   getV1PortalAuthOrgIdOidcStart: { method: 'GET', path: '/v1/portal-auth/{orgId}/oidc/start' },
   getV1AuthSsoCallback: { method: 'GET', path: '/v1/auth/sso/callback' },
   getV1PortalAuthOrgIdJwt: { method: 'GET', path: '/v1/portal-auth/{orgId}/jwt' },
+  getV1PortalAuthOrgIdAtlas: { method: 'GET', path: '/v1/portal-auth/{orgId}/atlas' },
+  postV1PortalAuthOrgIdAtlas: { method: 'POST', path: '/v1/portal-auth/{orgId}/atlas' },
   getV1PortalAuthCurrent: { method: 'GET', path: '/v1/portal-auth/current' },
   getV1OrgPortalAuth: { method: 'GET', path: '/v1/org/portal-auth' },
   putV1OrgPortalAuth: { method: 'PUT', path: '/v1/org/portal-auth' },
@@ -8997,6 +10689,7 @@ export const operations = {
   getV1Programs: { method: 'GET', path: '/v1/programs' },
   getV1ProgramsId: { method: 'GET', path: '/v1/programs/{id}' },
   patchV1ProgramsId: { method: 'PATCH', path: '/v1/programs/{id}' },
+  postV1ProgramsIdReferrers: { method: 'POST', path: '/v1/programs/{id}/referrers' },
   postV1ProgramsIdEnrollments: { method: 'POST', path: '/v1/programs/{id}/enrollments' },
   getV1ProgramsIdEnrollments: { method: 'GET', path: '/v1/programs/{id}/enrollments' },
   postV1ProgramsIdEnrollmentsEnrollmentIdApprove: { method: 'POST', path: '/v1/programs/{id}/enrollments/{enrollmentId}/approve' },
@@ -9049,6 +10742,8 @@ export const operations = {
   getV1Commissions: { method: 'GET', path: '/v1/commissions' },
   getV1CommissionsId: { method: 'GET', path: '/v1/commissions/{id}' },
   getV1PartnersIdBalances: { method: 'GET', path: '/v1/partners/{id}/balances' },
+  getV1PartnersIdStats: { method: 'GET', path: '/v1/partners/{id}/stats' },
+  getV1PartnersIdSummary: { method: 'GET', path: '/v1/partners/{id}/summary' },
   postV1CommissionsApproveDue: { method: 'POST', path: '/v1/commissions/approve-due' },
   postV1CommissionsIdAdjust: { method: 'POST', path: '/v1/commissions/{id}/adjust' },
   postV1CommissionsIdSettle: { method: 'POST', path: '/v1/commissions/{id}/settle' },
@@ -9136,6 +10831,11 @@ export const operations = {
   postV1PartnerOrgsOrgIdTaxForm: { method: 'POST', path: '/v1/partner/orgs/{orgId}/tax-form' },
   getV1PartnerProgramsProgramIdLeaderboard: { method: 'GET', path: '/v1/partner/programs/{programId}/leaderboard' },
   postV1PartnerProgramsProgramIdApply: { method: 'POST', path: '/v1/partner/programs/{programId}/apply' },
+  getV1PartnerApiTokens: { method: 'GET', path: '/v1/partner/api-tokens' },
+  postV1PartnerApiTokens: { method: 'POST', path: '/v1/partner/api-tokens' },
+  deleteV1PartnerApiTokensId: { method: 'DELETE', path: '/v1/partner/api-tokens/{id}' },
+  postV1PartnersIdPortalLink: { method: 'POST', path: '/v1/partners/{id}/portal-link' },
+  getV1PortalLinksToken: { method: 'GET', path: '/v1/portal-links/{token}' },
   postV1WebhookEndpoints: { method: 'POST', path: '/v1/webhook-endpoints' },
   getV1WebhookEndpoints: { method: 'GET', path: '/v1/webhook-endpoints' },
   patchV1WebhookEndpointsId: { method: 'PATCH', path: '/v1/webhook-endpoints/{id}' },
@@ -9325,6 +11025,9 @@ export const operations = {
   postV1AuthConnectionsInstall: { method: 'POST', path: '/v1/auth/connections/install' },
   getV1OauthAuthorize: { method: 'GET', path: '/v1/oauth/authorize' },
   postV1OauthToken: { method: 'POST', path: '/v1/oauth/token' },
+  getV1ProductLinks: { method: 'GET', path: '/v1/product-links' },
+  postV1ProductLinks: { method: 'POST', path: '/v1/product-links' },
+  deleteV1ProductLinksId: { method: 'DELETE', path: '/v1/product-links/{id}' },
   getV1OrgSso: { method: 'GET', path: '/v1/org/sso' },
   patchV1OrgSso: { method: 'PATCH', path: '/v1/org/sso' },
   postV1OrgSsoLink: { method: 'POST', path: '/v1/org/sso/link' },
@@ -9348,6 +11051,8 @@ export const operations = {
   putV1SupportAppsAdapter: { method: 'PUT', path: '/v1/support/apps/{adapter}' },
   deleteV1SupportAppsAdapter: { method: 'DELETE', path: '/v1/support/apps/{adapter}' },
   postV1SupportAppsAdapterTest: { method: 'POST', path: '/v1/support/apps/{adapter}/test' },
+  getV1SupportPlatformChatlyAnswers: { method: 'GET', path: '/v1/support/platform/chatly-answers' },
+  postV1SupportPlatformChatlyCard: { method: 'POST', path: '/v1/support/platform/chatly-card' },
   postV1SupportCardsOrgIdAdapter: { method: 'POST', path: '/v1/support/cards/{orgId}/{adapter}' },
   getV1SupportCardsOrgIdAdapter: { method: 'GET', path: '/v1/support/cards/{orgId}/{adapter}' },
   getV1PrivacyExecutors: { method: 'GET', path: '/v1/privacy/executors' },
@@ -9360,9 +11065,32 @@ export const operations = {
   getV1ClicksId: { method: 'GET', path: '/v1/clicks/{id}' },
   getV1OrgTrackingConsent: { method: 'GET', path: '/v1/org/tracking-consent' },
   putV1OrgTrackingConsent: { method: 'PUT', path: '/v1/org/tracking-consent' },
+  getV1OrgConsentPartnersCookiemunch: { method: 'GET', path: '/v1/org/consent-partners/cookiemunch' },
+  putV1OrgConsentPartnersCookiemunch: { method: 'PUT', path: '/v1/org/consent-partners/cookiemunch' },
+  getV1OrgConsentPartnersCookiemunchEvents: { method: 'GET', path: '/v1/org/consent-partners/cookiemunch/events' },
+  postV1OrgConsentPartnersCookiemunchStampsCheck: { method: 'POST', path: '/v1/org/consent-partners/cookiemunch/stamps/check' },
+  postV1OrgsOrgIdPrivacyExecutorKey: { method: 'POST', path: '/v1/orgs/{orgId}/privacy/executor-key' },
   getV1OrgHostedPages: { method: 'GET', path: '/v1/org/hosted-pages' },
   putV1OrgHostedPages: { method: 'PUT', path: '/v1/org/hosted-pages' },
   postV1OrgHostedPagesCheck: { method: 'POST', path: '/v1/org/hosted-pages/check' },
+  getV1HostsCurrentChatIdentity: { method: 'GET', path: '/v1/hosts/current/chat-identity' },
+  getV1PortalTheme: { method: 'GET', path: '/v1/portal/theme' },
+  getV1PortalThemeSchema: { method: 'GET', path: '/v1/portal/theme/schema' },
+  getV1PortalThemeCompiled: { method: 'GET', path: '/v1/portal/theme/compiled' },
+  putV1PortalThemeDraft: { method: 'PUT', path: '/v1/portal/theme/draft' },
+  patchV1PortalThemeDraft: { method: 'PATCH', path: '/v1/portal/theme/draft' },
+  deleteV1PortalThemeDraft: { method: 'DELETE', path: '/v1/portal/theme/draft' },
+  postV1PortalThemePublish: { method: 'POST', path: '/v1/portal/theme/publish' },
+  getV1PortalThemeVersions: { method: 'GET', path: '/v1/portal/theme/versions' },
+  postV1PortalThemeVersionsIdRestore: { method: 'POST', path: '/v1/portal/theme/versions/{id}/restore' },
+  postV1PortalThemePreview: { method: 'POST', path: '/v1/portal/theme/preview' },
+  postV1PortalThemeImportBrand: { method: 'POST', path: '/v1/portal/theme/import-brand' },
+  getV1StripeCreditsConnection: { method: 'GET', path: '/v1/stripe-credits/connection' },
+  putV1StripeCreditsConnection: { method: 'PUT', path: '/v1/stripe-credits/connection' },
+  deleteV1StripeCreditsConnection: { method: 'DELETE', path: '/v1/stripe-credits/connection' },
+  getV1ProgramsIdStripeCredits: { method: 'GET', path: '/v1/programs/{id}/stripe-credits' },
+  putV1ProgramsIdStripeCredits: { method: 'PUT', path: '/v1/programs/{id}/stripe-credits' },
+  getV1ProgramsIdStripeCreditsLog: { method: 'GET', path: '/v1/programs/{id}/stripe-credits/log' },
   postWebhooksBillingConnectionId: { method: 'POST', path: '/webhooks/billing/{connectionId}' },
   postWebhooksAuthConnectionId: { method: 'POST', path: '/webhooks/auth/{connectionId}' },
   postWebhooksSsoProvider: { method: 'POST', path: '/webhooks/sso/{provider}' },
@@ -9370,12 +11098,14 @@ export const operations = {
   postWebhooksOnchainConnectionId: { method: 'POST', path: '/webhooks/onchain/{connectionId}' },
   postWebhooksPayoutsProvider: { method: 'POST', path: '/webhooks/payouts/{provider}' },
   postWebhooksStripeBilling: { method: 'POST', path: '/webhooks/stripe-billing' },
+  postWebhooksCookiemunchConsent: { method: 'POST', path: '/webhooks/cookiemunch/consent' },
   getTOrgTokenThemeCss: { method: 'GET', path: '/t/{orgToken}/theme.css' },
   getEmbedJs: { method: 'GET', path: '/embed.js' },
   getEmbedSignupJs: { method: 'GET', path: '/embed-signup.js' },
   postApiPrivacyLookup: { method: 'POST', path: '/api/privacy/lookup' },
   postApiPrivacyRequests: { method: 'POST', path: '/api/privacy/requests' },
   getApiPrivacyRequestsId: { method: 'GET', path: '/api/privacy/requests/{id}' },
+  postApiPrivacyRequestsIdCancel: { method: 'POST', path: '/api/privacy/requests/{id}/cancel' },
   postApiPrivacyOrgsOrgIdLookup: { method: 'POST', path: '/api/privacy/orgs/{orgId}/lookup' },
   postApiPrivacyOrgsOrgIdRequests: { method: 'POST', path: '/api/privacy/orgs/{orgId}/requests' },
   getApiPrivacyOrgsOrgIdRequestsId: { method: 'GET', path: '/api/privacy/orgs/{orgId}/requests/{id}' },

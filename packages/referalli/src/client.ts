@@ -4,6 +4,15 @@ import { errorClasses } from './errors.generated.js';
 import type * as T from './generated.js';
 import { API_VERSION, buildResources, operations, type OperationId, type Resources } from './resources.generated.js';
 import { SDK_VERSION } from './version.js';
+
+const OPTION_KEYS = new Set(['idempotencyKey', 'timeout', 'maxRetries', 'signal', 'headers', 'apiVersion']);
+
+/** A method that gained a query parameter keeps its old `(id, options)` call working: request options in the query slot move back. */
+function splitOptions<I extends OperationInput>(queryNames: readonly string[], input: I, options: RequestOptions): { input: I; options: RequestOptions } {
+  const q = input.query as Record<string, unknown> | undefined;
+  if (!q || Object.keys(q).length === 0 || !Object.keys(q).every((k) => OPTION_KEYS.has(k) && !queryNames.includes(k))) return { input, options };
+  return { input: { ...input, query: undefined }, options: { ...(q as RequestOptions), ...options } };
+}
 import { webhooks, type Webhooks } from './webhooks.js';
 
 /** Production API. */
@@ -112,6 +121,7 @@ export class Referalli {
   async call<R = unknown>(id: OperationId, input: OperationInput & { idempotencyKey?: string } = {}, options: RequestOptions = {}): Promise<R> {
     const spec = operations[id];
     if (!spec) throw new ReferalliError(`unknown operation ${String(id)}`);
+    ({ input, options } = splitOptions(spec.query, input, options));
     const path = spec.path.replace(/\{(\w+)\}/g, (_, name: string) => {
       const value = input.path?.[name];
       if (value === undefined || value === null || value === '') throw new ReferalliError(`${id}: missing path parameter "${name}"`);
@@ -134,6 +144,7 @@ export class Referalli {
   }
 
   private listPages<Item, Page extends ListEnvelope<Item>>(id: OperationId, input: OperationInput, options: RequestOptions = {}): ListPromise<Item, Page> {
+    ({ input, options } = splitOptions(operations[id]?.query ?? [], input, options));
     return new ListPromise<Item, Page>((cursor) =>
       this.call<Page>(id, cursor ? { ...input, query: { ...(input.query ?? {}), starting_after: cursor } } : input, options),
     );

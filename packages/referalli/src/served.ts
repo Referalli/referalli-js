@@ -50,9 +50,9 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   return `(function(){
   ${NAME_SHIM}
   var KEY='referalli_ctx';
-  // Legacy twin, written with the same value, attributes and expiry: Atlas's
-  // Referalli connector and Cookie Munch's preset still read referally_ctx.
-  // Drop it once they read referalli_ctx (see LEGACY_REFERRAL_COOKIE).
+  // Legacy twin referally_ctx, same value, attributes and expiry, for integrations
+  // that read the pre-rename name. Written until 2027-01-31, then dropped (see
+  // https://referalli.com/docs/renamed-from-referally).
   var WKEYS=[KEY,${JSON.stringify(LEGACY_REFERRAL_COOKIE)}];
   var s=document.currentScript;
   function attr(n){return s&&s.getAttribute?s.getAttribute(n):null;}
@@ -74,7 +74,7 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
       try{localStorage.setItem(k,r);}catch(e){}
       try{document.cookie=k+t;}catch(e){}}}
   function clear(){for(var i=0;i<KEYS.length;i++){var k=KEYS[i];try{localStorage.removeItem(k);}catch(e){}
-    try{document.cookie=k+'=; path=/; max-age=0; SameSite=Lax'+dom+secure;}catch(e){}}}
+    try{document.cookie=k+'=; path=/; max-age=0; SameSite=Lax'+dom+secure;if(dom)document.cookie=k+'=; path=/; max-age=0; SameSite=Lax'+secure;}catch(e){}}}
   function forget(){gone=true;clear();}
   function rid(){var t='a_',c='abcdefghijklmnopqrstuvwxyz0123456789';
     for(var i=0;i<20;i++)t+=c[Math.floor(Math.random()*c.length)];return t;}

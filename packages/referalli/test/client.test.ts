@@ -156,6 +156,13 @@ describe('Referalli client', () => {
     expect(seen).toHaveLength(1);
   });
 
+  it('options passed where a newer query parameter now sits still apply', async () => {
+    const { referalli, seen } = client([json(200, partner)]);
+    await referalli.partners.retrieve('ptr_1', { headers: { 'x-trace': 'a' } });
+    expect(seen[0]!.url).not.toContain('headers');
+    expect(seen[0]!.headers['x-trace']).toBe('a');
+  });
+
   it('returns text responses as strings', async () => {
     const { referalli } = client([new Response('Date,Amount\n', { status: 200, headers: { 'content-type': 'text/csv' } })]);
     await expect(referalli.export.accounting({ year: 2026, format: 'xero' })).resolves.toBe('Date,Amount\n');

@@ -13,14 +13,13 @@ export const REFERRAL_COOKIE = 'referalli_ctx';
  * `referalli/browser`) writes the context under BOTH names, with the same
  * value, attributes and expiry, and reads either.
  *
- * Why: Atlas's built-in Referalli connector (`context_cookie` default) and
- * Cookie Munch's declaration preset for us (still under the old brand name) still read `referally_ctx`
- * (Atlas ATL-B01, Cookie Munch CMU-B08), so without the twin every new
- * visitor reaches an Atlas sign-up unattributed.
+ * Why: integrations that read the cookie themselves may still read the pre-rename
+ * name. Atlas's connector and Cookie Munch's preset both read `referalli_ctx` now.
+ * The twin is written until 2027-01-31, announced in the changelog and on
+ * /docs/renamed-from-referally, then dropped (reading stays tolerant).
  *
- * TODO(legacy-ctx): drop the legacy name (stop writing it, keep reading it for
- * one cookie window) once Atlas's connector and Cookie Munch's preset read
- * `referalli_ctx`.
+ * TODO(legacy-ctx, 2027-01-31): stop writing the legacy name; keep reading it for
+ * one more cookie window after that.
  */
 export const LEGACY_REFERRAL_COOKIE = 'referally_ctx';
 /** Every name the context is written and read under, current first. */

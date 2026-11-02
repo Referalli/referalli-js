@@ -216,21 +216,20 @@ export class ReferalliClient {
  * the client (window.aff.getReferral()) — pass a resolver that reads it from
  * wherever you stashed it (a cookie, the user's metadata, the pending sign-up).
  *
- *   import { Referalli, referalliAuthEvents } from "referalli";
+ *   import { Referalli, referalliAuthEvents, referralFromCookieHeader } from "referalli";
  *   const events = referalliAuthEvents(new Referalli(), {
  *     programId: "prg_...",
- *     getReferral: () => JSON.parse(cookies().get("referalli_ctx")?.value ?? "{}"),
+ *     // Sync or async. Reads referalli_ctx, falling back to the pre-rename referally_ctx.
+ *     getReferral: async () => referralFromCookieHeader((await headers()).get("cookie")),
  *   });
  *   // Auth.js config: events: { createUser: events.createUser }
  */
+/** What `getReferral` returns: the visitor's referral context, or nothing. */
+export type ReferralLookup = { anonId?: string | null; clickId?: string | null; code?: string | null; coupon?: string | null } | null | undefined;
+
 export interface AuthEventsOptions {
   programId: string;
-  getReferral?: (user: { id?: string; email?: string }) => {
-    anonId?: string;
-    clickId?: string;
-    code?: string;
-    coupon?: string;
-  } | null | undefined;
+  getReferral?: (user: { id?: string; email?: string }) => ReferralLookup | Promise<ReferralLookup>;
 }
 
 /** Anything with an `associate` call: `Referalli` or `ReferalliClient`. */
@@ -253,16 +252,16 @@ export function referalliAuthEvents(client: Associates, opts: AuthEventsOptions)
       const user = message.user;
       const customerRef = user.id ?? user.email;
       if (!customerRef) return;
-      const ref = opts.getReferral?.(user) ?? {};
+      const ref = (await opts.getReferral?.(user)) ?? {};
       const emailHash = user.email ? await sha256Hex(user.email.toLowerCase()) : undefined;
       if (!ref.anonId && !ref.clickId && !ref.coupon && !emailHash) return;
       await client
         .associate({
           programId: opts.programId,
           customerRef,
-          anonId: ref.anonId,
-          referralToken: ref.clickId,
-          couponCode: ref.coupon,
+          anonId: ref.anonId ?? undefined,
+          referralToken: ref.clickId ?? undefined,
+          couponCode: ref.coupon ?? undefined,
           emailHash,
           idempotencyKey: `authjs:${customerRef}`,
         })

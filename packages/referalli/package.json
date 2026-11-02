@@ -1,6 +1,6 @@
 {
   "name": "referalli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Official Referalli SDK for JavaScript and TypeScript: every API operation typed, webhooks, and the browser referral tracker.",
   "license": "MIT",
   "type": "module",
@@ -44,6 +44,16 @@
       "require": {
         "types": "./dist/cjs/generated.d.ts",
         "default": "./dist/cjs/generated.js"
+      }
+    },
+    "./webhooks": {
+      "import": {
+        "types": "./dist/esm/webhooks.d.ts",
+        "default": "./dist/esm/webhooks.js"
+      },
+      "require": {
+        "types": "./dist/cjs/webhooks.d.ts",
+        "default": "./dist/cjs/webhooks.js"
       }
     },
     "./package.json": "./package.json"

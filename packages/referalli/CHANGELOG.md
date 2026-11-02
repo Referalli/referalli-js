@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 - 2026-11-02
+
+- New `referalli/webhooks` entry point: verify and parse webhook deliveries without the full client.
+- API additions: one-call referrers (`POST /v1/programs/{id}/referrers`), partner summary, `GET /v1/programs?slug=`, `portalUrl` on the org, portal links, program-scoped API keys and the Stripe balance credit rail.
+- New typed errors `ProgramScopedKeyError` (403), `RestrictedSessionError` (403) and `StripeKeyRequiredError`.
+- Fixed: `(id, options)` calls keep working when a method gains a query parameter (options passed in the query slot are moved back).
+
 ## 0.2.0 - 2026-10-24
 
 - API 2026-11-01 additions: 56 new operations (inbound signup connectors, billing product filters, per-org SSO and partner-portal sign-in, support-tool context cards, data-rights executors, account closure, rewards, integration health, plans, the event feed and bulk webhook replay) and 2 webhook topics (`webhook_endpoint.failing`, `webhook_endpoint.recovered`).

@@ -20,11 +20,15 @@ export const operations = {
   deleteIntegrationsKind: { method: "DELETE", path: "/v1/integrations/{kind}", pathParams: ["kind"], query: [], body: false, kind: "json" },
   deleteOrgMembersUserId: { method: "DELETE", path: "/v1/org/members/{userId}", pathParams: ["userId"], query: [], body: false, kind: "json" },
   deleteOrgSsoDirect: { method: "DELETE", path: "/v1/org/sso/direct", pathParams: [], query: [], body: false, kind: "json" },
+  deletePartnerApiTokensId: { method: "DELETE", path: "/v1/partner/api-tokens/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deletePartnersId: { method: "DELETE", path: "/v1/partners/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deletePayoutConnectionsProvider: { method: "DELETE", path: "/v1/payout-connections/{provider}", pathParams: ["provider"], query: [], body: false, kind: "json" },
+  deletePortalThemeDraft: { method: "DELETE", path: "/v1/portal/theme/draft", pathParams: [], query: [], body: false, kind: "json" },
   deletePrivacyExecutorsAdapter: { method: "DELETE", path: "/v1/privacy/executors/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
+  deleteProductLinksId: { method: "DELETE", path: "/v1/product-links/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProfitabilityProductsProductRef: { method: "DELETE", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: false, kind: "json" },
   deleteRewardsRulesKey: { method: "DELETE", path: "/v1/rewards/rules/{key}", pathParams: ["key"], query: [], body: false, kind: "json" },
+  deleteStripeCreditsConnection: { method: "DELETE", path: "/v1/stripe-credits/connection", pathParams: [], query: [], body: false, kind: "json" },
   deleteSupportAppsAdapter: { method: "DELETE", path: "/v1/support/apps/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
   deleteWebhookEndpointsId: { method: "DELETE", path: "/v1/webhook-endpoints/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteZapierHooksId: { method: "DELETE", path: "/v1/zapier/hooks/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -74,7 +78,6 @@ export const operations = {
   getDisputes: { method: "GET", path: "/v1/disputes", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getEmailSettings: { method: "GET", path: "/v1/email/settings", pathParams: [], query: [], body: false, kind: "json" },
   getEmailTemplates: { method: "GET", path: "/v1/email/templates", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
-  getEmbed: { method: "GET", path: "/v1/embed", pathParams: [], query: ["token"], body: false, kind: "json", public: true },
   getEmbedSummary: { method: "GET", path: "/v1/embed/summary", pathParams: [], query: [], body: false, kind: "json", public: true },
   getEvents: { method: "GET", path: "/v1/events", pathParams: [], query: ["since","topics","after","limit"], body: false, kind: "json" },
   getExportAccounting: { method: "GET", path: "/v1/export/accounting", pathParams: [], query: ["format","year"], body: false, kind: "text" },
@@ -83,8 +86,9 @@ export const operations = {
   getFxRates: { method: "GET", path: "/v1/fx-rates", pathParams: [], query: ["base","quote","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getGraphql: { method: "GET", path: "/v1/graphql", pathParams: [], query: [], body: false, kind: "json" },
   getHealth: { method: "GET", path: "/v1/health", pathParams: [], query: [], body: false, kind: "json", public: true },
-  getHostsCurrent: { method: "GET", path: "/v1/hosts/current", pathParams: [], query: [], body: false, kind: "json", public: true },
-  getHostsCurrentThemeCss: { method: "GET", path: "/v1/hosts/current/theme.css", pathParams: [], query: [], body: false, kind: "text", public: true },
+  getHostsCurrent: { method: "GET", path: "/v1/hosts/current", pathParams: [], query: ["themePreview"], body: false, kind: "json", public: true },
+  getHostsCurrentChatIdentity: { method: "GET", path: "/v1/hosts/current/chat-identity", pathParams: [], query: [], body: false, kind: "json" },
+  getHostsCurrentThemeCss: { method: "GET", path: "/v1/hosts/current/theme.css", pathParams: [], query: ["themePreview"], body: false, kind: "text", public: true },
   getIncrementality: { method: "GET", path: "/v1/incrementality", pathParams: [], query: ["programId"], body: false, kind: "json" },
   getIntegrationHealth: { method: "GET", path: "/v1/integration-health", pathParams: [], query: [], body: false, kind: "json" },
   getIntegrations: { method: "GET", path: "/v1/integrations", pathParams: [], query: [], body: false, kind: "json" },
@@ -102,6 +106,8 @@ export const operations = {
   getOpenapiJson: { method: "GET", path: "/v1/openapi.json", pathParams: [], query: [], body: false, kind: "json", public: true },
   getOpenapiYaml: { method: "GET", path: "/v1/openapi.yaml", pathParams: [], query: [], body: false, kind: "text", public: true },
   getOrg: { method: "GET", path: "/v1/org", pathParams: [], query: [], body: false, kind: "json" },
+  getOrgConsentPartnersCookiemunch: { method: "GET", path: "/v1/org/consent-partners/cookiemunch", pathParams: [], query: [], body: false, kind: "json" },
+  getOrgConsentPartnersCookiemunchEvents: { method: "GET", path: "/v1/org/consent-partners/cookiemunch/events", pathParams: [], query: ["stamp","limit"], body: false, kind: "json" },
   getOrgFxFeed: { method: "GET", path: "/v1/org/fx-feed", pathParams: [], query: [], body: false, kind: "json" },
   getOrgHostedPages: { method: "GET", path: "/v1/org/hosted-pages", pathParams: [], query: [], body: false, kind: "json" },
   getOrgMembers: { method: "GET", path: "/v1/org/members", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -117,6 +123,7 @@ export const operations = {
   getPartnerAchievements: { method: "GET", path: "/v1/partner/achievements", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerAdvance: { method: "GET", path: "/v1/partner/advance", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerAdvanceOffer: { method: "GET", path: "/v1/partner/advance/offer", pathParams: [], query: [], body: false, kind: "json" },
+  getPartnerApiTokens: { method: "GET", path: "/v1/partner/api-tokens", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerAssets: { method: "GET", path: "/v1/partner/assets", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerContracts: { method: "GET", path: "/v1/partner/contracts", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerDeals: { method: "GET", path: "/v1/partner/deals", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -142,11 +149,13 @@ export const operations = {
   getPartnerReferralsIdTransparency: { method: "GET", path: "/v1/partner/referrals/{id}/transparency", pathParams: ["id"], query: [], body: false, kind: "json" },
   getPartners: { method: "GET", path: "/v1/partners", pathParams: [], query: ["email","externalRef","status","includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerSecurity: { method: "GET", path: "/v1/partner/security", pathParams: [], query: [], body: false, kind: "json" },
-  getPartnersId: { method: "GET", path: "/v1/partners/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getPartnersId: { method: "GET", path: "/v1/partners/{id}", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
   getPartnersIdBalances: { method: "GET", path: "/v1/partners/{id}/balances", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnersIdEnrollments: { method: "GET", path: "/v1/partners/{id}/enrollments", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnersIdPayoutProfile: { method: "GET", path: "/v1/partners/{id}/payout-profile", pathParams: ["id"], query: [], body: false, kind: "json" },
   getPartnersIdQuality: { method: "GET", path: "/v1/partners/{id}/quality", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getPartnersIdStats: { method: "GET", path: "/v1/partners/{id}/stats", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
+  getPartnersIdSummary: { method: "GET", path: "/v1/partners/{id}/summary", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
   getPartnerStats: { method: "GET", path: "/v1/partner/stats", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerTaxDocuments: { method: "GET", path: "/v1/partner/tax-documents", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerTaxDocumentsId: { method: "GET", path: "/v1/partner/tax-documents/{id}", pathParams: ["id"], query: [], body: false, kind: "text" },
@@ -158,25 +167,32 @@ export const operations = {
   getPayoutsIdInvoice: { method: "GET", path: "/v1/payouts/{id}/invoice", pathParams: ["id"], query: ["format"], body: false, kind: "json" },
   getPlans: { method: "GET", path: "/v1/plans", pathParams: [], query: [], body: false, kind: "json", public: true },
   getPortalAuthCurrent: { method: "GET", path: "/v1/portal-auth/current", pathParams: [], query: ["org"], body: false, kind: "json", public: true },
+  getPortalTheme: { method: "GET", path: "/v1/portal/theme", pathParams: [], query: [], body: false, kind: "json" },
+  getPortalThemeCompiled: { method: "GET", path: "/v1/portal/theme/compiled", pathParams: [], query: ["which"], body: false, kind: "json" },
+  getPortalThemeSchema: { method: "GET", path: "/v1/portal/theme/schema", pathParams: [], query: [], body: false, kind: "json" },
+  getPortalThemeVersions: { method: "GET", path: "/v1/portal/theme/versions", pathParams: [], query: [], body: false, kind: "json" },
   getPrivacyExecutorRequests: { method: "GET", path: "/v1/privacy/executor-requests", pathParams: [], query: [], body: false, kind: "json" },
   getPrivacyExecutors: { method: "GET", path: "/v1/privacy/executors", pathParams: [], query: [], body: false, kind: "json" },
   getPrivacyExport: { method: "GET", path: "/v1/privacy/export", pathParams: [], query: ["customerRef"], body: false, kind: "json" },
   getPrivacyRequests: { method: "GET", path: "/v1/privacy/requests", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPrivacyRequestsId: { method: "GET", path: "/v1/privacy/requests/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getPrivacyRequestsIdResult: { method: "GET", path: "/v1/privacy/requests/{id}/result", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProductLinks: { method: "GET", path: "/v1/product-links", pathParams: [], query: [], body: false, kind: "json" },
   getProfitabilityProducts: { method: "GET", path: "/v1/profitability/products", pathParams: [], query: [], body: false, kind: "json" },
   getProfitabilityProductsProductRef: { method: "GET", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: false, kind: "json" },
   getProfitabilityRebuildJobId: { method: "GET", path: "/v1/profitability/rebuild/{jobId}", pathParams: ["jobId"], query: [], body: false, kind: "json" },
   getProfitabilitySettings: { method: "GET", path: "/v1/profitability/settings", pathParams: [], query: ["programId"], body: false, kind: "json" },
-  getPrograms: { method: "GET", path: "/v1/programs", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getPrograms: { method: "GET", path: "/v1/programs", pathParams: [], query: ["slug","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsId: { method: "GET", path: "/v1/programs/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdAutopricing: { method: "GET", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: false, kind: "json" },
-  getProgramsIdEnrollments: { method: "GET", path: "/v1/programs/{id}/enrollments", pathParams: ["id"], query: ["status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getProgramsIdEnrollments: { method: "GET", path: "/v1/programs/{id}/enrollments", pathParams: ["id"], query: ["status","partnerId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdGraph: { method: "GET", path: "/v1/programs/{id}/graph", pathParams: ["id"], query: ["root","depth"], body: false, kind: "json" },
   getProgramsIdGroups: { method: "GET", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: ["includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdNegotiationPolicy: { method: "GET", path: "/v1/programs/{id}/negotiation-policy", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdPromotions: { method: "GET", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdRefereeReward: { method: "GET", path: "/v1/programs/{id}/referee-reward", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProgramsIdStripeCredits: { method: "GET", path: "/v1/programs/{id}/stripe-credits", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProgramsIdStripeCreditsLog: { method: "GET", path: "/v1/programs/{id}/stripe-credits/log", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdTermsAcceptances: { method: "GET", path: "/v1/programs/{id}/terms-acceptances", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProspects: { method: "GET", path: "/v1/prospects", pathParams: [], query: ["status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPublicProgramsHandle: { method: "GET", path: "/v1/public/programs/{handle}", pathParams: ["handle"], query: [], body: false, kind: "json", public: true },
@@ -202,9 +218,11 @@ export const operations = {
   getStatusIncidents: { method: "GET", path: "/v1/status/incidents", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list", public: true },
   getStatusIncidentsAtom: { method: "GET", path: "/v1/status/incidents.atom", pathParams: [], query: [], body: false, kind: "text", public: true },
   getStatusIncidentsId: { method: "GET", path: "/v1/status/incidents/{id}", pathParams: ["id"], query: [], body: false, kind: "json", public: true },
+  getStripeCreditsConnection: { method: "GET", path: "/v1/stripe-credits/connection", pathParams: [], query: [], body: false, kind: "json" },
   getSupportApps: { method: "GET", path: "/v1/support/apps", pathParams: [], query: [], body: false, kind: "json" },
   getSupportCardsOrgIdAdapter: { method: "GET", path: "/v1/support/cards/{orgId}/{adapter}", pathParams: ["orgId","adapter"], query: ["email","externalId"], body: false, kind: "json", public: true },
   getSupportContext: { method: "GET", path: "/v1/support/context", pathParams: [], query: ["email","customerRef","partnerExternalRef","ext"], body: false, kind: "json" },
+  getSupportPlatformChatlyAnswers: { method: "GET", path: "/v1/support/platform/chatly-answers", pathParams: [], query: ["subject","principal","question"], body: false, kind: "json", public: true },
   getTax1099: { method: "GET", path: "/v1/tax/1099", pathParams: [], query: ["year","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getTax1099Filings: { method: "GET", path: "/v1/tax/1099/filings", pathParams: [], query: ["year","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getTax1099Preview: { method: "GET", path: "/v1/tax/1099/preview", pathParams: [], query: ["year"], body: false, kind: "json" },
@@ -230,6 +248,7 @@ export const operations = {
   patchPartnerGroupsId: { method: "PATCH", path: "/v1/partner-groups/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchPartnersId: { method: "PATCH", path: "/v1/partners/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchPartnersIdPayoutProfile: { method: "PATCH", path: "/v1/partners/{id}/payout-profile", pathParams: ["id"], query: [], body: true, kind: "json" },
+  patchPortalThemeDraft: { method: "PATCH", path: "/v1/portal/theme/draft", pathParams: [], query: [], body: true, kind: "json" },
   patchProgramsId: { method: "PATCH", path: "/v1/programs/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchReferralsId: { method: "PATCH", path: "/v1/referrals/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchWebhookEndpointsId: { method: "PATCH", path: "/v1/webhook-endpoints/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -311,10 +330,12 @@ export const operations = {
   postNotificationsIdRead: { method: "POST", path: "/v1/notifications/{id}/read", pathParams: ["id"], query: [], body: false, kind: "json" },
   postOauthToken: { method: "POST", path: "/v1/oauth/token", pathParams: [], query: [], body: true, kind: "json", public: true },
   postOnchainConnections: { method: "POST", path: "/v1/onchain/connections", pathParams: [], query: [], body: true, kind: "json" },
+  postOrgConsentPartnersCookiemunchStampsCheck: { method: "POST", path: "/v1/org/consent-partners/cookiemunch/stamps/check", pathParams: [], query: [], body: true, kind: "json" },
   postOrgHostedPagesCheck: { method: "POST", path: "/v1/org/hosted-pages/check", pathParams: [], query: [], body: false, kind: "json" },
   postOrgMembers: { method: "POST", path: "/v1/org/members", pathParams: [], query: [], body: true, kind: "json" },
   postOrgPortalAuthTest: { method: "POST", path: "/v1/org/portal-auth/test", pathParams: [], query: [], body: false, kind: "json" },
   postOrgs: { method: "POST", path: "/v1/orgs", pathParams: [], query: [], body: true, kind: "json" },
+  postOrgsOrgIdPrivacyExecutorKey: { method: "POST", path: "/v1/orgs/{orgId}/privacy/executor-key", pathParams: ["orgId"], query: [], body: true, kind: "json", public: true },
   postOrgSsoDirectTest: { method: "POST", path: "/v1/org/sso/direct/test", pathParams: [], query: [], body: false, kind: "json" },
   postOrgSsoLink: { method: "POST", path: "/v1/org/sso/link", pathParams: [], query: [], body: false, kind: "json" },
   postOrgSsoTickets: { method: "POST", path: "/v1/org/sso/tickets", pathParams: [], query: [], body: true, kind: "json" },
@@ -323,6 +344,7 @@ export const operations = {
   postOutreachIdApprove: { method: "POST", path: "/v1/outreach/{id}/approve", pathParams: ["id"], query: [], body: false, kind: "json" },
   postOutreachSendDue: { method: "POST", path: "/v1/outreach/send-due", pathParams: [], query: [], body: false, kind: "json" },
   postPartnerAdvanceAccept: { method: "POST", path: "/v1/partner/advance/accept", pathParams: [], query: [], body: true, kind: "json" },
+  postPartnerApiTokens: { method: "POST", path: "/v1/partner/api-tokens", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerAuthWalletNonce: { method: "POST", path: "/v1/partner/auth/wallet/nonce", pathParams: [], query: [], body: true, kind: "json", public: true },
   postPartnerAuthWalletVerify: { method: "POST", path: "/v1/partner/auth/wallet/verify", pathParams: [], query: [], body: true, kind: "json", public: true },
   postPartnerContractsIdAccept: { method: "POST", path: "/v1/partner/contracts/{id}/accept", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -341,6 +363,7 @@ export const operations = {
   postPartnerSecurityTotpDisable: { method: "POST", path: "/v1/partner/security/totp/disable", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerSecurityTotpEnable: { method: "POST", path: "/v1/partner/security/totp/enable", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerSecurityTotpSetup: { method: "POST", path: "/v1/partner/security/totp/setup", pathParams: [], query: [], body: false, kind: "json" },
+  postPartnersIdPortalLink: { method: "POST", path: "/v1/partners/{id}/portal-link", pathParams: ["id"], query: [], body: true, kind: "json" },
   postPartnersIdTaxForm: { method: "POST", path: "/v1/partners/{id}/tax-form", pathParams: ["id"], query: [], body: true, kind: "json" },
   postPartnerTermsVersionIdAccept: { method: "POST", path: "/v1/partner/terms/{versionId}/accept", pathParams: ["versionId"], query: [], body: false, kind: "json" },
   postPassportVerify: { method: "POST", path: "/v1/passport/verify", pathParams: [], query: [], body: true, kind: "json", public: true },
@@ -348,11 +371,16 @@ export const operations = {
   postPayoutRunsIdCancel: { method: "POST", path: "/v1/payout-runs/{id}/cancel", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPayoutRunsIdExecute: { method: "POST", path: "/v1/payout-runs/{id}/execute", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPayoutRunsRunScheduled: { method: "POST", path: "/v1/payout-runs/run-scheduled", pathParams: [], query: [], body: false, kind: "json" },
+  postPortalThemeImportBrand: { method: "POST", path: "/v1/portal/theme/import-brand", pathParams: [], query: [], body: true, kind: "json" },
+  postPortalThemePreview: { method: "POST", path: "/v1/portal/theme/preview", pathParams: [], query: [], body: false, kind: "json" },
+  postPortalThemePublish: { method: "POST", path: "/v1/portal/theme/publish", pathParams: [], query: [], body: true, kind: "json" },
+  postPortalThemeVersionsIdRestore: { method: "POST", path: "/v1/portal/theme/versions/{id}/restore", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPrivacyExecutorKeys: { method: "POST", path: "/v1/privacy/executor-keys", pathParams: [], query: [], body: true, kind: "json" },
   postPrivacyExecutorsAdapterCheck: { method: "POST", path: "/v1/privacy/executors/{adapter}/check", pathParams: ["adapter"], query: [], body: false, kind: "json" },
   postPrivacyForget: { method: "POST", path: "/v1/privacy/forget", pathParams: [], query: [], body: true, kind: "json" },
   postPrivacyLookup: { method: "POST", path: "/v1/privacy/lookup", pathParams: [], query: [], body: true, kind: "json" },
   postPrivacyRequests: { method: "POST", path: "/v1/privacy/requests", pathParams: [], query: [], body: true, kind: "json" },
+  postProductLinks: { method: "POST", path: "/v1/product-links", pathParams: [], query: [], body: true, kind: "json" },
   postProfitabilityRebuild: { method: "POST", path: "/v1/profitability/rebuild", pathParams: [], query: [], body: false, kind: "json" },
   postPrograms: { method: "POST", path: "/v1/programs", pathParams: [], query: [], body: true, kind: "json" },
   postProgramsIdApplyLeveling: { method: "POST", path: "/v1/programs/{id}/apply-leveling", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -362,6 +390,7 @@ export const operations = {
   postProgramsIdEnrollmentsEnrollmentIdReject: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/reject", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdGroups: { method: "POST", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdPromotions: { method: "POST", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postProgramsIdReferrers: { method: "POST", path: "/v1/programs/{id}/referrers", pathParams: ["id"], query: [], body: true, kind: "json" },
   postPromotionsIdEnd: { method: "POST", path: "/v1/promotions/{id}/end", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPublicProgramsHandleJoin: { method: "POST", path: "/v1/public/programs/{handle}/join", pathParams: ["handle"], query: [], body: true, kind: "json" },
   postQualityRecompute: { method: "POST", path: "/v1/quality/recompute", pathParams: [], query: [], body: false, kind: "json" },
@@ -376,6 +405,7 @@ export const operations = {
   postSandboxSimulate: { method: "POST", path: "/v1/sandbox/simulate", pathParams: [], query: [], body: true, kind: "json" },
   postSupportAppsAdapterTest: { method: "POST", path: "/v1/support/apps/{adapter}/test", pathParams: ["adapter"], query: [], body: true, kind: "json" },
   postSupportCardsOrgIdAdapter: { method: "POST", path: "/v1/support/cards/{orgId}/{adapter}", pathParams: ["orgId","adapter"], query: [], body: true, kind: "json", public: true },
+  postSupportPlatformChatlyCard: { method: "POST", path: "/v1/support/platform/chatly-card", pathParams: [], query: [], body: true, kind: "json", public: true },
   postTax1099DocumentsIdCorrect: { method: "POST", path: "/v1/tax/1099/documents/{id}/correct", pathParams: ["id"], query: [], body: false, kind: "json" },
   postTax1099Filings: { method: "POST", path: "/v1/tax/1099/filings", pathParams: [], query: [], body: true, kind: "json" },
   postTax1099FilingsIdRefresh: { method: "POST", path: "/v1/tax/1099/filings/{id}/refresh", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -404,6 +434,7 @@ export const operations = {
   putMeLocale: { method: "PUT", path: "/v1/me/locale", pathParams: [], query: [], body: true, kind: "json" },
   putMeRoiDigest: { method: "PUT", path: "/v1/me/roi-digest", pathParams: [], query: [], body: true, kind: "json" },
   putNetworkSettings: { method: "PUT", path: "/v1/network/settings", pathParams: [], query: [], body: true, kind: "json" },
+  putOrgConsentPartnersCookiemunch: { method: "PUT", path: "/v1/org/consent-partners/cookiemunch", pathParams: [], query: [], body: true, kind: "json" },
   putOrgFxFeed: { method: "PUT", path: "/v1/org/fx-feed", pathParams: [], query: [], body: true, kind: "json" },
   putOrgHostedPages: { method: "PUT", path: "/v1/org/hosted-pages", pathParams: [], query: [], body: true, kind: "json" },
   putOrgPayoutSchedule: { method: "PUT", path: "/v1/org/payout-schedule", pathParams: [], query: [], body: true, kind: "json" },
@@ -422,6 +453,7 @@ export const operations = {
   putPartnersIdPayoutProfile: { method: "PUT", path: "/v1/partners/{id}/payout-profile", pathParams: ["id"], query: [], body: true, kind: "json" },
   putPartnersIdVat: { method: "PUT", path: "/v1/partners/{id}/vat", pathParams: ["id"], query: [], body: true, kind: "json" },
   putPayoutConnectionsProvider: { method: "PUT", path: "/v1/payout-connections/{provider}", pathParams: ["provider"], query: [], body: true, kind: "json" },
+  putPortalThemeDraft: { method: "PUT", path: "/v1/portal/theme/draft", pathParams: [], query: [], body: true, kind: "json" },
   putProfitabilityProductsProductRef: { method: "PUT", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: true, kind: "json" },
   putProfitabilitySettings: { method: "PUT", path: "/v1/profitability/settings", pathParams: [], query: [], body: true, kind: "json" },
   putProgramsIdAutopricing: { method: "PUT", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -430,7 +462,9 @@ export const operations = {
   putProgramsIdPartnersPartnerIdGroup: { method: "PUT", path: "/v1/programs/{id}/partners/{partnerId}/group", pathParams: ["id","partnerId"], query: [], body: true, kind: "json" },
   putProgramsIdPayoutSchedule: { method: "PUT", path: "/v1/programs/{id}/payout-schedule", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdRefereeReward: { method: "PUT", path: "/v1/programs/{id}/referee-reward", pathParams: ["id"], query: [], body: true, kind: "json" },
+  putProgramsIdStripeCredits: { method: "PUT", path: "/v1/programs/{id}/stripe-credits", pathParams: ["id"], query: [], body: true, kind: "json" },
   putRewardsRulesKey: { method: "PUT", path: "/v1/rewards/rules/{key}", pathParams: ["key"], query: [], body: true, kind: "json" },
+  putStripeCreditsConnection: { method: "PUT", path: "/v1/stripe-credits/connection", pathParams: [], query: [], body: true, kind: "json" },
   putSupportAppsAdapter: { method: "PUT", path: "/v1/support/apps/{adapter}", pathParams: ["adapter"], query: [], body: true, kind: "json" },
 } as const satisfies Record<string, OperationSpec>;
 
@@ -448,7 +482,7 @@ export function buildResources(t: Transport) {
       metrics: (options?: RequestOptions): Promise<T.GetAdminMetricsResponse> => t.op("getAdminMetrics", {  }, options),
       orgs: {
         /** List organizations. GET /v1/admin/orgs */
-        list: (query?: T.GetAdminOrgsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAdminOrgsResponse['data'][number], T.GetAdminOrgsResponse> => t.list("getAdminOrgs", { query }, options),
+        list: (query?: (T.GetAdminOrgsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAdminOrgsResponse['data'][number], T.GetAdminOrgsResponse> => t.list("getAdminOrgs", { query }, options),
         /** Set an organization's plan. POST /v1/admin/orgs/{id}/plan */
         plan: (id: string, body: T.PostAdminOrgsIdPlanBody, options?: RequestOptions): Promise<T.PostAdminOrgsIdPlanResponse> => t.op("postAdminOrgsIdPlan", { path: { id }, body }, options),
         /** Suspend an organization. POST /v1/admin/orgs/{id}/suspend */
@@ -458,7 +492,7 @@ export function buildResources(t: Transport) {
       },
       partnerAccounts: {
         /** List partner accounts. GET /v1/admin/partner-accounts */
-        list: (query?: T.GetAdminPartnerAccountsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAdminPartnerAccountsResponse['data'][number], T.GetAdminPartnerAccountsResponse> => t.list("getAdminPartnerAccounts", { query }, options),
+        list: (query?: (T.GetAdminPartnerAccountsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAdminPartnerAccountsResponse['data'][number], T.GetAdminPartnerAccountsResponse> => t.list("getAdminPartnerAccounts", { query }, options),
         /** Ban a partner account. POST /v1/admin/partner-accounts/{id}/ban */
         ban: (id: string, options?: RequestOptions): Promise<T.PostAdminPartnerAccountsIdBanResponse> => t.op("postAdminPartnerAccountsIdBan", { path: { id } }, options),
         /** Unban a partner account. POST /v1/admin/partner-accounts/{id}/unban */
@@ -477,23 +511,23 @@ export function buildResources(t: Transport) {
     },
     agents: {
       /** List partnered AI agents. GET /v1/agents */
-      list: (query?: T.GetAgentsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAgentsResponse['data'][number], T.GetAgentsResponse> => t.list("getAgents", { query }, options),
+      list: (query?: (T.GetAgentsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAgentsResponse['data'][number], T.GetAgentsResponse> => t.list("getAgents", { query }, options),
       /** List agent recommendations. GET /v1/agents/recommendations */
-      recommendations: (query?: T.GetAgentsRecommendationsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAgentsRecommendationsResponse['data'][number], T.GetAgentsRecommendationsResponse> => t.list("getAgentsRecommendations", { query }, options),
+      recommendations: (query?: (T.GetAgentsRecommendationsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAgentsRecommendationsResponse['data'][number], T.GetAgentsRecommendationsResponse> => t.list("getAgentsRecommendations", { query }, options),
       /** Register an AI agent. POST /v1/agents/register */
       register: (body: T.PostAgentsRegisterBody, options?: RequestOptions): Promise<T.PostAgentsRegisterResponse> => t.op("postAgentsRegister", { body }, options),
     },
     analytics: {
       /** Get revenue by channel. GET /v1/analytics/by-channel */
-      byChannel: (query?: T.GetAnalyticsByChannelQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAnalyticsByChannelResponse['data'][number], T.GetAnalyticsByChannelResponse> => t.list("getAnalyticsByChannel", { query }, options),
+      byChannel: (query?: (T.GetAnalyticsByChannelQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAnalyticsByChannelResponse['data'][number], T.GetAnalyticsByChannelResponse> => t.list("getAnalyticsByChannel", { query }, options),
       /** Get revenue by country. GET /v1/analytics/by-geo */
-      byGeo: (query?: T.GetAnalyticsByGeoQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAnalyticsByGeoResponse['data'][number], T.GetAnalyticsByGeoResponse> => t.list("getAnalyticsByGeo", { query }, options),
+      byGeo: (query?: (T.GetAnalyticsByGeoQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAnalyticsByGeoResponse['data'][number], T.GetAnalyticsByGeoResponse> => t.list("getAnalyticsByGeo", { query }, options),
       /** Get cohort LTV. GET /v1/analytics/cohort-ltv */
-      cohortLtv: (query?: T.GetAnalyticsCohortLtvQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAnalyticsCohortLtvResponse['data'][number], T.GetAnalyticsCohortLtvResponse> => t.list("getAnalyticsCohortLtv", { query }, options),
+      cohortLtv: (query?: (T.GetAnalyticsCohortLtvQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAnalyticsCohortLtvResponse['data'][number], T.GetAnalyticsCohortLtvResponse> => t.list("getAnalyticsCohortLtv", { query }, options),
       /** Get coupon performance. GET /v1/analytics/coupon-performance */
-      couponPerformance: (query?: T.GetAnalyticsCouponPerformanceQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAnalyticsCouponPerformanceResponse['data'][number], T.GetAnalyticsCouponPerformanceResponse> => t.list("getAnalyticsCouponPerformance", { query }, options),
+      couponPerformance: (query?: (T.GetAnalyticsCouponPerformanceQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAnalyticsCouponPerformanceResponse['data'][number], T.GetAnalyticsCouponPerformanceResponse> => t.list("getAnalyticsCouponPerformance", { query }, options),
       /** Get the funnel overview. GET /v1/analytics/overview */
-      overview: (query?: T.GetAnalyticsOverviewQuery, options?: RequestOptions): Promise<T.GetAnalyticsOverviewResponse> => t.op("getAnalyticsOverview", { query }, options),
+      overview: (query?: (T.GetAnalyticsOverviewQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetAnalyticsOverviewResponse> => t.op("getAnalyticsOverview", { query }, options),
       /** Get a daily time series. GET /v1/analytics/timeseries */
       timeseries: (query: T.GetAnalyticsTimeseriesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAnalyticsTimeseriesResponse['data'][number], T.GetAnalyticsTimeseriesResponse> => t.list("getAnalyticsTimeseries", { query }, options),
     },
@@ -503,9 +537,9 @@ export function buildResources(t: Transport) {
     },
     apiKeys: {
       /** Revoke an API key. DELETE /v1/api-keys/{id} */
-      delete: (id: string, query?: T.DeleteApiKeysIdQuery, options?: RequestOptions): Promise<T.DeleteApiKeysIdResponse> => t.op("deleteApiKeysId", { path: { id }, query }, options),
+      delete: (id: string, query?: (T.DeleteApiKeysIdQuery) | RequestOptions, options?: RequestOptions): Promise<T.DeleteApiKeysIdResponse> => t.op("deleteApiKeysId", { path: { id }, query }, options),
       /** List API keys. GET /v1/api-keys */
-      list: (query?: T.GetApiKeysQuery & PageParams, options?: RequestOptions): ListPromise<T.GetApiKeysResponse['data'][number], T.GetApiKeysResponse> => t.list("getApiKeys", { query }, options),
+      list: (query?: (T.GetApiKeysQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetApiKeysResponse['data'][number], T.GetApiKeysResponse> => t.list("getApiKeys", { query }, options),
       /** Get an API key. GET /v1/api-keys/{id} */
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetApiKeysIdResponse> => t.op("getApiKeysId", { path: { id } }, options),
       /** Update an API key. PATCH /v1/api-keys/{id} */
@@ -517,13 +551,13 @@ export function buildResources(t: Transport) {
       /** Delete a marketing asset. DELETE /v1/assets/{id} */
       delete: (id: string, options?: RequestOptions): Promise<T.DeleteAssetsIdResponse> => t.op("deleteAssetsId", { path: { id } }, options),
       /** List marketing assets. GET /v1/assets */
-      list: (query?: T.GetAssetsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAssetsResponse['data'][number], T.GetAssetsResponse> => t.list("getAssets", { query }, options),
+      list: (query?: (T.GetAssetsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAssetsResponse['data'][number], T.GetAssetsResponse> => t.list("getAssets", { query }, options),
       /** Create a marketing asset. POST /v1/assets */
       create: (body: T.PostAssetsBody, options?: RequestOptions): Promise<T.PostAssetsResponse> => t.op("postAssets", { body }, options),
     },
     assistant: {
       /** Get program suggestions. GET /v1/assistant/suggestions */
-      suggestions: (query?: T.GetAssistantSuggestionsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAssistantSuggestionsResponse['data'][number], T.GetAssistantSuggestionsResponse> => t.list("getAssistantSuggestions", { query }, options),
+      suggestions: (query?: (T.GetAssistantSuggestionsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAssistantSuggestionsResponse['data'][number], T.GetAssistantSuggestionsResponse> => t.list("getAssistantSuggestions", { query }, options),
     },
     attribution: {
       /** Replay attribution. POST /v1/attribution/replay */
@@ -531,7 +565,7 @@ export function buildResources(t: Transport) {
     },
     auditLogs: {
       /** List audit log entries. GET /v1/audit-logs */
-      list: (query?: T.GetAuditLogsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAuditLogsResponse['data'][number], T.GetAuditLogsResponse> => t.list("getAuditLogs", { query }, options),
+      list: (query?: (T.GetAuditLogsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAuditLogsResponse['data'][number], T.GetAuditLogsResponse> => t.list("getAuditLogs", { query }, options),
     },
     auth: {
       /** List sign-in providers. GET /v1/auth/providers */
@@ -544,7 +578,7 @@ export function buildResources(t: Transport) {
         /** Delete an auth connection. DELETE /v1/auth/connections/{id} */
         delete: (id: string, options?: RequestOptions): Promise<T.DeleteAuthConnectionsIdResponse> => t.op("deleteAuthConnectionsId", { path: { id } }, options),
         /** List auth connections. GET /v1/auth/connections */
-        list: (query?: T.GetAuthConnectionsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetAuthConnectionsResponse['data'][number], T.GetAuthConnectionsResponse> => t.list("getAuthConnections", { query }, options),
+        list: (query?: (T.GetAuthConnectionsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAuthConnectionsResponse['data'][number], T.GetAuthConnectionsResponse> => t.list("getAuthConnections", { query }, options),
         /** Export a user (signed protocol). GET /v1/auth/connections/{id}/export */
         export: (id: string, query: T.GetAuthConnectionsIdExportQuery, options?: RequestOptions): Promise<T.GetAuthConnectionsIdExportResponse> => t.op("getAuthConnectionsIdExport", { path: { id }, query }, options),
         /** List identity connectors. GET /v1/auth/connections/providers */
@@ -579,7 +613,7 @@ export function buildResources(t: Transport) {
     },
     billing: {
       /** List billing events. GET /v1/billing/events */
-      events: (query?: T.GetBillingEventsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetBillingEventsResponse['data'][number], T.GetBillingEventsResponse> => t.list("getBillingEvents", { query }, options),
+      events: (query?: (T.GetBillingEventsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetBillingEventsResponse['data'][number], T.GetBillingEventsResponse> => t.list("getBillingEvents", { query }, options),
       /** Get the plan. GET /v1/billing/plan */
       plan: (options?: RequestOptions): Promise<T.GetBillingPlanResponse> => t.op("getBillingPlan", {  }, options),
       /** Activate a plan directly. POST /v1/billing/activate */
@@ -592,7 +626,7 @@ export function buildResources(t: Transport) {
         /** Delete a billing connection. DELETE /v1/billing/connections/{id} */
         delete: (id: string, options?: RequestOptions): Promise<T.DeleteBillingConnectionsIdResponse> => t.op("deleteBillingConnectionsId", { path: { id } }, options),
         /** List billing connections. GET /v1/billing/connections */
-        list: (query?: T.GetBillingConnectionsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetBillingConnectionsResponse['data'][number], T.GetBillingConnectionsResponse> => t.list("getBillingConnections", { query }, options),
+        list: (query?: (T.GetBillingConnectionsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetBillingConnectionsResponse['data'][number], T.GetBillingConnectionsResponse> => t.list("getBillingConnections", { query }, options),
         /** Get a billing connection. GET /v1/billing/connections/{id} */
         retrieve: (id: string, options?: RequestOptions): Promise<T.GetBillingConnectionsIdResponse> => t.op("getBillingConnectionsId", { path: { id } }, options),
         /** Update a billing connection. PATCH /v1/billing/connections/{id} */
@@ -655,7 +689,7 @@ export function buildResources(t: Transport) {
     },
     cli: {
       /** Tail the request log. GET /v1/cli/logs */
-      logs: (query?: T.GetCliLogsQuery, options?: RequestOptions): Promise<T.GetCliLogsResponse> => t.op("getCliLogs", { query }, options),
+      logs: (query?: (T.GetCliLogsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetCliLogsResponse> => t.op("getCliLogs", { query }, options),
       /** List triggerable topics. GET /v1/cli/topics */
       topics: (options?: RequestOptions): Promise<T.GetCliTopicsResponse> => t.op("getCliTopics", {  }, options),
       /** Send a test event. POST /v1/cli/trigger */
@@ -676,26 +710,26 @@ export function buildResources(t: Transport) {
         /** Close a CLI listener. DELETE /v1/cli/listeners/{id} */
         delete: (id: string, options?: RequestOptions): Promise<T.DeleteCliListenersIdResponse> => t.op("deleteCliListenersId", { path: { id } }, options),
         /** Receive listener events. GET /v1/cli/listeners/{id}/events */
-        events: (id: string, query?: T.GetCliListenersIdEventsQuery, options?: RequestOptions): Promise<T.GetCliListenersIdEventsResponse> => t.op("getCliListenersIdEvents", { path: { id }, query }, options),
+        events: (id: string, query?: (T.GetCliListenersIdEventsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetCliListenersIdEventsResponse> => t.op("getCliListenersIdEvents", { path: { id }, query }, options),
         /** Open a CLI event listener. POST /v1/cli/listeners */
         create: (body: T.PostCliListenersBody, options?: RequestOptions): Promise<T.PostCliListenersResponse> => t.op("postCliListeners", { body }, options),
       },
     },
     clicks: {
       /** Get consent coverage. GET /v1/clicks/consent-coverage */
-      consentCoverage: (query?: T.GetClicksConsentCoverageQuery, options?: RequestOptions): Promise<T.GetClicksConsentCoverageResponse> => t.op("getClicksConsentCoverage", { query }, options),
+      consentCoverage: (query?: (T.GetClicksConsentCoverageQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetClicksConsentCoverageResponse> => t.op("getClicksConsentCoverage", { query }, options),
       /** Get a click. GET /v1/clicks/{id} */
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetClicksIdResponse> => t.op("getClicksId", { path: { id } }, options),
     },
     commissionRules: {
       /** List commission rules. GET /v1/commission-rules */
-      list: (query?: T.GetCommissionRulesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetCommissionRulesResponse['data'][number], T.GetCommissionRulesResponse> => t.list("getCommissionRules", { query }, options),
+      list: (query?: (T.GetCommissionRulesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetCommissionRulesResponse['data'][number], T.GetCommissionRulesResponse> => t.list("getCommissionRules", { query }, options),
       /** Publish a commission rule. POST /v1/commission-rules */
       create: (body: T.PostCommissionRulesBody, options?: RequestOptions): Promise<T.PostCommissionRulesResponse> => t.op("postCommissionRules", { body }, options),
     },
     commissions: {
       /** List commission ledger events. GET /v1/commissions */
-      list: (query?: T.GetCommissionsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetCommissionsResponse['data'][number], T.GetCommissionsResponse> => t.list("getCommissions", { query }, options),
+      list: (query?: (T.GetCommissionsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetCommissionsResponse['data'][number], T.GetCommissionsResponse> => t.list("getCommissions", { query }, options),
       /** Get a commission. GET /v1/commissions/{id} */
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetCommissionsIdResponse> => t.op("getCommissionsId", { path: { id } }, options),
       /** Approve due commissions. POST /v1/commissions/approve-due */
@@ -707,7 +741,7 @@ export function buildResources(t: Transport) {
     },
     contracts: {
       /** List partner contracts. GET /v1/contracts */
-      list: (query?: T.GetContractsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetContractsResponse['data'][number], T.GetContractsResponse> => t.list("getContracts", { query }, options),
+      list: (query?: (T.GetContractsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetContractsResponse['data'][number], T.GetContractsResponse> => t.list("getContracts", { query }, options),
       /** Create a partner contract. POST /v1/contracts */
       create: (body: T.PostContractsBody, options?: RequestOptions): Promise<T.PostContractsResponse> => t.op("postContracts", { body }, options),
       /** Send a contract. POST /v1/contracts/{id}/send */
@@ -715,13 +749,13 @@ export function buildResources(t: Transport) {
     },
     coupons: {
       /** List coupon codes. GET /v1/coupons */
-      list: (query?: T.GetCouponsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetCouponsResponse['data'][number], T.GetCouponsResponse> => t.list("getCoupons", { query }, options),
+      list: (query?: (T.GetCouponsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetCouponsResponse['data'][number], T.GetCouponsResponse> => t.list("getCoupons", { query }, options),
       /** Create a coupon code. POST /v1/coupons */
       create: (body: T.PostCouponsBody, options?: RequestOptions): Promise<T.PostCouponsResponse> => t.op("postCoupons", { body }, options),
     },
     creators: {
       /** Search creators. GET /v1/creators */
-      list: (query?: T.GetCreatorsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetCreatorsResponse['data'][number], T.GetCreatorsResponse> => t.list("getCreators", { query }, options),
+      list: (query?: (T.GetCreatorsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetCreatorsResponse['data'][number], T.GetCreatorsResponse> => t.list("getCreators", { query }, options),
       /** Get a creator. GET /v1/creators/{accountId} */
       retrieve: (accountId: string, options?: RequestOptions): Promise<T.GetCreatorsAccountIdResponse> => t.op("getCreatorsAccountId", { path: { accountId } }, options),
       /** Invite a creator. POST /v1/creators/{accountId}/invite */
@@ -729,7 +763,7 @@ export function buildResources(t: Transport) {
     },
     deals: {
       /** List registered deals. GET /v1/deals */
-      list: (query?: T.GetDealsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetDealsResponse['data'][number], T.GetDealsResponse> => t.list("getDeals", { query }, options),
+      list: (query?: (T.GetDealsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetDealsResponse['data'][number], T.GetDealsResponse> => t.list("getDeals", { query }, options),
       /** Approve a deal. POST /v1/deals/{id}/approve */
       approve: (id: string, body: T.PostDealsIdApproveBody, options?: RequestOptions): Promise<T.PostDealsIdApproveResponse> => t.op("postDealsIdApprove", { path: { id }, body }, options),
       /** Reject a deal. POST /v1/deals/{id}/reject */
@@ -745,7 +779,7 @@ export function buildResources(t: Transport) {
     },
     disputes: {
       /** List partner disputes. GET /v1/disputes */
-      list: (query?: T.GetDisputesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetDisputesResponse['data'][number], T.GetDisputesResponse> => t.list("getDisputes", { query }, options),
+      list: (query?: (T.GetDisputesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetDisputesResponse['data'][number], T.GetDisputesResponse> => t.list("getDisputes", { query }, options),
       /** Resolve a dispute. POST /v1/disputes/{id}/resolve */
       resolve: (id: string, body: T.PostDisputesIdResolveBody, options?: RequestOptions): Promise<T.PostDisputesIdResolveResponse> => t.op("postDisputesIdResolve", { path: { id }, body }, options),
     },
@@ -766,14 +800,12 @@ export function buildResources(t: Transport) {
         /** Reset an email template. DELETE /v1/email/templates/{event}/{locale} */
         delete: (event: string, locale: string, options?: RequestOptions): Promise<T.DeleteEmailTemplatesEventLocaleResponse> => t.op("deleteEmailTemplatesEventLocale", { path: { event, locale } }, options),
         /** List email templates. GET /v1/email/templates */
-        list: (query?: T.GetEmailTemplatesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetEmailTemplatesResponse['data'][number], T.GetEmailTemplatesResponse> => t.list("getEmailTemplates", { query }, options),
+        list: (query?: (T.GetEmailTemplatesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetEmailTemplatesResponse['data'][number], T.GetEmailTemplatesResponse> => t.list("getEmailTemplates", { query }, options),
         /** Override an email template. PUT /v1/email/templates/{event}/{locale} */
         update: (event: string, locale: string, body: T.PutEmailTemplatesEventLocaleBody, options?: RequestOptions): Promise<T.PutEmailTemplatesEventLocaleResponse> => t.op("putEmailTemplatesEventLocale", { path: { event, locale }, body }, options),
       },
     },
     embed: {
-      /** Get one org's embed manifest. GET /v1/embed */
-      retrieve: (query: T.GetEmbedQuery, options?: RequestOptions): Promise<T.GetEmbedResponse> => t.op("getEmbed", { query }, options),
       /** Read embedded partner stats. GET /v1/embed/summary */
       summary: (options?: RequestOptions): Promise<T.GetEmbedSummaryResponse> => t.op("getEmbedSummary", {  }, options),
       /** Mint a partner embed token. POST /v1/embed/tokens */
@@ -781,7 +813,7 @@ export function buildResources(t: Transport) {
     },
     events: {
       /** List past events. GET /v1/events */
-      retrieve: (query?: T.GetEventsQuery, options?: RequestOptions): Promise<T.GetEventsResponse> => t.op("getEvents", { query }, options),
+      retrieve: (query?: (T.GetEventsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetEventsResponse> => t.op("getEvents", { query }, options),
     },
     export: {
       /** Export payouts for accounting. GET /v1/export/accounting */
@@ -794,7 +826,7 @@ export function buildResources(t: Transport) {
       detectRings: (options?: RequestOptions): Promise<T.PostFraudDetectRingsResponse> => t.op("postFraudDetectRings", {  }, options),
       cases: {
         /** List fraud cases. GET /v1/fraud/cases */
-        list: (query?: T.GetFraudCasesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetFraudCasesResponse['data'][number], T.GetFraudCasesResponse> => t.list("getFraudCases", { query }, options),
+        list: (query?: (T.GetFraudCasesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetFraudCasesResponse['data'][number], T.GetFraudCasesResponse> => t.list("getFraudCases", { query }, options),
         /** Resolve a fraud case. POST /v1/fraud/cases/{id}/resolve */
         resolve: (id: string, body: T.PostFraudCasesIdResolveBody, options?: RequestOptions): Promise<T.PostFraudCasesIdResolveResponse> => t.op("postFraudCasesIdResolve", { path: { id }, body }, options),
       },
@@ -805,7 +837,7 @@ export function buildResources(t: Transport) {
     },
     fxRates: {
       /** List FX rates. GET /v1/fx-rates */
-      list: (query?: T.GetFxRatesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetFxRatesResponse['data'][number], T.GetFxRatesResponse> => t.list("getFxRates", { query }, options),
+      list: (query?: (T.GetFxRatesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetFxRatesResponse['data'][number], T.GetFxRatesResponse> => t.list("getFxRates", { query }, options),
       /** Record an FX rate. POST /v1/fx-rates */
       create: (body: T.PostFxRatesBody, options?: RequestOptions): Promise<T.PostFxRatesResponse> => t.op("postFxRates", { body }, options),
       /** Clear a manual FX rate. POST /v1/fx-rates/clear-override */
@@ -826,9 +858,11 @@ export function buildResources(t: Transport) {
     hosts: {
       current: {
         /** Describe the current host. GET /v1/hosts/current */
-        retrieve: (options?: RequestOptions): Promise<T.GetHostsCurrentResponse> => t.op("getHostsCurrent", {  }, options),
+        retrieve: (query?: (T.GetHostsCurrentQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetHostsCurrentResponse> => t.op("getHostsCurrent", { query }, options),
+        /** Identify the signed-in partner to the chat. GET /v1/hosts/current/chat-identity */
+        chatIdentity: (options?: RequestOptions): Promise<T.GetHostsCurrentChatIdentityResponse> => t.op("getHostsCurrentChatIdentity", {  }, options),
         /** Get the current host's theme stylesheet. GET /v1/hosts/current/theme.css */
-        themeCss: (options?: RequestOptions): Promise<string> => t.op("getHostsCurrentThemeCss", {  }, options),
+        themeCss: (query?: (T.GetHostsCurrentThemeCssQuery) | RequestOptions, options?: RequestOptions): Promise<string> => t.op("getHostsCurrentThemeCss", { query }, options),
       },
     },
     import: {
@@ -850,7 +884,7 @@ export function buildResources(t: Transport) {
       retrieve: (options?: RequestOptions): Promise<T.GetIntegrationsResponse> => t.op("getIntegrations", {  }, options),
       deliveries: {
         /** List integration deliveries. GET /v1/integrations/deliveries */
-        list: (query?: T.GetIntegrationsDeliveriesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetIntegrationsDeliveriesResponse['data'][number], T.GetIntegrationsDeliveriesResponse> => t.list("getIntegrationsDeliveries", { query }, options),
+        list: (query?: (T.GetIntegrationsDeliveriesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetIntegrationsDeliveriesResponse['data'][number], T.GetIntegrationsDeliveriesResponse> => t.list("getIntegrationsDeliveries", { query }, options),
         /** Retry an integration delivery. POST /v1/integrations/deliveries/{id}/retry */
         retry: (id: string, options?: RequestOptions): Promise<T.PostIntegrationsDeliveriesIdRetryResponse> => t.op("postIntegrationsDeliveriesIdRetry", { path: { id } }, options),
       },
@@ -869,13 +903,13 @@ export function buildResources(t: Transport) {
     },
     invitations: {
       /** List creator invitations. GET /v1/invitations */
-      list: (query?: T.GetInvitationsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetInvitationsResponse['data'][number], T.GetInvitationsResponse> => t.list("getInvitations", { query }, options),
+      list: (query?: (T.GetInvitationsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetInvitationsResponse['data'][number], T.GetInvitationsResponse> => t.list("getInvitations", { query }, options),
       /** Withdraw an invitation. POST /v1/invitations/{id}/withdraw */
       withdraw: (id: string, options?: RequestOptions): Promise<T.PostInvitationsIdWithdrawResponse> => t.op("postInvitationsIdWithdraw", { path: { id } }, options),
     },
     links: {
       /** List links. GET /v1/links */
-      list: (query?: T.GetLinksQuery & PageParams, options?: RequestOptions): ListPromise<T.GetLinksResponse['data'][number], T.GetLinksResponse> => t.list("getLinks", { query }, options),
+      list: (query?: (T.GetLinksQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetLinksResponse['data'][number], T.GetLinksResponse> => t.list("getLinks", { query }, options),
       /** Get a link's QR code. GET /v1/links/{id}/qr */
       qr: (id: string, options?: RequestOptions): Promise<string> => t.op("getLinksIdQr", { path: { id } }, options),
       /** Create a tracked link. POST /v1/links */
@@ -884,7 +918,7 @@ export function buildResources(t: Transport) {
     marketplace: {
       listing: {
         /** List the org's marketplace listings. GET /v1/marketplace/listing */
-        list: (query?: T.GetMarketplaceListingQuery & PageParams, options?: RequestOptions): ListPromise<T.GetMarketplaceListingResponse['data'][number], T.GetMarketplaceListingResponse> => t.list("getMarketplaceListing", { query }, options),
+        list: (query?: (T.GetMarketplaceListingQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetMarketplaceListingResponse['data'][number], T.GetMarketplaceListingResponse> => t.list("getMarketplaceListing", { query }, options),
         /** List a program in the marketplace. PUT /v1/marketplace/listing */
         update: (body: T.PutMarketplaceListingBody, options?: RequestOptions): Promise<T.PutMarketplaceListingResponse> => t.op("putMarketplaceListing", { body }, options),
       },
@@ -903,7 +937,7 @@ export function buildResources(t: Transport) {
     },
     negotiations: {
       /** List negotiation rounds. GET /v1/negotiations */
-      list: (query?: T.GetNegotiationsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetNegotiationsResponse['data'][number], T.GetNegotiationsResponse> => t.list("getNegotiations", { query }, options),
+      list: (query?: (T.GetNegotiationsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetNegotiationsResponse['data'][number], T.GetNegotiationsResponse> => t.list("getNegotiations", { query }, options),
     },
     network: {
       /** Get a customer's network journey. GET /v1/network/journey */
@@ -917,18 +951,18 @@ export function buildResources(t: Transport) {
     },
     notifications: {
       /** List notifications. GET /v1/notifications */
-      list: (query?: T.GetNotificationsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetNotificationsResponse['data'][number], T.GetNotificationsResponse> => t.list("getNotifications", { query }, options),
+      list: (query?: (T.GetNotificationsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetNotificationsResponse['data'][number], T.GetNotificationsResponse> => t.list("getNotifications", { query }, options),
       /** Mark a notification read. POST /v1/notifications/{id}/read */
       read: (id: string, options?: RequestOptions): Promise<T.PostNotificationsIdReadResponse> => t.op("postNotificationsIdRead", { path: { id } }, options),
     },
     oauth: {
-      /** Exchange an install code. POST /v1/oauth/token */
+      /** Token endpoint: install codes, partner links, Atlas operator token exchange. POST /v1/oauth/token */
       token: (body: T.PostOauthTokenBody, options?: RequestOptions): Promise<T.PostOauthTokenResponse> => t.op("postOauthToken", { body }, options),
     },
     onchain: {
       connections: {
         /** List on-chain connections. GET /v1/onchain/connections */
-        list: (query?: T.GetOnchainConnectionsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetOnchainConnectionsResponse['data'][number], T.GetOnchainConnectionsResponse> => t.list("getOnchainConnections", { query }, options),
+        list: (query?: (T.GetOnchainConnectionsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetOnchainConnectionsResponse['data'][number], T.GetOnchainConnectionsResponse> => t.list("getOnchainConnections", { query }, options),
         /** Create an on-chain connection. POST /v1/onchain/connections */
         create: (body: T.PostOnchainConnectionsBody, options?: RequestOptions): Promise<T.PostOnchainConnectionsResponse> => t.op("postOnchainConnections", { body }, options),
       },
@@ -948,6 +982,20 @@ export function buildResources(t: Transport) {
       update: (body: T.PatchOrgBody, options?: RequestOptions): Promise<T.PatchOrgResponse> => t.op("patchOrg", { body }, options),
       /** Connect a 1099 filing provider. PUT /v1/org/tax-filing */
       updateTaxFiling: (body: T.PutOrgTaxFilingBody, options?: RequestOptions): Promise<T.PutOrgTaxFilingResponse> => t.op("putOrgTaxFiling", { body }, options),
+      consentPartners: {
+        cookiemunch: {
+          /** Get the Cookie Munch consent-event link. GET /v1/org/consent-partners/cookiemunch */
+          retrieve: (options?: RequestOptions): Promise<T.GetOrgConsentPartnersCookiemunchResponse> => t.op("getOrgConsentPartnersCookiemunch", {  }, options),
+          /** List received Cookie Munch consent events. GET /v1/org/consent-partners/cookiemunch/events */
+          events: (query?: (T.GetOrgConsentPartnersCookiemunchEventsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetOrgConsentPartnersCookiemunchEventsResponse> => t.op("getOrgConsentPartnersCookiemunchEvents", { query }, options),
+          /** Set the Cookie Munch sites to accept consent events for. PUT /v1/org/consent-partners/cookiemunch */
+          update: (body: T.PutOrgConsentPartnersCookiemunchBody, options?: RequestOptions): Promise<T.PutOrgConsentPartnersCookiemunchResponse> => t.op("putOrgConsentPartnersCookiemunch", { body }, options),
+          stamps: {
+            /** Check a visitor's consent stamp with Cookie Munch. POST /v1/org/consent-partners/cookiemunch/stamps/check */
+            check: (body: T.PostOrgConsentPartnersCookiemunchStampsCheckBody, options?: RequestOptions): Promise<T.PostOrgConsentPartnersCookiemunchStampsCheckResponse> => t.op("postOrgConsentPartnersCookiemunchStampsCheck", { body }, options),
+          },
+        },
+      },
       fxFeed: {
         /** Get the FX feed setting. GET /v1/org/fx-feed */
         retrieve: (options?: RequestOptions): Promise<T.GetOrgFxFeedResponse> => t.op("getOrgFxFeed", {  }, options),
@@ -966,7 +1014,7 @@ export function buildResources(t: Transport) {
         /** Remove a team member. DELETE /v1/org/members/{userId} */
         delete: (userId: string, options?: RequestOptions): Promise<T.DeleteOrgMembersUserIdResponse> => t.op("deleteOrgMembersUserId", { path: { userId } }, options),
         /** List team members. GET /v1/org/members */
-        list: (query?: T.GetOrgMembersQuery & PageParams, options?: RequestOptions): ListPromise<T.GetOrgMembersResponse['data'][number], T.GetOrgMembersResponse> => t.list("getOrgMembers", { query }, options),
+        list: (query?: (T.GetOrgMembersQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetOrgMembersResponse['data'][number], T.GetOrgMembersResponse> => t.list("getOrgMembers", { query }, options),
         /** Change a member's role. PATCH /v1/org/members/{userId} */
         update: (userId: string, body: T.PatchOrgMembersUserIdBody, options?: RequestOptions): Promise<T.PatchOrgMembersUserIdResponse> => t.op("patchOrgMembersUserId", { path: { userId }, body }, options),
         /** Add a team member. POST /v1/org/members */
@@ -1040,10 +1088,14 @@ export function buildResources(t: Transport) {
     orgs: {
       /** Create an organization. POST /v1/orgs */
       create: (body: T.PostOrgsBody, options?: RequestOptions): Promise<T.PostOrgsResponse> => t.op("postOrgs", { body }, options),
+      privacy: {
+        /** Mint an executor key under a Cookie Munch partner link. POST /v1/orgs/{orgId}/privacy/executor-key */
+        executorKey: (orgId: string, body: T.PostOrgsOrgIdPrivacyExecutorKeyBody, options?: RequestOptions): Promise<T.PostOrgsOrgIdPrivacyExecutorKeyResponse> => t.op("postOrgsOrgIdPrivacyExecutorKey", { path: { orgId }, body }, options),
+      },
     },
     outreach: {
       /** List outreach messages. GET /v1/outreach */
-      list: (query?: T.GetOutreachQuery & PageParams, options?: RequestOptions): ListPromise<T.GetOutreachResponse['data'][number], T.GetOutreachResponse> => t.list("getOutreach", { query }, options),
+      list: (query?: (T.GetOutreachQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetOutreachResponse['data'][number], T.GetOutreachResponse> => t.list("getOutreach", { query }, options),
       /** Draft an outreach sequence. POST /v1/outreach/draft */
       draft: (body: T.PostOutreachDraftBody, options?: RequestOptions): Promise<T.PostOutreachDraftResponse> => t.op("postOutreachDraft", { body }, options),
       /** Approve an outreach message. POST /v1/outreach/{id}/approve */
@@ -1053,32 +1105,40 @@ export function buildResources(t: Transport) {
     },
     partner: {
       /** List my achievements. GET /v1/partner/achievements */
-      achievements: (query?: T.GetPartnerAchievementsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerAchievementsResponse['data'][number], T.GetPartnerAchievementsResponse> => t.list("getPartnerAchievements", { query }, options),
+      achievements: (query?: (T.GetPartnerAchievementsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerAchievementsResponse['data'][number], T.GetPartnerAchievementsResponse> => t.list("getPartnerAchievements", { query }, options),
       /** List marketing assets. GET /v1/partner/assets */
-      assets: (query?: T.GetPartnerAssetsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerAssetsResponse['data'][number], T.GetPartnerAssetsResponse> => t.list("getPartnerAssets", { query }, options),
+      assets: (query?: (T.GetPartnerAssetsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerAssetsResponse['data'][number], T.GetPartnerAssetsResponse> => t.list("getPartnerAssets", { query }, options),
       /** List my groups. GET /v1/partner/groups */
-      groups: (query?: T.GetPartnerGroupsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerGroupsResponse['data'][number], T.GetPartnerGroupsResponse> => t.list("getPartnerGroups", { query }, options),
+      groups: (query?: (T.GetPartnerGroupsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerGroupsResponse['data'][number], T.GetPartnerGroupsResponse> => t.list("getPartnerGroups", { query }, options),
       /** Browse the marketplace. GET /v1/partner/marketplace */
-      marketplace: (query?: T.GetPartnerMarketplaceQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerMarketplaceResponse['data'][number], T.GetPartnerMarketplaceResponse> => t.list("getPartnerMarketplace", { query }, options),
+      marketplace: (query?: (T.GetPartnerMarketplaceQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerMarketplaceResponse['data'][number], T.GetPartnerMarketplaceResponse> => t.list("getPartnerMarketplace", { query }, options),
       /** Get my account and memberships. GET /v1/partner/me */
       me: (options?: RequestOptions): Promise<T.GetPartnerMeResponse> => t.op("getPartnerMe", {  }, options),
       /** Get my reputation passport. GET /v1/partner/passport */
       passport: (options?: RequestOptions): Promise<T.GetPartnerPassportResponse> => t.op("getPartnerPassport", {  }, options),
       /** List my postback calls. GET /v1/partner/postback-logs */
-      postbackLogs: (query?: T.GetPartnerPostbackLogsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerPostbackLogsResponse['data'][number], T.GetPartnerPostbackLogsResponse> => t.list("getPartnerPostbackLogs", { query }, options),
+      postbackLogs: (query?: (T.GetPartnerPostbackLogsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerPostbackLogsResponse['data'][number], T.GetPartnerPostbackLogsResponse> => t.list("getPartnerPostbackLogs", { query }, options),
       /** Get my recruiting link. GET /v1/partner/recruit */
       recruit: (options?: RequestOptions): Promise<T.GetPartnerRecruitResponse> => t.op("getPartnerRecruit", {  }, options),
       /** Get my stats. GET /v1/partner/stats */
-      stats: (query?: T.GetPartnerStatsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerStatsResponse['data'][number], T.GetPartnerStatsResponse> => t.list("getPartnerStats", { query }, options),
+      stats: (query?: (T.GetPartnerStatsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerStatsResponse['data'][number], T.GetPartnerStatsResponse> => t.list("getPartnerStats", { query }, options),
       /** Set my email language (partner). PUT /v1/partner/locale */
       updateLocale: (body: T.PutPartnerLocaleBody, options?: RequestOptions): Promise<T.PutPartnerLocaleResponse> => t.op("putPartnerLocale", { body }, options),
       advance: {
         /** List my advances. GET /v1/partner/advance */
-        list: (query?: T.GetPartnerAdvanceQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerAdvanceResponse['data'][number], T.GetPartnerAdvanceResponse> => t.list("getPartnerAdvance", { query }, options),
+        list: (query?: (T.GetPartnerAdvanceQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerAdvanceResponse['data'][number], T.GetPartnerAdvanceResponse> => t.list("getPartnerAdvance", { query }, options),
         /** Get my advance offer. GET /v1/partner/advance/offer */
         offer: (options?: RequestOptions): Promise<T.GetPartnerAdvanceOfferResponse> => t.op("getPartnerAdvanceOffer", {  }, options),
         /** Take a commission advance. POST /v1/partner/advance/accept */
         accept: (body: T.PostPartnerAdvanceAcceptBody, options?: RequestOptions): Promise<T.PostPartnerAdvanceAcceptResponse> => t.op("postPartnerAdvanceAccept", { body }, options),
+      },
+      apiTokens: {
+        /** Revoke a partner API token. DELETE /v1/partner/api-tokens/{id} */
+        delete: (id: string, options?: RequestOptions): Promise<T.DeletePartnerApiTokensIdResponse> => t.op("deletePartnerApiTokensId", { path: { id } }, options),
+        /** List your partner API tokens. GET /v1/partner/api-tokens */
+        retrieve: (options?: RequestOptions): Promise<T.GetPartnerApiTokensResponse> => t.op("getPartnerApiTokens", {  }, options),
+        /** Create a partner API token. POST /v1/partner/api-tokens */
+        create: (body: T.PostPartnerApiTokensBody, options?: RequestOptions): Promise<T.PostPartnerApiTokensResponse> => t.op("postPartnerApiTokens", { body }, options),
       },
       auth: {
         wallet: {
@@ -1090,7 +1150,7 @@ export function buildResources(t: Transport) {
       },
       contracts: {
         /** List my contracts. GET /v1/partner/contracts */
-        list: (query?: T.GetPartnerContractsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerContractsResponse['data'][number], T.GetPartnerContractsResponse> => t.list("getPartnerContracts", { query }, options),
+        list: (query?: (T.GetPartnerContractsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerContractsResponse['data'][number], T.GetPartnerContractsResponse> => t.list("getPartnerContracts", { query }, options),
         /** Accept a contract. POST /v1/partner/contracts/{id}/accept */
         accept: (id: string, options?: RequestOptions): Promise<T.PostPartnerContractsIdAcceptResponse> => t.op("postPartnerContractsIdAccept", { path: { id } }, options),
         /** Decline a contract. POST /v1/partner/contracts/{id}/decline */
@@ -1098,19 +1158,19 @@ export function buildResources(t: Transport) {
       },
       deals: {
         /** List my deals. GET /v1/partner/deals */
-        list: (query?: T.GetPartnerDealsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerDealsResponse['data'][number], T.GetPartnerDealsResponse> => t.list("getPartnerDeals", { query }, options),
+        list: (query?: (T.GetPartnerDealsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerDealsResponse['data'][number], T.GetPartnerDealsResponse> => t.list("getPartnerDeals", { query }, options),
         /** Register a deal. POST /v1/partner/deals */
         create: (body: T.PostPartnerDealsBody, options?: RequestOptions): Promise<T.PostPartnerDealsResponse> => t.op("postPartnerDeals", { body }, options),
       },
       disputes: {
         /** List my disputes. GET /v1/partner/disputes */
-        list: (query?: T.GetPartnerDisputesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerDisputesResponse['data'][number], T.GetPartnerDisputesResponse> => t.list("getPartnerDisputes", { query }, options),
+        list: (query?: (T.GetPartnerDisputesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerDisputesResponse['data'][number], T.GetPartnerDisputesResponse> => t.list("getPartnerDisputes", { query }, options),
         /** File a dispute. POST /v1/partner/disputes */
         create: (body: T.PostPartnerDisputesBody, options?: RequestOptions): Promise<T.PostPartnerDisputesResponse> => t.op("postPartnerDisputes", { body }, options),
       },
       invitations: {
         /** List my invitations. GET /v1/partner/invitations */
-        list: (query?: T.GetPartnerInvitationsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerInvitationsResponse['data'][number], T.GetPartnerInvitationsResponse> => t.list("getPartnerInvitations", { query }, options),
+        list: (query?: (T.GetPartnerInvitationsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerInvitationsResponse['data'][number], T.GetPartnerInvitationsResponse> => t.list("getPartnerInvitations", { query }, options),
         /** Accept an invitation. POST /v1/partner/invitations/{id}/accept */
         accept: (id: string, options?: RequestOptions): Promise<T.PostPartnerInvitationsIdAcceptResponse> => t.op("postPartnerInvitationsIdAccept", { path: { id } }, options),
         /** Decline an invitation. POST /v1/partner/invitations/{id}/decline */
@@ -1124,7 +1184,7 @@ export function buildResources(t: Transport) {
       },
       links: {
         /** List my links. GET /v1/partner/links */
-        list: (query?: T.GetPartnerLinksQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerLinksResponse['data'][number], T.GetPartnerLinksResponse> => t.list("getPartnerLinks", { query }, options),
+        list: (query?: (T.GetPartnerLinksQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerLinksResponse['data'][number], T.GetPartnerLinksResponse> => t.list("getPartnerLinks", { query }, options),
         /** Get my link's QR code. GET /v1/partner/links/{id}/qr */
         qr: (id: string, options?: RequestOptions): Promise<string> => t.op("getPartnerLinksIdQr", { path: { id } }, options),
         /** Create a link. POST /v1/partner/links */
@@ -1132,7 +1192,7 @@ export function buildResources(t: Transport) {
       },
       notifications: {
         /** List my notifications. GET /v1/partner/notifications */
-        list: (query?: T.GetPartnerNotificationsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerNotificationsResponse['data'][number], T.GetPartnerNotificationsResponse> => t.list("getPartnerNotifications", { query }, options),
+        list: (query?: (T.GetPartnerNotificationsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerNotificationsResponse['data'][number], T.GetPartnerNotificationsResponse> => t.list("getPartnerNotifications", { query }, options),
         /** Mark my notification read. POST /v1/partner/notifications/{id}/read */
         read: (id: string, options?: RequestOptions): Promise<T.PostPartnerNotificationsIdReadResponse> => t.op("postPartnerNotificationsIdRead", { path: { id } }, options),
       },
@@ -1154,9 +1214,9 @@ export function buildResources(t: Transport) {
       },
       payouts: {
         /** List my payouts. GET /v1/partner/payouts */
-        list: (query?: T.GetPartnerPayoutsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerPayoutsResponse['data'][number], T.GetPartnerPayoutsResponse> => t.list("getPartnerPayouts", { query }, options),
+        list: (query?: (T.GetPartnerPayoutsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerPayoutsResponse['data'][number], T.GetPartnerPayoutsResponse> => t.list("getPartnerPayouts", { query }, options),
         /** Get my payout invoice. GET /v1/partner/payouts/{id}/invoice */
-        invoice: (id: string, query?: T.GetPartnerPayoutsIdInvoiceQuery, options?: RequestOptions): Promise<T.GetPartnerPayoutsIdInvoiceResponse> => t.op("getPartnerPayoutsIdInvoice", { path: { id }, query }, options),
+        invoice: (id: string, query?: (T.GetPartnerPayoutsIdInvoiceQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPartnerPayoutsIdInvoiceResponse> => t.op("getPartnerPayoutsIdInvoice", { path: { id }, query }, options),
       },
       profile: {
         /** Get my creator profile. GET /v1/partner/profile */
@@ -1174,7 +1234,7 @@ export function buildResources(t: Transport) {
       },
       referrals: {
         /** List my referrals. GET /v1/partner/referrals */
-        list: (query?: T.GetPartnerReferralsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerReferralsResponse['data'][number], T.GetPartnerReferralsResponse> => t.list("getPartnerReferrals", { query }, options),
+        list: (query?: (T.GetPartnerReferralsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerReferralsResponse['data'][number], T.GetPartnerReferralsResponse> => t.list("getPartnerReferrals", { query }, options),
         /** Explain a referral. GET /v1/partner/referrals/{id}/transparency */
         transparency: (id: string, options?: RequestOptions): Promise<T.GetPartnerReferralsIdTransparencyResponse> => t.op("getPartnerReferralsIdTransparency", { path: { id } }, options),
       },
@@ -1192,13 +1252,13 @@ export function buildResources(t: Transport) {
       },
       taxDocuments: {
         /** List my tax documents. GET /v1/partner/tax-documents */
-        list: (query?: T.GetPartnerTaxDocumentsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerTaxDocumentsResponse['data'][number], T.GetPartnerTaxDocumentsResponse> => t.list("getPartnerTaxDocuments", { query }, options),
+        list: (query?: (T.GetPartnerTaxDocumentsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerTaxDocumentsResponse['data'][number], T.GetPartnerTaxDocumentsResponse> => t.list("getPartnerTaxDocuments", { query }, options),
         /** Get my tax document. GET /v1/partner/tax-documents/{id} */
         retrieve: (id: string, options?: RequestOptions): Promise<string> => t.op("getPartnerTaxDocumentsId", { path: { id } }, options),
       },
       terms: {
         /** List program terms. GET /v1/partner/terms */
-        list: (query?: T.GetPartnerTermsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnerTermsResponse['data'][number], T.GetPartnerTermsResponse> => t.list("getPartnerTerms", { query }, options),
+        list: (query?: (T.GetPartnerTermsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerTermsResponse['data'][number], T.GetPartnerTermsResponse> => t.list("getPartnerTerms", { query }, options),
         /** Accept program terms. POST /v1/partner/terms/{versionId}/accept */
         accept: (versionId: string, options?: RequestOptions): Promise<T.PostPartnerTermsVersionIdAcceptResponse> => t.op("postPartnerTermsVersionIdAccept", { path: { versionId } }, options),
       },
@@ -1211,19 +1271,25 @@ export function buildResources(t: Transport) {
       /** Delete a partner. DELETE /v1/partners/{id} */
       delete: (id: string, options?: RequestOptions): Promise<T.DeletePartnersIdResponse> => t.op("deletePartnersId", { path: { id } }, options),
       /** List partners. GET /v1/partners */
-      list: (query?: T.GetPartnersQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnersResponse['data'][number], T.GetPartnersResponse> => t.list("getPartners", { query }, options),
+      list: (query?: (T.GetPartnersQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnersResponse['data'][number], T.GetPartnersResponse> => t.list("getPartners", { query }, options),
       /** Get a partner. GET /v1/partners/{id} */
-      retrieve: (id: string, options?: RequestOptions): Promise<T.GetPartnersIdResponse> => t.op("getPartnersId", { path: { id } }, options),
+      retrieve: (id: string, query?: (T.GetPartnersIdQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPartnersIdResponse> => t.op("getPartnersId", { path: { id }, query }, options),
       /** Get a partner's balances. GET /v1/partners/{id}/balances */
-      balances: (id: string, query?: T.GetPartnersIdBalancesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnersIdBalancesResponse['data'][number], T.GetPartnersIdBalancesResponse> => t.list("getPartnersIdBalances", { path: { id }, query }, options),
+      balances: (id: string, query?: (T.GetPartnersIdBalancesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnersIdBalancesResponse['data'][number], T.GetPartnersIdBalancesResponse> => t.list("getPartnersIdBalances", { path: { id }, query }, options),
       /** List a partner's enrollments. GET /v1/partners/{id}/enrollments */
-      enrollments: (id: string, query?: T.GetPartnersIdEnrollmentsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPartnersIdEnrollmentsResponse['data'][number], T.GetPartnersIdEnrollmentsResponse> => t.list("getPartnersIdEnrollments", { path: { id }, query }, options),
+      enrollments: (id: string, query?: (T.GetPartnersIdEnrollmentsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnersIdEnrollmentsResponse['data'][number], T.GetPartnersIdEnrollmentsResponse> => t.list("getPartnersIdEnrollments", { path: { id }, query }, options),
       /** Get a partner's quality score. GET /v1/partners/{id}/quality */
       quality: (id: string, options?: RequestOptions): Promise<T.GetPartnersIdQualityResponse> => t.op("getPartnersIdQuality", { path: { id } }, options),
+      /** Get a partner's stats. GET /v1/partners/{id}/stats */
+      stats: (id: string, query?: (T.GetPartnersIdStatsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPartnersIdStatsResponse> => t.op("getPartnersIdStats", { path: { id }, query }, options),
+      /** Get a partner's referrer summary. GET /v1/partners/{id}/summary */
+      summary: (id: string, query: T.GetPartnersIdSummaryQuery, options?: RequestOptions): Promise<T.GetPartnersIdSummaryResponse> => t.op("getPartnersIdSummary", { path: { id }, query }, options),
       /** Update a partner. PATCH /v1/partners/{id} */
       update: (id: string, body: T.PatchPartnersIdBody, options?: RequestOptions): Promise<T.PatchPartnersIdResponse> => t.op("patchPartnersId", { path: { id }, body }, options),
       /** Create a partner. POST /v1/partners */
       create: (body: T.PostPartnersBody, options?: RequestOptions): Promise<T.PostPartnersResponse> => t.op("postPartners", { body }, options),
+      /** Create a portal sign-in link. POST /v1/partners/{id}/portal-link */
+      portalLink: (id: string, body: T.PostPartnersIdPortalLinkBody, options?: RequestOptions): Promise<T.PostPartnersIdPortalLinkResponse> => t.op("postPartnersIdPortalLink", { path: { id }, body }, options),
       /** Record a partner's tax form. POST /v1/partners/{id}/tax-form */
       taxForm: (id: string, body: T.PostPartnersIdTaxFormBody, options?: RequestOptions): Promise<T.PostPartnersIdTaxFormResponse> => t.op("postPartnersIdTaxForm", { path: { id }, body }, options),
       /** Set a partner's VAT number. PUT /v1/partners/{id}/vat */
@@ -1247,13 +1313,13 @@ export function buildResources(t: Transport) {
       /** Disconnect a payout provider. DELETE /v1/payout-connections/{provider} */
       delete: (provider: string, options?: RequestOptions): Promise<T.DeletePayoutConnectionsProviderResponse> => t.op("deletePayoutConnectionsProvider", { path: { provider } }, options),
       /** List payout provider connections. GET /v1/payout-connections */
-      list: (query?: T.GetPayoutConnectionsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPayoutConnectionsResponse['data'][number], T.GetPayoutConnectionsResponse> => t.list("getPayoutConnections", { query }, options),
+      list: (query?: (T.GetPayoutConnectionsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPayoutConnectionsResponse['data'][number], T.GetPayoutConnectionsResponse> => t.list("getPayoutConnections", { query }, options),
       /** Connect a payout provider. PUT /v1/payout-connections/{provider} */
       update: (provider: string, body: T.PutPayoutConnectionsProviderBody, options?: RequestOptions): Promise<T.PutPayoutConnectionsProviderResponse> => t.op("putPayoutConnectionsProvider", { path: { provider }, body }, options),
     },
     payoutRuns: {
       /** List payout runs. GET /v1/payout-runs */
-      list: (query?: T.GetPayoutRunsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPayoutRunsResponse['data'][number], T.GetPayoutRunsResponse> => t.list("getPayoutRuns", { query }, options),
+      list: (query?: (T.GetPayoutRunsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPayoutRunsResponse['data'][number], T.GetPayoutRunsResponse> => t.list("getPayoutRuns", { query }, options),
       /** Create a payout run. POST /v1/payout-runs */
       create: (options?: RequestOptions): Promise<T.PostPayoutRunsResponse> => t.op("postPayoutRuns", {  }, options),
       /** Cancel a payout run. POST /v1/payout-runs/{id}/cancel */
@@ -1265,17 +1331,47 @@ export function buildResources(t: Transport) {
     },
     payouts: {
       /** List payouts. GET /v1/payouts */
-      list: (query?: T.GetPayoutsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPayoutsResponse['data'][number], T.GetPayoutsResponse> => t.list("getPayouts", { query }, options),
+      list: (query?: (T.GetPayoutsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPayoutsResponse['data'][number], T.GetPayoutsResponse> => t.list("getPayouts", { query }, options),
       /** Get a payout's invoice. GET /v1/payouts/{id}/invoice */
-      invoice: (id: string, query?: T.GetPayoutsIdInvoiceQuery, options?: RequestOptions): Promise<T.GetPayoutsIdInvoiceResponse> => t.op("getPayoutsIdInvoice", { path: { id }, query }, options),
+      invoice: (id: string, query?: (T.GetPayoutsIdInvoiceQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPayoutsIdInvoiceResponse> => t.op("getPayoutsIdInvoice", { path: { id }, query }, options),
     },
     plans: {
       /** List public plans. GET /v1/plans */
       retrieve: (options?: RequestOptions): Promise<T.GetPlansResponse> => t.op("getPlans", {  }, options),
     },
+    portal: {
+      theme: {
+        /** Get the portal design. GET /v1/portal/theme */
+        retrieve: (options?: RequestOptions): Promise<T.GetPortalThemeResponse> => t.op("getPortalTheme", {  }, options),
+        /** Preview the compiled portal design. GET /v1/portal/theme/compiled */
+        compiled: (query?: (T.GetPortalThemeCompiledQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPortalThemeCompiledResponse> => t.op("getPortalThemeCompiled", { query }, options),
+        /** Get the portal design schema. GET /v1/portal/theme/schema */
+        schema: (options?: RequestOptions): Promise<T.GetPortalThemeSchemaResponse> => t.op("getPortalThemeSchema", {  }, options),
+        /** Import a brand file into the portal design. POST /v1/portal/theme/import-brand */
+        importBrand: (body: T.PostPortalThemeImportBrandBody, options?: RequestOptions): Promise<T.PostPortalThemeImportBrandResponse> => t.op("postPortalThemeImportBrand", { body }, options),
+        /** Get a preview link for the portal design draft. POST /v1/portal/theme/preview */
+        preview: (options?: RequestOptions): Promise<T.PostPortalThemePreviewResponse> => t.op("postPortalThemePreview", {  }, options),
+        /** Publish the portal design. POST /v1/portal/theme/publish */
+        publish: (body: T.PostPortalThemePublishBody, options?: RequestOptions): Promise<T.PostPortalThemePublishResponse> => t.op("postPortalThemePublish", { body }, options),
+        draft: {
+          /** Discard the portal design draft. DELETE /v1/portal/theme/draft */
+          delete: (options?: RequestOptions): Promise<T.DeletePortalThemeDraftResponse> => t.op("deletePortalThemeDraft", {  }, options),
+          /** Change part of the portal design draft. PATCH /v1/portal/theme/draft */
+          update: (body: T.PatchPortalThemeDraftBody, options?: RequestOptions): Promise<T.PatchPortalThemeDraftResponse> => t.op("patchPortalThemeDraft", { body }, options),
+          /** Replace the portal design draft. PUT /v1/portal/theme/draft */
+          replace: (body: T.PutPortalThemeDraftBody, options?: RequestOptions): Promise<T.PutPortalThemeDraftResponse> => t.op("putPortalThemeDraft", { body }, options),
+        },
+        versions: {
+          /** List published portal designs. GET /v1/portal/theme/versions */
+          retrieve: (options?: RequestOptions): Promise<T.GetPortalThemeVersionsResponse> => t.op("getPortalThemeVersions", {  }, options),
+          /** Restore a portal design version. POST /v1/portal/theme/versions/{id}/restore */
+          restore: (id: string, options?: RequestOptions): Promise<T.PostPortalThemeVersionsIdRestoreResponse> => t.op("postPortalThemeVersionsIdRestore", { path: { id } }, options),
+        },
+      },
+    },
     portalAuth: {
       /** What a merchant's portal sign-in offers. GET /v1/portal-auth/current */
-      current: (query?: T.GetPortalAuthCurrentQuery, options?: RequestOptions): Promise<T.GetPortalAuthCurrentResponse> => t.op("getPortalAuthCurrent", { query }, options),
+      current: (query?: (T.GetPortalAuthCurrentQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPortalAuthCurrentResponse> => t.op("getPortalAuthCurrent", { query }, options),
     },
     privacy: {
       /** List DSAR tool requests. GET /v1/privacy/executor-requests */
@@ -1298,7 +1394,7 @@ export function buildResources(t: Transport) {
       },
       requests: {
         /** List data-subject requests. GET /v1/privacy/requests */
-        list: (query?: T.GetPrivacyRequestsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetPrivacyRequestsResponse['data'][number], T.GetPrivacyRequestsResponse> => t.list("getPrivacyRequests", { query }, options),
+        list: (query?: (T.GetPrivacyRequestsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPrivacyRequestsResponse['data'][number], T.GetPrivacyRequestsResponse> => t.list("getPrivacyRequests", { query }, options),
         /** Get a data-subject request. GET /v1/privacy/requests/{id} */
         retrieve: (id: string, options?: RequestOptions): Promise<T.GetPrivacyRequestsIdResponse> => t.op("getPrivacyRequestsId", { path: { id } }, options),
         /** Get a data-subject request result. GET /v1/privacy/requests/{id}/result */
@@ -1306,6 +1402,14 @@ export function buildResources(t: Transport) {
         /** Open a data-subject request. POST /v1/privacy/requests */
         create: (body: T.PostPrivacyRequestsBody, options?: RequestOptions): Promise<T.PostPrivacyRequestsResponse> => t.op("postPrivacyRequests", { body }, options),
       },
+    },
+    productLinks: {
+      /** Revoke a partner link. DELETE /v1/product-links/{id} */
+      delete: (id: string, options?: RequestOptions): Promise<T.DeleteProductLinksIdResponse> => t.op("deleteProductLinksId", { path: { id } }, options),
+      /** List partner links. GET /v1/product-links */
+      retrieve: (options?: RequestOptions): Promise<T.GetProductLinksResponse> => t.op("getProductLinks", {  }, options),
+      /** Create a partner link. POST /v1/product-links */
+      create: (body: T.PostProductLinksBody, options?: RequestOptions): Promise<T.PostProductLinksResponse> => t.op("postProductLinks", { body }, options),
     },
     profitability: {
       products: {
@@ -1326,26 +1430,28 @@ export function buildResources(t: Transport) {
       },
       settings: {
         /** Get profitability settings. GET /v1/profitability/settings */
-        retrieve: (query?: T.GetProfitabilitySettingsQuery, options?: RequestOptions): Promise<T.GetProfitabilitySettingsResponse> => t.op("getProfitabilitySettings", { query }, options),
+        retrieve: (query?: (T.GetProfitabilitySettingsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetProfitabilitySettingsResponse> => t.op("getProfitabilitySettings", { query }, options),
         /** Update profitability settings. PUT /v1/profitability/settings */
         update: (body: T.PutProfitabilitySettingsBody, options?: RequestOptions): Promise<T.PutProfitabilitySettingsResponse> => t.op("putProfitabilitySettings", { body }, options),
       },
     },
     programs: {
       /** List programs. GET /v1/programs */
-      list: (query?: T.GetProgramsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetProgramsResponse['data'][number], T.GetProgramsResponse> => t.list("getPrograms", { query }, options),
+      list: (query?: (T.GetProgramsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsResponse['data'][number], T.GetProgramsResponse> => t.list("getPrograms", { query }, options),
       /** Get a program. GET /v1/programs/{id} */
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdResponse> => t.op("getProgramsId", { path: { id } }, options),
       /** Get the referral tree. GET /v1/programs/{id}/graph */
       graph: (id: string, query: T.GetProgramsIdGraphQuery, options?: RequestOptions): Promise<T.GetProgramsIdGraphResponse> => t.op("getProgramsIdGraph", { path: { id }, query }, options),
       /** List terms acceptances. GET /v1/programs/{id}/terms-acceptances */
-      termsAcceptances: (id: string, query?: T.GetProgramsIdTermsAcceptancesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetProgramsIdTermsAcceptancesResponse['data'][number], T.GetProgramsIdTermsAcceptancesResponse> => t.list("getProgramsIdTermsAcceptances", { path: { id }, query }, options),
+      termsAcceptances: (id: string, query?: (T.GetProgramsIdTermsAcceptancesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdTermsAcceptancesResponse['data'][number], T.GetProgramsIdTermsAcceptancesResponse> => t.list("getProgramsIdTermsAcceptances", { path: { id }, query }, options),
       /** Update a program. PATCH /v1/programs/{id} */
       update: (id: string, body: T.PatchProgramsIdBody, options?: RequestOptions): Promise<T.PatchProgramsIdResponse> => t.op("patchProgramsId", { path: { id }, body }, options),
       /** Create a program. POST /v1/programs */
       create: (body: T.PostProgramsBody, options?: RequestOptions): Promise<T.PostProgramsResponse> => t.op("postPrograms", { body }, options),
       /** Apply partner levels. POST /v1/programs/{id}/apply-leveling */
       applyLeveling: (id: string, options?: RequestOptions): Promise<T.PostProgramsIdApplyLevelingResponse> => t.op("postProgramsIdApplyLeveling", { path: { id } }, options),
+      /** Make a user a referrer. POST /v1/programs/{id}/referrers */
+      referrers: (id: string, body: T.PostProgramsIdReferrersBody, options?: RequestOptions): Promise<T.PostProgramsIdReferrersResponse> => t.op("postProgramsIdReferrers", { path: { id }, body }, options),
       /** Set the incrementality holdout. PUT /v1/programs/{id}/incrementality */
       updateIncrementality: (id: string, body: T.PutProgramsIdIncrementalityBody, options?: RequestOptions): Promise<T.PutProgramsIdIncrementalityResponse> => t.op("putProgramsIdIncrementality", { path: { id }, body }, options),
       /** Set a program's payout schedule. PUT /v1/programs/{id}/payout-schedule */
@@ -1362,7 +1468,7 @@ export function buildResources(t: Transport) {
       },
       enrollments: {
         /** List program enrollments. GET /v1/programs/{id}/enrollments */
-        list: (id: string, query?: T.GetProgramsIdEnrollmentsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetProgramsIdEnrollmentsResponse['data'][number], T.GetProgramsIdEnrollmentsResponse> => t.list("getProgramsIdEnrollments", { path: { id }, query }, options),
+        list: (id: string, query?: (T.GetProgramsIdEnrollmentsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdEnrollmentsResponse['data'][number], T.GetProgramsIdEnrollmentsResponse> => t.list("getProgramsIdEnrollments", { path: { id }, query }, options),
         /** Enroll a partner. POST /v1/programs/{id}/enrollments */
         create: (id: string, body: T.PostProgramsIdEnrollmentsBody, options?: RequestOptions): Promise<T.PostProgramsIdEnrollmentsResponse> => t.op("postProgramsIdEnrollments", { path: { id }, body }, options),
         /** Approve an application. POST /v1/programs/{id}/enrollments/{enrollmentId}/approve */
@@ -1372,7 +1478,7 @@ export function buildResources(t: Transport) {
       },
       groups: {
         /** List partner groups. GET /v1/programs/{id}/groups */
-        list: (id: string, query?: T.GetProgramsIdGroupsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetProgramsIdGroupsResponse['data'][number], T.GetProgramsIdGroupsResponse> => t.list("getProgramsIdGroups", { path: { id }, query }, options),
+        list: (id: string, query?: (T.GetProgramsIdGroupsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdGroupsResponse['data'][number], T.GetProgramsIdGroupsResponse> => t.list("getProgramsIdGroups", { path: { id }, query }, options),
         /** Create a partner group. POST /v1/programs/{id}/groups */
         create: (id: string, body: T.PostProgramsIdGroupsBody, options?: RequestOptions): Promise<T.PostProgramsIdGroupsResponse> => t.op("postProgramsIdGroups", { path: { id }, body }, options),
       },
@@ -1388,7 +1494,7 @@ export function buildResources(t: Transport) {
       },
       promotions: {
         /** List promotions. GET /v1/programs/{id}/promotions */
-        list: (id: string, query?: T.GetProgramsIdPromotionsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetProgramsIdPromotionsResponse['data'][number], T.GetProgramsIdPromotionsResponse> => t.list("getProgramsIdPromotions", { path: { id }, query }, options),
+        list: (id: string, query?: (T.GetProgramsIdPromotionsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdPromotionsResponse['data'][number], T.GetProgramsIdPromotionsResponse> => t.list("getProgramsIdPromotions", { path: { id }, query }, options),
         /** Create a promotion. POST /v1/programs/{id}/promotions */
         create: (id: string, body: T.PostProgramsIdPromotionsBody, options?: RequestOptions): Promise<T.PostProgramsIdPromotionsResponse> => t.op("postProgramsIdPromotions", { path: { id }, body }, options),
       },
@@ -1398,6 +1504,14 @@ export function buildResources(t: Transport) {
         /** Set the referee reward. PUT /v1/programs/{id}/referee-reward */
         update: (id: string, body: T.PutProgramsIdRefereeRewardBody, options?: RequestOptions): Promise<T.PutProgramsIdRefereeRewardResponse> => t.op("putProgramsIdRefereeReward", { path: { id }, body }, options),
       },
+      stripeCredits: {
+        /** Get a program's Stripe balance credit settings. GET /v1/programs/{id}/stripe-credits */
+        retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdStripeCreditsResponse> => t.op("getProgramsIdStripeCredits", { path: { id } }, options),
+        /** List a program's Stripe balance credits. GET /v1/programs/{id}/stripe-credits/log */
+        log: (id: string, query?: (T.GetProgramsIdStripeCreditsLogQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdStripeCreditsLogResponse['data'][number], T.GetProgramsIdStripeCreditsLogResponse> => t.list("getProgramsIdStripeCreditsLog", { path: { id }, query }, options),
+        /** Set a program's Stripe balance credit settings. PUT /v1/programs/{id}/stripe-credits */
+        update: (id: string, body: T.PutProgramsIdStripeCreditsBody, options?: RequestOptions): Promise<T.PutProgramsIdStripeCreditsResponse> => t.op("putProgramsIdStripeCredits", { path: { id }, body }, options),
+      },
     },
     promotions: {
       /** End a promotion. POST /v1/promotions/{id}/end */
@@ -1405,7 +1519,7 @@ export function buildResources(t: Transport) {
     },
     prospects: {
       /** List prospects. GET /v1/prospects */
-      list: (query?: T.GetProspectsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetProspectsResponse['data'][number], T.GetProspectsResponse> => t.list("getProspects", { query }, options),
+      list: (query?: (T.GetProspectsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProspectsResponse['data'][number], T.GetProspectsResponse> => t.list("getProspects", { query }, options),
     },
     public: {
       programs: {
@@ -1421,7 +1535,7 @@ export function buildResources(t: Transport) {
     },
     referrals: {
       /** List referrals. GET /v1/referrals */
-      list: (query?: T.GetReferralsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetReferralsResponse['data'][number], T.GetReferralsResponse> => t.list("getReferrals", { query }, options),
+      list: (query?: (T.GetReferralsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetReferralsResponse['data'][number], T.GetReferralsResponse> => t.list("getReferrals", { query }, options),
       /** Get a referral. GET /v1/referrals/{id} */
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetReferralsIdResponse> => t.op("getReferralsId", { path: { id } }, options),
       /** Get the attribution journey. GET /v1/referrals/{id}/journey */
@@ -1439,13 +1553,13 @@ export function buildResources(t: Transport) {
     },
     reports: {
       /** Report filtered clicks. GET /v1/reports/filtered-clicks */
-      filteredClicks: (query?: T.GetReportsFilteredClicksQuery & PageParams, options?: RequestOptions): ListPromise<T.GetReportsFilteredClicksResponse['data'][number], T.GetReportsFilteredClicksResponse> => t.list("getReportsFilteredClicks", { query }, options),
+      filteredClicks: (query?: (T.GetReportsFilteredClicksQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetReportsFilteredClicksResponse['data'][number], T.GetReportsFilteredClicksResponse> => t.list("getReportsFilteredClicks", { query }, options),
       /** Get partner performance. GET /v1/reports/partner-performance */
-      partnerPerformance: (query?: T.GetReportsPartnerPerformanceQuery, options?: RequestOptions): Promise<T.GetReportsPartnerPerformanceResponse> => t.op("getReportsPartnerPerformance", { query }, options),
+      partnerPerformance: (query?: (T.GetReportsPartnerPerformanceQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetReportsPartnerPerformanceResponse> => t.op("getReportsPartnerPerformance", { query }, options),
     },
     rewards: {
       /** List issued referee rewards. GET /v1/rewards */
-      list: (query?: T.GetRewardsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetRewardsResponse['data'][number], T.GetRewardsResponse> => t.list("getRewards", { query }, options),
+      list: (query?: (T.GetRewardsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetRewardsResponse['data'][number], T.GetRewardsResponse> => t.list("getRewards", { query }, options),
       /** List partner rewards. GET /v1/rewards/granted */
       granted: (options?: RequestOptions): Promise<T.GetRewardsGrantedResponse> => t.op("getRewardsGranted", {  }, options),
       /** Look up a reward code. GET /v1/rewards/lookup/{code} */
@@ -1469,22 +1583,22 @@ export function buildResources(t: Transport) {
       /** Get the ROI breakdown. GET /v1/roi/breakdown */
       breakdown: (query: T.GetRoiBreakdownQuery & PageParams, options?: RequestOptions): ListPromise<T.GetRoiBreakdownResponse['data'][number], T.GetRoiBreakdownResponse> => t.list("getRoiBreakdown", { query }, options),
       /** Get ROI data quality. GET /v1/roi/data-quality */
-      dataQuality: (query?: T.GetRoiDataQualityQuery, options?: RequestOptions): Promise<T.GetRoiDataQualityResponse> => t.op("getRoiDataQuality", { query }, options),
+      dataQuality: (query?: (T.GetRoiDataQualityQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetRoiDataQualityResponse> => t.op("getRoiDataQuality", { query }, options),
       /** List credit grants. GET /v1/roi/grants */
-      grants: (query?: T.GetRoiGrantsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetRoiGrantsResponse['data'][number], T.GetRoiGrantsResponse> => t.list("getRoiGrants", { query }, options),
+      grants: (query?: (T.GetRoiGrantsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetRoiGrantsResponse['data'][number], T.GetRoiGrantsResponse> => t.list("getRoiGrants", { query }, options),
       /** Get the ROI summary. GET /v1/roi/summary */
-      summary: (query?: T.GetRoiSummaryQuery, options?: RequestOptions): Promise<T.GetRoiSummaryResponse> => t.op("getRoiSummary", { query }, options),
+      summary: (query?: (T.GetRoiSummaryQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetRoiSummaryResponse> => t.op("getRoiSummary", { query }, options),
       /** Trace a customer's value. GET /v1/roi/trace/{customerRef} */
-      trace: (customerRef: string, query?: T.GetRoiTraceCustomerRefQuery, options?: RequestOptions): Promise<T.GetRoiTraceCustomerRefResponse> => t.op("getRoiTraceCustomerRef", { path: { customerRef }, query }, options),
+      trace: (customerRef: string, query?: (T.GetRoiTraceCustomerRefQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetRoiTraceCustomerRefResponse> => t.op("getRoiTraceCustomerRef", { path: { customerRef }, query }, options),
       partners: {
         /** Trace a partner's value. GET /v1/roi/partners/{id}/trace */
-        trace: (id: string, query?: T.GetRoiPartnersIdTraceQuery, options?: RequestOptions): Promise<T.GetRoiPartnersIdTraceResponse> => t.op("getRoiPartnersIdTrace", { path: { id }, query }, options),
+        trace: (id: string, query?: (T.GetRoiPartnersIdTraceQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetRoiPartnersIdTraceResponse> => t.op("getRoiPartnersIdTrace", { path: { id }, query }, options),
       },
       patterns: {
         /** List value patterns. GET /v1/roi/patterns */
         list: (options?: RequestOptions): Promise<T.GetRoiPatternsResponse> => t.op("getRoiPatterns", {  }, options),
         /** Get a value pattern. GET /v1/roi/patterns/{pattern} */
-        retrieve: (pattern: string, query?: T.GetRoiPatternsPatternQuery & PageParams, options?: RequestOptions): ListPromise<T.GetRoiPatternsPatternResponse['data'][number], T.GetRoiPatternsPatternResponse> => t.list("getRoiPatternsPattern", { path: { pattern }, query }, options),
+        retrieve: (pattern: string, query?: (T.GetRoiPatternsPatternQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetRoiPatternsPatternResponse['data'][number], T.GetRoiPatternsPatternResponse> => t.list("getRoiPatternsPattern", { path: { pattern }, query }, options),
         /** Open a review for a pattern match. POST /v1/roi/patterns/{pattern}/review */
         review: (pattern: string, body: T.PostRoiPatternsPatternReviewBody, options?: RequestOptions): Promise<T.PostRoiPatternsPatternReviewResponse> => t.op("postRoiPatternsPatternReview", { path: { pattern }, body }, options),
       },
@@ -1504,14 +1618,24 @@ export function buildResources(t: Transport) {
       incidentsAtom: (options?: RequestOptions): Promise<string> => t.op("getStatusIncidentsAtom", {  }, options),
       incidents: {
         /** List status incidents. GET /v1/status/incidents */
-        list: (query?: T.GetStatusIncidentsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetStatusIncidentsResponse['data'][number], T.GetStatusIncidentsResponse> => t.list("getStatusIncidents", { query }, options),
+        list: (query?: (T.GetStatusIncidentsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetStatusIncidentsResponse['data'][number], T.GetStatusIncidentsResponse> => t.list("getStatusIncidents", { query }, options),
         /** Get a status incident. GET /v1/status/incidents/{id} */
         retrieve: (id: string, options?: RequestOptions): Promise<T.GetStatusIncidentsIdResponse> => t.op("getStatusIncidentsId", { path: { id } }, options),
       },
     },
+    stripeCredits: {
+      connection: {
+        /** Remove the Stripe balance credit key. DELETE /v1/stripe-credits/connection */
+        delete: (options?: RequestOptions): Promise<T.DeleteStripeCreditsConnectionResponse> => t.op("deleteStripeCreditsConnection", {  }, options),
+        /** Get the Stripe balance credit key status. GET /v1/stripe-credits/connection */
+        retrieve: (options?: RequestOptions): Promise<T.GetStripeCreditsConnectionResponse> => t.op("getStripeCreditsConnection", {  }, options),
+        /** Connect a Stripe key for balance credits. PUT /v1/stripe-credits/connection */
+        update: (body: T.PutStripeCreditsConnectionBody, options?: RequestOptions): Promise<T.PutStripeCreditsConnectionResponse> => t.op("putStripeCreditsConnection", { body }, options),
+      },
+    },
     support: {
       /** Get referral context for a support contact. GET /v1/support/context */
-      context: (query?: T.GetSupportContextQuery, options?: RequestOptions): Promise<T.GetSupportContextResponse> => t.op("getSupportContext", { query }, options),
+      context: (query?: (T.GetSupportContextQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetSupportContextResponse> => t.op("getSupportContext", { query }, options),
       apps: {
         /** Disconnect a support tool. DELETE /v1/support/apps/{adapter} */
         delete: (adapter: string, options?: RequestOptions): Promise<T.DeleteSupportAppsAdapterResponse> => t.op("deleteSupportAppsAdapter", { path: { adapter } }, options),
@@ -1524,9 +1648,15 @@ export function buildResources(t: Transport) {
       },
       cards: {
         /** Render a support card for a tool (GET). GET /v1/support/cards/{orgId}/{adapter} */
-        retrieve: (orgId: string, adapter: string, query?: T.GetSupportCardsOrgIdAdapterQuery, options?: RequestOptions): Promise<T.GetSupportCardsOrgIdAdapterResponse> => t.op("getSupportCardsOrgIdAdapter", { path: { orgId, adapter }, query }, options),
+        retrieve: (orgId: string, adapter: string, query?: (T.GetSupportCardsOrgIdAdapterQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetSupportCardsOrgIdAdapterResponse> => t.op("getSupportCardsOrgIdAdapter", { path: { orgId, adapter }, query }, options),
         /** Render a support card for a tool. POST /v1/support/cards/{orgId}/{adapter} */
         create: (orgId: string, adapter: string, body: T.PostSupportCardsOrgIdAdapterBody, options?: RequestOptions): Promise<T.PostSupportCardsOrgIdAdapterResponse> => t.op("postSupportCardsOrgIdAdapter", { path: { orgId, adapter }, body }, options),
+      },
+      platform: {
+        /** Answer a partner's question for Referalli's own support desk. GET /v1/support/platform/chatly-answers */
+        chatlyAnswers: (query?: (T.GetSupportPlatformChatlyAnswersQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetSupportPlatformChatlyAnswersResponse> => t.op("getSupportPlatformChatlyAnswers", { query }, options),
+        /** Render the card for Referalli's own support desk. POST /v1/support/platform/chatly-card */
+        chatlyCard: (body: T.PostSupportPlatformChatlyCardBody, options?: RequestOptions): Promise<T.PostSupportPlatformChatlyCardResponse> => t.op("postSupportPlatformChatlyCard", { body }, options),
       },
     },
     tax: {
@@ -1551,7 +1681,7 @@ export function buildResources(t: Transport) {
     },
     test: {
       /** List captured test emails. GET /v1/test/emails */
-      emails: (query?: T.GetTestEmailsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetTestEmailsResponse['data'][number], T.GetTestEmailsResponse> => t.list("getTestEmails", { query }, options),
+      emails: (query?: (T.GetTestEmailsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetTestEmailsResponse['data'][number], T.GetTestEmailsResponse> => t.list("getTestEmails", { query }, options),
     },
     testClock: {
       /** Get the test clock. GET /v1/test_clock */
@@ -1583,7 +1713,7 @@ export function buildResources(t: Transport) {
     },
     webhookDeliveries: {
       /** List webhook deliveries. GET /v1/webhook-deliveries */
-      list: (query?: T.GetWebhookDeliveriesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetWebhookDeliveriesResponse['data'][number], T.GetWebhookDeliveriesResponse> => t.list("getWebhookDeliveries", { query }, options),
+      list: (query?: (T.GetWebhookDeliveriesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetWebhookDeliveriesResponse['data'][number], T.GetWebhookDeliveriesResponse> => t.list("getWebhookDeliveries", { query }, options),
       /** Get a webhook delivery. GET /v1/webhook-deliveries/{id} */
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetWebhookDeliveriesIdResponse> => t.op("getWebhookDeliveriesId", { path: { id } }, options),
       /** Replay a webhook delivery. POST /v1/webhook-deliveries/{id}/replay */
@@ -1593,11 +1723,11 @@ export function buildResources(t: Transport) {
       /** Delete a webhook endpoint. DELETE /v1/webhook-endpoints/{id} */
       delete: (id: string, options?: RequestOptions): Promise<T.DeleteWebhookEndpointsIdResponse> => t.op("deleteWebhookEndpointsId", { path: { id } }, options),
       /** List webhook endpoints. GET /v1/webhook-endpoints */
-      list: (query?: T.GetWebhookEndpointsQuery & PageParams, options?: RequestOptions): ListPromise<T.GetWebhookEndpointsResponse['data'][number], T.GetWebhookEndpointsResponse> => t.list("getWebhookEndpoints", { query }, options),
+      list: (query?: (T.GetWebhookEndpointsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetWebhookEndpointsResponse['data'][number], T.GetWebhookEndpointsResponse> => t.list("getWebhookEndpoints", { query }, options),
       /** Get a webhook endpoint. GET /v1/webhook-endpoints/{id} */
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetWebhookEndpointsIdResponse> => t.op("getWebhookEndpointsId", { path: { id } }, options),
       /** List an endpoint's deliveries. GET /v1/webhook-endpoints/{id}/deliveries */
-      deliveries: (id: string, query?: T.GetWebhookEndpointsIdDeliveriesQuery & PageParams, options?: RequestOptions): ListPromise<T.GetWebhookEndpointsIdDeliveriesResponse['data'][number], T.GetWebhookEndpointsIdDeliveriesResponse> => t.list("getWebhookEndpointsIdDeliveries", { path: { id }, query }, options),
+      deliveries: (id: string, query?: (T.GetWebhookEndpointsIdDeliveriesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetWebhookEndpointsIdDeliveriesResponse['data'][number], T.GetWebhookEndpointsIdDeliveriesResponse> => t.list("getWebhookEndpointsIdDeliveries", { path: { id }, query }, options),
       /** Update a webhook endpoint. PATCH /v1/webhook-endpoints/{id} */
       update: (id: string, body: T.PatchWebhookEndpointsIdBody, options?: RequestOptions): Promise<T.PatchWebhookEndpointsIdResponse> => t.op("patchWebhookEndpointsId", { path: { id }, body }, options),
       /** Create a webhook endpoint. POST /v1/webhook-endpoints */
@@ -1615,14 +1745,14 @@ export function buildResources(t: Transport) {
       /** List Zapier trigger events. GET /v1/zapier/events */
       events: (options?: RequestOptions): Promise<T.GetZapierEventsResponse> => t.op("getZapierEvents", {  }, options),
       /** Poll a Zapier trigger. GET /v1/zapier/triggers/{event} */
-      triggers: (event: string, query?: T.GetZapierTriggersEventQuery, options?: RequestOptions): Promise<T.GetZapierTriggersEventResponse> => t.op("getZapierTriggersEvent", { path: { event }, query }, options),
+      triggers: (event: string, query?: (T.GetZapierTriggersEventQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetZapierTriggersEventResponse> => t.op("getZapierTriggersEvent", { path: { event }, query }, options),
       /** Record a conversion from Zapier. POST /v1/zapier/conversions */
       conversions: (body: T.PostZapierConversionsBody, options?: RequestOptions): Promise<T.PostZapierConversionsResponse> => t.op("postZapierConversions", { body }, options),
       hooks: {
         /** Unsubscribe a Zapier hook. DELETE /v1/zapier/hooks/{id} */
         delete: (id: string, options?: RequestOptions): Promise<T.DeleteZapierHooksIdResponse> => t.op("deleteZapierHooksId", { path: { id } }, options),
         /** List Zapier hooks. GET /v1/zapier/hooks */
-        list: (query?: T.GetZapierHooksQuery & PageParams, options?: RequestOptions): ListPromise<T.GetZapierHooksResponse['data'][number], T.GetZapierHooksResponse> => t.list("getZapierHooks", { query }, options),
+        list: (query?: (T.GetZapierHooksQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetZapierHooksResponse['data'][number], T.GetZapierHooksResponse> => t.list("getZapierHooks", { query }, options),
         /** Subscribe a Zapier hook. POST /v1/zapier/hooks */
         create: (body: T.PostZapierHooksBody, options?: RequestOptions): Promise<T.PostZapierHooksResponse> => t.op("postZapierHooks", { body }, options),
       },
