@@ -72,6 +72,11 @@ export class NotFoundError extends ApiError {
   override readonly name: string = "NotFoundError";
 }
 
+/** `not_enrolled` (HTTP 404). */
+export class NotEnrolledError extends ApiError {
+  override readonly name: string = "NotEnrolledError";
+}
+
 /** `conflict` (HTTP 409). */
 export class ConflictError extends ApiError {
   override readonly name: string = "ConflictError";
@@ -85,6 +90,11 @@ export class IdempotencyInProgressError extends ApiError {
 /** `stripe_key_required` (HTTP 409). */
 export class StripeKeyRequiredError extends ApiError {
   override readonly name: string = "StripeKeyRequiredError";
+}
+
+/** `credit_credentials_required` (HTTP 409). */
+export class CreditCredentialsRequiredError extends ApiError {
+  override readonly name: string = "CreditCredentialsRequiredError";
 }
 
 /** `api_key_expired` (HTTP 409). */
@@ -137,6 +147,21 @@ export class StripeKeyPermissionError extends ApiError {
   override readonly name: string = "StripeKeyPermissionError";
 }
 
+/** `provider_credentials_invalid` (HTTP 422). */
+export class ProviderCredentialsInvalidError extends ApiError {
+  override readonly name: string = "ProviderCredentialsInvalidError";
+}
+
+/** `provider_credentials_wrong_mode` (HTTP 422). */
+export class ProviderCredentialsWrongModeError extends ApiError {
+  override readonly name: string = "ProviderCredentialsWrongModeError";
+}
+
+/** `provider_permission` (HTTP 422). */
+export class ProviderPermissionError extends ApiError {
+  override readonly name: string = "ProviderPermissionError";
+}
+
 /** `payload_too_large` (HTTP 413). */
 export class PayloadTooLargeError extends ApiError {
   override readonly name: string = "PayloadTooLargeError";
@@ -167,6 +192,11 @@ export class StripeUnavailableError extends ApiError {
   override readonly name: string = "StripeUnavailableError";
 }
 
+/** `provider_unavailable` (HTTP 502). */
+export class ProviderUnavailableError extends ApiError {
+  override readonly name: string = "ProviderUnavailableError";
+}
+
 /** `sso_provider_error` (HTTP 502). */
 export class SsoProviderError extends ApiError {
   override readonly name: string = "SsoProviderError";
@@ -193,9 +223,11 @@ export const errorClasses: Record<string, typeof ApiError> = {
   program_scoped_key: ProgramScopedKeyError,
   restricted_session: RestrictedSessionError,
   not_found: NotFoundError,
+  not_enrolled: NotEnrolledError,
   conflict: ConflictError,
   idempotency_in_progress: IdempotencyInProgressError,
   stripe_key_required: StripeKeyRequiredError,
+  credit_credentials_required: CreditCredentialsRequiredError,
   api_key_expired: ApiKeyExpiredError,
   replay: ReplayError,
   live_mode_only: LiveModeOnlyError,
@@ -206,12 +238,16 @@ export const errorClasses: Record<string, typeof ApiError> = {
   stripe_key_invalid: StripeKeyInvalidError,
   stripe_key_wrong_mode: StripeKeyWrongModeError,
   stripe_key_permission: StripeKeyPermissionError,
+  provider_credentials_invalid: ProviderCredentialsInvalidError,
+  provider_credentials_wrong_mode: ProviderCredentialsWrongModeError,
+  provider_permission: ProviderPermissionError,
   payload_too_large: PayloadTooLargeError,
   connection_paused: ConnectionPausedError,
   rate_limited: RateLimitedError,
   internal_error: InternalServerError,
   atlas_error: AtlasError,
   stripe_unavailable: StripeUnavailableError,
+  provider_unavailable: ProviderUnavailableError,
   sso_provider_error: SsoProviderError,
   sso_not_configured: SsoNotConfiguredError,
 };

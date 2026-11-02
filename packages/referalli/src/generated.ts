@@ -427,6 +427,8 @@ export type BillingConnection = {
   customerRefMetadataKey?: string | null;
   /** The Stripe webhook endpoint (`we_…`) Referalli registered for this connection with `stripeKey`. */
   stripeWebhookEndpointId?: string | null;
+  /** The provider webhooks Referalli registered with `autoRegister` (one per topic for Shopify, BigCommerce, WooCommerce; Stripe's endpoint too). null when set up by hand. */
+  providerWebhookIds?: Array<string> | null;
   rotation: {
     inProgress: boolean;
     previousSecretExpiresAt?: string;
@@ -449,7 +451,11 @@ export type CreatedBillingConnection = {
   programIds: Array<string> | null;
   /** With `stripeKey`: the Stripe webhook endpoint (`we_…`) registered or reused. */
   stripeWebhookEndpointId?: string;
-  /** With `stripeKey`: true when an endpoint on the account already pointed at one of your Stripe connections, which is returned instead of a new one. */
+  /** With `autoRegister` (not Stripe): the provider webhooks registered or reused. */
+  providerWebhookIds?: Array<string>;
+  /** With `autoRegister`: optional events the credentials could not subscribe (Shopify `DISPUTES_CREATE` without the `read_shopify_payments_disputes` scope); everything else was registered. */
+  skippedEvents?: Array<string>;
+  /** With `stripeKey` or `autoRegister`: true when webhooks on the account already pointed at one of your connections for this provider, which is returned instead of a new one. */
   reused?: boolean;
 };
 
@@ -471,8 +477,8 @@ export type BillingEvent = {
   productRef: string;
   /** ignored_by_filter: recorded, never processed (product filter or internal customer). */
   status: "processed" | "ignored_by_filter";
-  /** Why it earned nothing. no_referral_in_scope (status processed): the customer is referred only in programs outside the connection's programIds. */
-  ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope") | null;
+  /** Why it earned nothing. no_referral_in_scope (status processed): the customer is referred only in programs outside the connection's programIds. identity_unresolved / identity_ambiguous (status processed): the customer had no customerRef and an auth connection with resolveBillingCustomers matched no user, or several. */
+  ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope" | "identity_unresolved" | "identity_ambiguous") | null;
   /** The productIds, priceIds and skus the event named. */
   catalog: Record<string, Array<string>> | null;
 };
@@ -788,6 +794,36 @@ export type ApiKey = {
   revokedAt: string | null;
 };
 
+/** How POST /v1/widget/session verifies the end user's session JWT; null when not set. */
+export type TokenVerification = ({
+  preset?: string;
+  tenant?: string;
+  issuer: string;
+  /** hs256: verified with the sealed shared secret, which is never returned. */
+  keyType: "jwks" | "hs256";
+  jwksUrl?: string;
+  /** Checked when set; with none, the token audience is not checked. */
+  audience?: string;
+  maxAgeS?: number;
+  claims?: {
+    customerRef?: string;
+    email?: string;
+    emailVerified?: string;
+    name?: string;
+  };
+}) | null;
+
+export type WidgetSession = {
+  token: string;
+  expiresAt: string;
+  partner: {
+    id: string;
+    code: string | null;
+    /** Their tracked link; null when they have only a coupon. */
+    linkUrl: string | null;
+  };
+};
+
 export type AuthConnection = {
   id: string;
   provider: "clerk" | "supabase" | "workos" | "generic" | "atlas" | "custom";
@@ -805,9 +841,14 @@ export type AuthConnection = {
   appId?: string | null;
   autoEnrollUsers?: boolean;
   destinationUrl?: string | null;
+  /** Billing customers that arrive with no customerRef are resolved through this connection's users (a user-id metadata key, else exactly one verified email). */
+  resolveBillingCustomers?: boolean;
   signatureVersion?: "v1+v2" | "v2";
   /** True once signatureVersion is v2 or the connection has seen a v2 call. */
   requiresV2?: boolean;
+  tokenVerification?: TokenVerification;
+  /** Browser origins allowed to call POST /v1/widget/session. */
+  allowedOrigins?: Array<string>;
 };
 
 export type CreatedAuthConnection = {
@@ -829,6 +870,9 @@ export type CreatedAuthConnection = {
   signupsUrl?: string;
   eraseUrl?: string;
   exportUrl?: string;
+  tokenVerification?: TokenVerification;
+  /** Browser origins allowed to call POST /v1/widget/session. */
+  allowedOrigins?: Array<string>;
 };
 
 export type FraudCase = {
@@ -2260,6 +2304,141 @@ export type StripeCreditFailedEvent = {
   data: StripeCreditFailedEventData;
 };
 
+/** `data` of a `account_credit.applied` event: The account-credit rail credited a referrer (or a referee's store-credit reward) on their customer account in your billing system, with your credentials: a Stripe customer balance transaction or a Chargebee promotional credit. Sent for every provider; Stripe rows also send `stripe_credit.applied`. `transactionId` is the provider's record. */
+export type AccountCreditAppliedEventData = {
+  id: string;
+  programId: string;
+  /** The settled commission line, the reversal, or the referee reward this applies. */
+  sourceEventId: string;
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  commissionId: string | null;
+  partnerId: string | null;
+  customerRef: string | null;
+  /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
+  amountMinor: number;
+  /** The commission's currency. */
+  currency: string;
+  /** What was (or will be) sent to Stripe, in appliedCurrency: amountMinor converted at your FX rate when the balance currency differs. A debit uses its credit's currency and rate. */
+  appliedAmountMinor: number | null;
+  /** The Stripe customer balance currency the row is applied in. */
+  appliedCurrency: string | null;
+  status: "pending" | "applied" | "failed" | "no_customer" | "ambiguous_customer" | "fx_rate_missing" | "canceled";
+  attempts: number;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** The billing provider credited: `stripe` or `chargebee`. */
+  provider: string;
+  /** The billing connection whose credentials were used; null for Stripe on its own key path. */
+  connectionId: string | null;
+  /** The provider's customer id (Stripe `cus_…`, Chargebee customer id). */
+  customerId: string | null;
+  /** The provider's record of the credit or debit once applied (Stripe balance transaction, Chargebee promotional credit). */
+  transactionId: string | null;
+};
+
+/** An account credit was applied in your billing system: the `account_credit.applied` delivery body. */
+export type AccountCreditAppliedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "account_credit.applied";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: AccountCreditAppliedEventData;
+};
+
+/** `data` of a `account_credit.reversed` event: The account-credit rail debited back (part of) an applied credit after `commission.reversed`, in the credit's currency and at its rate. Stripe rows also send `stripe_credit.applied`. */
+export type AccountCreditReversedEventData = {
+  id: string;
+  programId: string;
+  /** The settled commission line, the reversal, or the referee reward this applies. */
+  sourceEventId: string;
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  commissionId: string | null;
+  partnerId: string | null;
+  customerRef: string | null;
+  /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
+  amountMinor: number;
+  /** The commission's currency. */
+  currency: string;
+  /** What was (or will be) sent to Stripe, in appliedCurrency: amountMinor converted at your FX rate when the balance currency differs. A debit uses its credit's currency and rate. */
+  appliedAmountMinor: number | null;
+  /** The Stripe customer balance currency the row is applied in. */
+  appliedCurrency: string | null;
+  status: "pending" | "applied" | "failed" | "no_customer" | "ambiguous_customer" | "fx_rate_missing" | "canceled";
+  attempts: number;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** The billing provider credited: `stripe` or `chargebee`. */
+  provider: string;
+  /** The billing connection whose credentials were used; null for Stripe on its own key path. */
+  connectionId: string | null;
+  /** The provider's customer id (Stripe `cus_…`, Chargebee customer id). */
+  customerId: string | null;
+  /** The provider's record of the credit or debit once applied (Stripe balance transaction, Chargebee promotional credit). */
+  transactionId: string | null;
+};
+
+/** An account credit was debited back after a reversal: the `account_credit.reversed` delivery body. */
+export type AccountCreditReversedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "account_credit.reversed";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: AccountCreditReversedEventData;
+};
+
+/** `data` of a `account_credit.failed` event: The account-credit rail stopped retrying a credit or debit after its last attempt: no customer matched (`no_customer`), several did (`ambiguous_customer`), no FX rate converts to the balance currency (`fx_rate_missing`) or the provider refused it (`failed`). `POST /v1/programs/{id}/credit-rail/requeue` gives the first three another round. Stripe rows also send `stripe_credit.failed`. */
+export type AccountCreditFailedEventData = {
+  id: string;
+  programId: string;
+  /** The settled commission line, the reversal, or the referee reward this applies. */
+  sourceEventId: string;
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  commissionId: string | null;
+  partnerId: string | null;
+  customerRef: string | null;
+  /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
+  amountMinor: number;
+  /** The commission's currency. */
+  currency: string;
+  /** What was (or will be) sent to Stripe, in appliedCurrency: amountMinor converted at your FX rate when the balance currency differs. A debit uses its credit's currency and rate. */
+  appliedAmountMinor: number | null;
+  /** The Stripe customer balance currency the row is applied in. */
+  appliedCurrency: string | null;
+  status: "pending" | "applied" | "failed" | "no_customer" | "ambiguous_customer" | "fx_rate_missing" | "canceled";
+  attempts: number;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** The billing provider credited: `stripe` or `chargebee`. */
+  provider: string;
+  /** The billing connection whose credentials were used; null for Stripe on its own key path. */
+  connectionId: string | null;
+  /** The provider's customer id (Stripe `cus_…`, Chargebee customer id). */
+  customerId: string | null;
+  /** The provider's record of the credit or debit once applied (Stripe balance transaction, Chargebee promotional credit). */
+  transactionId: string | null;
+};
+
+/** An account credit or debit gave up: the `account_credit.failed` delivery body. */
+export type AccountCreditFailedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "account_credit.failed";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: AccountCreditFailedEventData;
+};
+
 /** `data` of a `webhook_endpoint.recovered` event: Sent to your active endpoints, including the recovered one, when a delivery succeeds after the endpoint was failing. */
 export type WebhookEndpointRecoveredEventData = {
   endpointId: string;
@@ -3226,6 +3405,12 @@ export type PostBillingConnectionsIdRotateSecretResponse = {
   previousSecretExpiresAt: string;
 };
 
+export type DeleteBillingConnectionsIdResponse = {
+  ok: true;
+  /** Whether the provider webhooks registered with `autoRegister` were removed (only where credentials were kept: BigCommerce). Best effort. */
+  providerWebhookRemoved: boolean;
+};
+
 export type GetBillingEventsResponse = {
   object: "list";
   data: Array<BillingEvent>;
@@ -3992,18 +4177,25 @@ export type PostSandboxSimulateResponse = {
   reversals: number;
 };
 
-export type GetSandboxStripeFixturesResponse = {
+export type GetSandboxBillingFixturesResponse = {
   data: Array<{
+    provider: string;
+    /** Provider-neutral name, e.g. `payment.paid`. */
     event: string;
+    /** The provider's own event name (also accepted as `event`). */
+    native: string;
     /** The `overrides` fields this fixture uses. */
     overrides: Array<string>;
   }>;
 };
 
-export type PostSandboxStripeFixturesResponse = {
-  /** The Stripe event id sent (`evt_fixture_…`, or your `eventId`). */
+export type PostSandboxBillingFixturesResponse = {
+  /** The event id the connector dedupes on (`evt_fixture_…`, your `eventId`, or derived from the object, e.g. `shopify_order_…`). */
   eventId: string;
   event: string;
+  provider: string;
+  /** The provider's own event name. */
+  nativeEvent: string;
   /** Billing events the connector parsed from the fixture. */
   received: number;
   results: Array<{
@@ -4023,8 +4215,16 @@ export type PostSandboxStripeFixturesResponse = {
     currency: string;
     relatedCommissionId: string | null;
   }>;
-  /** The Stripe event that was processed. */
+  /** The provider payload that was processed (Recurly and BigCommerce: the enriched payload). */
   payload: GetOpenapiJsonResponse;
+};
+
+export type GetSandboxStripeFixturesResponse = {
+  data: Array<{
+    event: string;
+    /** The `overrides` fields this fixture uses. */
+    overrides: Array<string>;
+  }>;
 };
 
 export type PostImportProviderResponse = {
@@ -5224,8 +5424,12 @@ export type PatchAuthConnectionsIdResponse = {
   status: "active" | "paused";
   autoEnrollUsers?: boolean;
   destinationUrl?: string | null;
+  resolveBillingCustomers?: boolean;
   signatureVersion?: "v1+v2" | "v2";
   requiresV2?: boolean;
+  tokenVerification?: TokenVerification;
+  /** Browser origins allowed to call POST /v1/widget/session. */
+  allowedOrigins?: Array<string>;
 };
 
 export type PostAuthConnectionsIdRevokePreviousSecretResponse = {
@@ -5328,6 +5532,13 @@ export type PostAuthConnectionsIdUsersResponse = {
   }) | null;
   updated?: Array<string>;
   notes?: Array<string>;
+};
+
+export type GetAuthConnectionsIdUsersCustomerRefReferralResponse = {
+  partnerId: string;
+  code: string | null;
+  linkUrl: string | null;
+  enrolledAt: string;
 };
 
 export type PostAuthConnectionsIdSignalsResponse = {
@@ -7030,6 +7241,72 @@ export type GetProgramsIdStripeCreditsLogResponse = {
   next_cursor: string | null;
 };
 
+export type GetProgramsIdCreditRailResponse = {
+  programId: string;
+  /** The billing provider credits go to: the connection's provider, or `stripe` with no connection. */
+  provider: string;
+  connectionId: string | null;
+  enabled: boolean;
+  referrerMatch: "billing_link" | "metadata" | "email";
+  metadataKey: string | null;
+  refereeRewards: boolean;
+  balanceCurrency: string | null;
+  createCustomerIfMissing: {
+    metadata?: Record<string, string>;
+  } | null;
+  waitForCustomer: boolean;
+  /** Whether credentials are available: the connection's stored API credentials, or for Stripe its key path. */
+  credentialsConnected: boolean;
+  capabilities: {
+    /** The provider reports a customer balance currency; without it credits go in the commission's currency (or balanceCurrency). */
+    customerCurrency: boolean;
+    /** createCustomerIfMissing is available. */
+    createCustomer: boolean;
+  };
+};
+
+export type PostProgramsIdCreditRailRequeueResponse = {
+  requeued: number;
+  creditIds: Array<string>;
+};
+
+export type GetProgramsIdCreditRailLogResponse = {
+  object: "list";
+  data: Array<{
+    id: string;
+    programId: string;
+    /** The settled commission line, the reversal, or the referee reward this applies. */
+    sourceEventId: string;
+    kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+    commissionId: string | null;
+    partnerId: string | null;
+    customerRef: string | null;
+    /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
+    amountMinor: number;
+    /** The commission's currency. */
+    currency: string;
+    /** What was (or will be) sent to Stripe, in appliedCurrency: amountMinor converted at your FX rate when the balance currency differs. A debit uses its credit's currency and rate. */
+    appliedAmountMinor: number | null;
+    /** The Stripe customer balance currency the row is applied in. */
+    appliedCurrency: string | null;
+    status: "pending" | "applied" | "failed" | "no_customer" | "ambiguous_customer" | "fx_rate_missing" | "canceled";
+    attempts: number;
+    lastError: string | null;
+    createdAt: string;
+    updatedAt: string;
+    /** The billing provider credited: `stripe` or `chargebee`. */
+    provider: string;
+    /** The billing connection whose credentials were used; null for Stripe on its own key path. */
+    connectionId: string | null;
+    /** The provider's customer id (Stripe `cus_…`, Chargebee customer id). */
+    customerId: string | null;
+    /** The provider's record of the credit or debit once applied (Stripe balance transaction, Chargebee promotional credit). */
+    transactionId: string | null;
+  }>;
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
 export type PostWebhooksBillingConnectionIdResponse = {
   received: number;
   results: Array<{
@@ -7418,7 +7695,7 @@ export type PutOrgPortalAuthBody = {
   autoEnrollProgramId?: string | null;
 }) | ({
   adapter: "custom";
-  preset?: "clerk" | "supabase" | "firebase" | "auth0" | "cognito" | "stytch" | "kinde" | "okta" | "entra" | "google" | "keycloak" | "descope" | "fusionauth";
+  preset?: "clerk" | "supabase" | "firebase" | "auth0" | "cognito" | "stytch" | "kinde" | "okta" | "entra" | "google" | "keycloak" | "descope" | "workos" | "atlas" | "fusionauth";
   tenant?: string;
   issuer?: string;
   jwksUrl?: string;
@@ -8127,6 +8404,12 @@ export type PostWidgetTokensBody = {
   ttlSeconds?: number;
 };
 
+/** POST /v1/widget/session: Exchange a user session for a widget token */
+export type PostWidgetSessionBody = {
+  programId: string;
+};
+export type PostWidgetSessionResponse = WidgetSession;
+
 /** POST /v1/referrals/associate: Attribute a new customer */
 export type PostReferralsAssociateBody = {
   programId: string;
@@ -8388,6 +8671,8 @@ export type PostBillingConnectionsBody = {
     waitForCustomer?: boolean;
     programId: string;
   };
+  autoRegister?: boolean;
+  credentials?: Record<string, string | number | boolean>;
 };
 export type PostBillingConnectionsResponse = CreatedBillingConnection;
 
@@ -8411,6 +8696,7 @@ export type PutBillingConnectionsIdCredentialsBody = {
   apiToken?: string;
   storeHash?: string;
   region?: "us" | "eu";
+  site?: string;
 };
 
 /** GET /v1/billing/connections/{id}: Get a billing connection */
@@ -8432,7 +8718,6 @@ export type PatchBillingConnectionsIdBody = {
 export type PatchBillingConnectionsIdResponse = BillingConnection;
 
 /** DELETE /v1/billing/connections/{id}: Delete a billing connection */
-export type DeleteBillingConnectionsIdResponse = Ok;
 
 /** PUT /v1/billing/connections/{id}/value-mapping: Set the value mapping */
 export type PutBillingConnectionsIdValueMappingBody = {
@@ -9111,12 +9396,14 @@ export type PostSandboxSimulateBody = {
   months?: number;
 };
 
-/** GET /v1/sandbox/stripe-fixtures: List Stripe event fixtures */
+/** GET /v1/sandbox/billing-fixtures: List billing event fixtures */
+export type GetSandboxBillingFixturesQuery = {
+  provider?: "stripe" | "paddle" | "lemonsqueezy" | "polar" | "chargebee" | "shopify" | "generic" | "recurly" | "braintree" | "woocommerce" | "bigcommerce";
+};
 
-/** POST /v1/sandbox/stripe-fixtures: Send a Stripe event fixture */
-export type PostSandboxStripeFixturesBody = {
+/** POST /v1/sandbox/billing-fixtures: Send a billing event fixture */
+export type PostSandboxBillingFixturesBody = {
   connectionId: string;
-  event: "invoice.paid" | "charge.refunded" | "charge.dispute.created" | "customer.created" | "customer.updated" | "customer.subscription.created" | "customer.subscription.updated" | "customer.subscription.deleted";
   eventId?: string;
   overrides?: {
     customerRef?: string;
@@ -9124,9 +9411,32 @@ export type PostSandboxStripeFixturesBody = {
     currency?: string;
     metadata?: Record<string, string>;
     invoiceId?: string;
+    orderId?: string;
     chargeId?: string;
+    subscriptionId?: string;
   };
+  event: string;
 };
+
+/** GET /v1/sandbox/stripe-fixtures: List Stripe event fixtures */
+
+/** POST /v1/sandbox/stripe-fixtures: Send a Stripe event fixture */
+export type PostSandboxStripeFixturesBody = {
+  connectionId: string;
+  eventId?: string;
+  overrides?: {
+    customerRef?: string;
+    amountMinor?: number;
+    currency?: string;
+    metadata?: Record<string, string>;
+    invoiceId?: string;
+    orderId?: string;
+    chargeId?: string;
+    subscriptionId?: string;
+  };
+  event: "invoice.paid" | "charge.refunded" | "charge.dispute.created" | "customer.created" | "customer.updated" | "customer.subscription.created" | "customer.subscription.updated" | "customer.subscription.deleted";
+};
+export type PostSandboxStripeFixturesResponse = PostSandboxBillingFixturesResponse;
 
 /** POST /v1/import/{provider}: Import partners from another tool */
 export type PostImportProviderBody = {
@@ -10140,6 +10450,23 @@ export type PostAuthConnectionsBody = {
     programId?: string;
     autoEnroll?: string;
   };
+  tokenVerification?: {
+    preset?: "clerk" | "supabase" | "firebase" | "auth0" | "cognito" | "stytch" | "kinde" | "okta" | "entra" | "google" | "keycloak" | "descope" | "workos" | "atlas" | "fusionauth";
+    tenant?: string;
+    issuer?: string;
+    jwksUrl?: string;
+    keyType?: "jwks" | "hs256";
+    sharedSecret?: string;
+    audience?: string;
+    maxAgeS?: number;
+    claims?: {
+      customerRef?: string;
+      email?: string;
+      emailVerified?: string;
+      name?: string;
+    };
+  };
+  allowedOrigins?: Array<string>;
 };
 export type PostAuthConnectionsResponse = CreatedAuthConnection;
 
@@ -10167,7 +10494,25 @@ export type PatchAuthConnectionsIdBody = {
   name?: string;
   autoEnrollUsers?: boolean;
   destinationUrl?: string | null;
+  resolveBillingCustomers?: boolean;
   signatureVersion?: "v1+v2" | "v2";
+  tokenVerification?: ({
+    preset?: "clerk" | "supabase" | "firebase" | "auth0" | "cognito" | "stytch" | "kinde" | "okta" | "entra" | "google" | "keycloak" | "descope" | "workos" | "atlas" | "fusionauth";
+    tenant?: string;
+    issuer?: string;
+    jwksUrl?: string;
+    keyType?: "jwks" | "hs256";
+    sharedSecret?: string;
+    audience?: string;
+    maxAgeS?: number;
+    claims?: {
+      customerRef?: string;
+      email?: string;
+      emailVerified?: string;
+      name?: string;
+    };
+  }) | null;
+  allowedOrigins?: Array<string>;
 };
 
 /** DELETE /v1/auth/connections/{id}: Delete an auth connection */
@@ -10240,9 +10585,22 @@ export type PostAuthConnectionsIdAliasesBody = {
 export type PostAuthConnectionsIdUsersBody = {
   customerRef: string;
   email?: string;
+  emailVerified?: boolean;
   name?: string;
   status?: "active" | "suspended" | "deleted";
 };
+
+/** POST /v1/auth/connections/{id}/widget-tokens: Mint a widget token for a user (signed protocol) */
+export type PostAuthConnectionsIdWidgetTokensBody = {
+  customerRef: string;
+  email?: string;
+  emailVerified?: boolean;
+  displayName?: string;
+  ttlSeconds?: number;
+};
+export type PostAuthConnectionsIdWidgetTokensResponse = WidgetSession;
+
+/** GET /v1/auth/connections/{id}/users/{customerRef}/referral: Get a user's referral link (signed protocol) */
 
 /** POST /v1/auth/connections/{id}/signals: Report a user signal (signed protocol) */
 export type PostAuthConnectionsIdSignalsBody = {
@@ -10661,6 +11019,37 @@ export type GetProgramsIdStripeCreditsLogQuery = {
   "created[lte]"?: string;
 };
 
+/** GET /v1/programs/{id}/credit-rail: Get a program's account-credit rail settings */
+
+/** PUT /v1/programs/{id}/credit-rail: Set a program's account-credit rail settings */
+export type PutProgramsIdCreditRailBody = {
+  enabled: boolean;
+  referrerMatch?: "billing_link" | "metadata" | "email";
+  metadataKey?: string;
+  refereeRewards?: boolean;
+  balanceCurrency?: string | null;
+  createCustomerIfMissing?: {
+    metadata?: Record<string, string>;
+  } | null;
+  waitForCustomer?: boolean;
+  connectionId?: string | null;
+};
+export type PutProgramsIdCreditRailResponse = GetProgramsIdCreditRailResponse;
+
+/** POST /v1/programs/{id}/credit-rail/requeue: Requeue stuck account credits */
+export type PostProgramsIdCreditRailRequeueBody = {
+  creditIds?: Array<string>;
+};
+
+/** GET /v1/programs/{id}/credit-rail/log: List a program's account credits */
+export type GetProgramsIdCreditRailLogQuery = {
+  limit?: number;
+  starting_after?: string;
+  ending_before?: string;
+  "created[gte]"?: string;
+  "created[lte]"?: string;
+};
+
 /** POST /webhooks/billing/{connectionId}: Receive a billing provider webhook */
 export type PostWebhooksBillingConnectionIdBody = {
   /** Generic connections only. */
@@ -10849,6 +11238,12 @@ export type WebhookPayloads = {
   "stripe_credit.applied": StripeCreditAppliedEvent;
   /** A Stripe balance credit or debit gave up */
   "stripe_credit.failed": StripeCreditFailedEvent;
+  /** An account credit was applied in your billing system */
+  "account_credit.applied": AccountCreditAppliedEvent;
+  /** An account credit was debited back after a reversal */
+  "account_credit.reversed": AccountCreditReversedEvent;
+  /** An account credit or debit gave up */
+  "account_credit.failed": AccountCreditFailedEvent;
   /** A failing webhook endpoint recovered */
   "webhook_endpoint.recovered": WebhookEndpointRecoveredEvent;
 };
@@ -10978,6 +11373,7 @@ export const operations = {
   postV1Coupons: { method: 'POST', path: '/v1/coupons' },
   getV1Coupons: { method: 'GET', path: '/v1/coupons' },
   postV1WidgetTokens: { method: 'POST', path: '/v1/widget/tokens' },
+  postV1WidgetSession: { method: 'POST', path: '/v1/widget/session' },
   postV1ReferralsAssociate: { method: 'POST', path: '/v1/referrals/associate' },
   getV1Referrals: { method: 'GET', path: '/v1/referrals' },
   getV1ReferralsId: { method: 'GET', path: '/v1/referrals/{id}' },
@@ -11100,6 +11496,8 @@ export const operations = {
   postV1WebhookEndpointsIdReplay: { method: 'POST', path: '/v1/webhook-endpoints/{id}/replay' },
   postV1WebhookDeliveriesIdReplay: { method: 'POST', path: '/v1/webhook-deliveries/{id}/replay' },
   postV1SandboxSimulate: { method: 'POST', path: '/v1/sandbox/simulate' },
+  getV1SandboxBillingFixtures: { method: 'GET', path: '/v1/sandbox/billing-fixtures' },
+  postV1SandboxBillingFixtures: { method: 'POST', path: '/v1/sandbox/billing-fixtures' },
   getV1SandboxStripeFixtures: { method: 'GET', path: '/v1/sandbox/stripe-fixtures' },
   postV1SandboxStripeFixtures: { method: 'POST', path: '/v1/sandbox/stripe-fixtures' },
   postV1ImportProvider: { method: 'POST', path: '/v1/import/{provider}' },
@@ -11275,6 +11673,8 @@ export const operations = {
   postV1AuthConnectionsIdPing: { method: 'POST', path: '/v1/auth/connections/{id}/ping' },
   postV1AuthConnectionsIdAliases: { method: 'POST', path: '/v1/auth/connections/{id}/aliases' },
   postV1AuthConnectionsIdUsers: { method: 'POST', path: '/v1/auth/connections/{id}/users' },
+  postV1AuthConnectionsIdWidgetTokens: { method: 'POST', path: '/v1/auth/connections/{id}/widget-tokens' },
+  getV1AuthConnectionsIdUsersCustomerRefReferral: { method: 'GET', path: '/v1/auth/connections/{id}/users/{customerRef}/referral' },
   postV1AuthConnectionsIdSignals: { method: 'POST', path: '/v1/auth/connections/{id}/signals' },
   postV1AuthConnectionsInstall: { method: 'POST', path: '/v1/auth/connections/install' },
   getV1OauthAuthorize: { method: 'GET', path: '/v1/oauth/authorize' },
@@ -11346,6 +11746,10 @@ export const operations = {
   putV1ProgramsIdStripeCredits: { method: 'PUT', path: '/v1/programs/{id}/stripe-credits' },
   postV1ProgramsIdStripeCreditsRequeue: { method: 'POST', path: '/v1/programs/{id}/stripe-credits/requeue' },
   getV1ProgramsIdStripeCreditsLog: { method: 'GET', path: '/v1/programs/{id}/stripe-credits/log' },
+  getV1ProgramsIdCreditRail: { method: 'GET', path: '/v1/programs/{id}/credit-rail' },
+  putV1ProgramsIdCreditRail: { method: 'PUT', path: '/v1/programs/{id}/credit-rail' },
+  postV1ProgramsIdCreditRailRequeue: { method: 'POST', path: '/v1/programs/{id}/credit-rail/requeue' },
+  getV1ProgramsIdCreditRailLog: { method: 'GET', path: '/v1/programs/{id}/credit-rail/log' },
   postWebhooksBillingConnectionId: { method: 'POST', path: '/webhooks/billing/{connectionId}' },
   postWebhooksAuthConnectionId: { method: 'POST', path: '/webhooks/auth/{connectionId}' },
   postWebhooksSsoProvider: { method: 'POST', path: '/webhooks/sso/{provider}' },

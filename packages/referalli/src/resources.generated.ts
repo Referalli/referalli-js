@@ -50,6 +50,7 @@ export const operations = {
   getAuditLogs: { method: "GET", path: "/v1/audit-logs", pathParams: [], query: ["actor","actorType","action","subjectType","subjectId","created[gte]","created[lte]","limit","starting_after","ending_before"], body: false, kind: "list" },
   getAuthConnections: { method: "GET", path: "/v1/auth/connections", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getAuthConnectionsIdExport: { method: "GET", path: "/v1/auth/connections/{id}/export", pathParams: ["id"], query: ["customerRef"], body: false, kind: "json", public: true },
+  getAuthConnectionsIdUsersCustomerRefReferral: { method: "GET", path: "/v1/auth/connections/{id}/users/{customerRef}/referral", pathParams: ["id","customerRef"], query: [], body: false, kind: "json", public: true },
   getAuthConnectionsProviders: { method: "GET", path: "/v1/auth/connections/providers", pathParams: [], query: [], body: false, kind: "json" },
   getAuthProviders: { method: "GET", path: "/v1/auth/providers", pathParams: [], query: [], body: false, kind: "json", public: true },
   getBillingConnections: { method: "GET", path: "/v1/billing/connections", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -185,6 +186,8 @@ export const operations = {
   getPrograms: { method: "GET", path: "/v1/programs", pathParams: [], query: ["slug","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsId: { method: "GET", path: "/v1/programs/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdAutopricing: { method: "GET", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProgramsIdCreditRail: { method: "GET", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProgramsIdCreditRailLog: { method: "GET", path: "/v1/programs/{id}/credit-rail/log", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdEnrollments: { method: "GET", path: "/v1/programs/{id}/enrollments", pathParams: ["id"], query: ["status","partnerId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdGraph: { method: "GET", path: "/v1/programs/{id}/graph", pathParams: ["id"], query: ["root","depth"], body: false, kind: "json" },
   getProgramsIdGroups: { method: "GET", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: ["includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -214,6 +217,7 @@ export const operations = {
   getRoiPatternsPattern: { method: "GET", path: "/v1/roi/patterns/{pattern}", pathParams: ["pattern"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getRoiSummary: { method: "GET", path: "/v1/roi/summary", pathParams: [], query: ["from","to","programId","partnerId","windowDays","currency","format","model","includeProjection"], body: false, kind: "json" },
   getRoiTraceCustomerRef: { method: "GET", path: "/v1/roi/trace/{customerRef}", pathParams: ["customerRef"], query: ["windowDays","format"], body: false, kind: "json" },
+  getSandboxBillingFixtures: { method: "GET", path: "/v1/sandbox/billing-fixtures", pathParams: [], query: ["provider"], body: false, kind: "json" },
   getSandboxStripeFixtures: { method: "GET", path: "/v1/sandbox/stripe-fixtures", pathParams: [], query: [], body: false, kind: "json" },
   getSetupStatus: { method: "GET", path: "/v1/setup/status", pathParams: [], query: [], body: false, kind: "json" },
   getStatus: { method: "GET", path: "/v1/status", pathParams: [], query: [], body: false, kind: "json", public: true },
@@ -279,6 +283,7 @@ export const operations = {
   postAuthConnectionsIdSignals: { method: "POST", path: "/v1/auth/connections/{id}/signals", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   postAuthConnectionsIdSignups: { method: "POST", path: "/v1/auth/connections/{id}/signups", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   postAuthConnectionsIdUsers: { method: "POST", path: "/v1/auth/connections/{id}/users", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
+  postAuthConnectionsIdWidgetTokens: { method: "POST", path: "/v1/auth/connections/{id}/widget-tokens", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   postAuthConnectionsInstall: { method: "POST", path: "/v1/auth/connections/install", pathParams: [], query: [], body: true, kind: "json" },
   postAuthLogout: { method: "POST", path: "/v1/auth/logout", pathParams: [], query: [], body: false, kind: "json", public: true },
   postBillingActivate: { method: "POST", path: "/v1/billing/activate", pathParams: [], query: [], body: true, kind: "json" },
@@ -388,6 +393,7 @@ export const operations = {
   postPrograms: { method: "POST", path: "/v1/programs", pathParams: [], query: [], body: true, kind: "json" },
   postProgramsIdApplyLeveling: { method: "POST", path: "/v1/programs/{id}/apply-leveling", pathParams: ["id"], query: [], body: false, kind: "json" },
   postProgramsIdAutopriceRun: { method: "POST", path: "/v1/programs/{id}/autoprice/run", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postProgramsIdCreditRailRequeue: { method: "POST", path: "/v1/programs/{id}/credit-rail/requeue", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdEnrollments: { method: "POST", path: "/v1/programs/{id}/enrollments", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdEnrollmentsEnrollmentIdApprove: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/approve", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdEnrollmentsEnrollmentIdReject: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/reject", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
@@ -406,6 +412,7 @@ export const operations = {
   postRewardsIdRedeem: { method: "POST", path: "/v1/rewards/{id}/redeem", pathParams: ["id"], query: [], body: true, kind: "json" },
   postRewardsRedeemByCode: { method: "POST", path: "/v1/rewards/redeem-by-code", pathParams: [], query: [], body: true, kind: "json" },
   postRoiPatternsPatternReview: { method: "POST", path: "/v1/roi/patterns/{pattern}/review", pathParams: ["pattern"], query: [], body: true, kind: "json" },
+  postSandboxBillingFixtures: { method: "POST", path: "/v1/sandbox/billing-fixtures", pathParams: [], query: [], body: true, kind: "json" },
   postSandboxSimulate: { method: "POST", path: "/v1/sandbox/simulate", pathParams: [], query: [], body: true, kind: "json" },
   postSandboxStripeFixtures: { method: "POST", path: "/v1/sandbox/stripe-fixtures", pathParams: [], query: [], body: true, kind: "json" },
   postSupportAppsAdapterTest: { method: "POST", path: "/v1/support/apps/{adapter}/test", pathParams: ["adapter"], query: [], body: true, kind: "json" },
@@ -423,6 +430,7 @@ export const operations = {
   postWebhookEndpoints: { method: "POST", path: "/v1/webhook-endpoints", pathParams: [], query: [], body: true, kind: "json" },
   postWebhookEndpointsIdReplay: { method: "POST", path: "/v1/webhook-endpoints/{id}/replay", pathParams: ["id"], query: ["since"], body: false, kind: "json" },
   postWebhookEndpointsIdRotateSecret: { method: "POST", path: "/v1/webhook-endpoints/{id}/rotate-secret", pathParams: ["id"], query: [], body: false, kind: "json" },
+  postWidgetSession: { method: "POST", path: "/v1/widget/session", pathParams: [], query: [], body: true, kind: "json", public: true },
   postWidgetTokens: { method: "POST", path: "/v1/widget/tokens", pathParams: [], query: [], body: true, kind: "json" },
   postZapierConversions: { method: "POST", path: "/v1/zapier/conversions", pathParams: [], query: [], body: true, kind: "json" },
   postZapierHooks: { method: "POST", path: "/v1/zapier/hooks", pathParams: [], query: [], body: true, kind: "json" },
@@ -462,6 +470,7 @@ export const operations = {
   putProfitabilityProductsProductRef: { method: "PUT", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: true, kind: "json" },
   putProfitabilitySettings: { method: "PUT", path: "/v1/profitability/settings", pathParams: [], query: [], body: true, kind: "json" },
   putProgramsIdAutopricing: { method: "PUT", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: true, kind: "json" },
+  putProgramsIdCreditRail: { method: "PUT", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdIncrementality: { method: "PUT", path: "/v1/programs/{id}/incrementality", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdNegotiationPolicy: { method: "PUT", path: "/v1/programs/{id}/negotiation-policy", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdPartnersPartnerIdGroup: { method: "PUT", path: "/v1/programs/{id}/partners/{partnerId}/group", pathParams: ["id","partnerId"], query: [], body: true, kind: "json" },
@@ -610,12 +619,18 @@ export function buildResources(t: Transport) {
         signals: (id: string, body: T.PostAuthConnectionsIdSignalsBody, options?: RequestOptions): Promise<T.PostAuthConnectionsIdSignalsResponse> => t.op("postAuthConnectionsIdSignals", { path: { id }, body }, options),
         /** Attribute a new user (signed protocol). POST /v1/auth/connections/{id}/signups */
         signups: (id: string, body: T.PostAuthConnectionsIdSignupsBody, options?: RequestOptions): Promise<T.PostAuthConnectionsIdSignupsResponse> => t.op("postAuthConnectionsIdSignups", { path: { id }, body }, options),
-        /** Update a user (signed protocol). POST /v1/auth/connections/{id}/users */
-        users: (id: string, body: T.PostAuthConnectionsIdUsersBody, options?: RequestOptions): Promise<T.PostAuthConnectionsIdUsersResponse> => t.op("postAuthConnectionsIdUsers", { path: { id }, body }, options),
+        /** Mint a widget token for a user (signed protocol). POST /v1/auth/connections/{id}/widget-tokens */
+        widgetTokens: (id: string, body: T.PostAuthConnectionsIdWidgetTokensBody, options?: RequestOptions): Promise<T.PostAuthConnectionsIdWidgetTokensResponse> => t.op("postAuthConnectionsIdWidgetTokens", { path: { id }, body }, options),
         /** Approve a one-click install. POST /v1/auth/connections/install */
         install: (body: T.PostAuthConnectionsInstallBody, options?: RequestOptions): Promise<T.PostAuthConnectionsInstallResponse> => t.op("postAuthConnectionsInstall", { body }, options),
         /** Set a vendor-issued secret. PUT /v1/auth/connections/{id}/secret */
         updateSecret: (id: string, body: T.PutAuthConnectionsIdSecretBody, options?: RequestOptions): Promise<T.PutAuthConnectionsIdSecretResponse> => t.op("putAuthConnectionsIdSecret", { path: { id }, body }, options),
+        users: {
+          /** Get a user's referral link (signed protocol). GET /v1/auth/connections/{id}/users/{customerRef}/referral */
+          referral: (id: string, customerRef: string, options?: RequestOptions): Promise<T.GetAuthConnectionsIdUsersCustomerRefReferralResponse> => t.op("getAuthConnectionsIdUsersCustomerRefReferral", { path: { id, customerRef } }, options),
+          /** Update a user (signed protocol). POST /v1/auth/connections/{id}/users */
+          create: (id: string, body: T.PostAuthConnectionsIdUsersBody, options?: RequestOptions): Promise<T.PostAuthConnectionsIdUsersResponse> => t.op("postAuthConnectionsIdUsers", { path: { id }, body }, options),
+        },
       },
     },
     billing: {
@@ -1475,6 +1490,16 @@ export function buildResources(t: Transport) {
         /** Configure autopricing. PUT /v1/programs/{id}/autopricing */
         update: (id: string, body: T.PutProgramsIdAutopricingBody, options?: RequestOptions): Promise<T.PutProgramsIdAutopricingResponse> => t.op("putProgramsIdAutopricing", { path: { id }, body }, options),
       },
+      creditRail: {
+        /** Get a program's account-credit rail settings. GET /v1/programs/{id}/credit-rail */
+        retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdCreditRailResponse> => t.op("getProgramsIdCreditRail", { path: { id } }, options),
+        /** List a program's account credits. GET /v1/programs/{id}/credit-rail/log */
+        log: (id: string, query?: (T.GetProgramsIdCreditRailLogQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdCreditRailLogResponse['data'][number], T.GetProgramsIdCreditRailLogResponse> => t.list("getProgramsIdCreditRailLog", { path: { id }, query }, options),
+        /** Requeue stuck account credits. POST /v1/programs/{id}/credit-rail/requeue */
+        requeue: (id: string, body: T.PostProgramsIdCreditRailRequeueBody, options?: RequestOptions): Promise<T.PostProgramsIdCreditRailRequeueResponse> => t.op("postProgramsIdCreditRailRequeue", { path: { id }, body }, options),
+        /** Set a program's account-credit rail settings. PUT /v1/programs/{id}/credit-rail */
+        update: (id: string, body: T.PutProgramsIdCreditRailBody, options?: RequestOptions): Promise<T.PutProgramsIdCreditRailResponse> => t.op("putProgramsIdCreditRail", { path: { id }, body }, options),
+      },
       enrollments: {
         /** List program enrollments. GET /v1/programs/{id}/enrollments */
         list: (id: string, query?: (T.GetProgramsIdEnrollmentsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdEnrollmentsResponse['data'][number], T.GetProgramsIdEnrollmentsResponse> => t.list("getProgramsIdEnrollments", { path: { id }, query }, options),
@@ -1617,6 +1642,12 @@ export function buildResources(t: Transport) {
     sandbox: {
       /** Simulate billing history. POST /v1/sandbox/simulate */
       simulate: (body: T.PostSandboxSimulateBody, options?: RequestOptions): Promise<T.PostSandboxSimulateResponse> => t.op("postSandboxSimulate", { body }, options),
+      billingFixtures: {
+        /** List billing event fixtures. GET /v1/sandbox/billing-fixtures */
+        retrieve: (query?: (T.GetSandboxBillingFixturesQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetSandboxBillingFixturesResponse> => t.op("getSandboxBillingFixtures", { query }, options),
+        /** Send a billing event fixture. POST /v1/sandbox/billing-fixtures */
+        create: (body: T.PostSandboxBillingFixturesBody, options?: RequestOptions): Promise<T.PostSandboxBillingFixturesResponse> => t.op("postSandboxBillingFixtures", { body }, options),
+      },
       stripeFixtures: {
         /** List Stripe event fixtures. GET /v1/sandbox/stripe-fixtures */
         retrieve: (options?: RequestOptions): Promise<T.GetSandboxStripeFixturesResponse> => t.op("getSandboxStripeFixtures", {  }, options),
@@ -1755,6 +1786,8 @@ export function buildResources(t: Transport) {
       rotateSecret: (id: string, options?: RequestOptions): Promise<T.PostWebhookEndpointsIdRotateSecretResponse> => t.op("postWebhookEndpointsIdRotateSecret", { path: { id } }, options),
     },
     widget: {
+      /** Exchange a user session for a widget token. POST /v1/widget/session */
+      session: (body: T.PostWidgetSessionBody, options?: RequestOptions): Promise<T.PostWidgetSessionResponse> => t.op("postWidgetSession", { body }, options),
       /** Mint a referral widget token. POST /v1/widget/tokens */
       tokens: (body: T.PostWidgetTokensBody, options?: RequestOptions): Promise<T.PostWidgetTokensResponse> => t.op("postWidgetTokens", { body }, options),
     },
