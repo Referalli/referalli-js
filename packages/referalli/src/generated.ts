@@ -2041,6 +2041,59 @@ export type PrivacyRequestCompletedEvent = {
   data: PrivacyRequestCompletedEventData;
 };
 
+/** `data` of a `api_key.expiring` event: Sent 30, 7 and 1 days before an API key with an expiry stops working (once each; a key first seen inside a window gets only that notice). Rotate it with `POST /v1/api-keys/{id}/rotate` or extend it with `PATCH /v1/api-keys/{id}`. A key rotated out (in its grace period) gets no notice. */
+export type ApiKeyExpiringEventData = {
+  keyId: string;
+  name: string;
+  /** The first 12 characters of the secret, as listed. */
+  prefix: string;
+  owner: string | null;
+  expiresAt: string;
+  /** Which notice this is. */
+  daysBefore: 30 | 7 | 1;
+};
+
+/** An API key expires soon: the `api_key.expiring` delivery body. */
+export type ApiKeyExpiringEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "api_key.expiring";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: ApiKeyExpiringEventData;
+};
+
+/** `data` of a `fx.rates_updated` event: Sent when the rates your cross-currency payouts convert at change: a rate recorded with `POST /v1/fx-rates` (`recorded`), new daily feed rates (`feed_synced`, once per sync that inserted any), or a manual rate cleared back to the feed (`override_cleared`, `rate` null). Read the current rates with `GET /v1/fx-rates`. Org-wide, so program-scoped webhook endpoints never get it. */
+export type FxRatesUpdatedEventData = {
+  reason: "recorded" | "feed_synced" | "override_cleared";
+  /** `manual` for a recorded or cleared rate, or the feed (`ecb`). */
+  source: string;
+  /** When the new rates take effect; null for a cleared override. */
+  effectiveAt: string | null;
+  pairs: Array<{
+    /** Lowercase ISO 4217 code. */
+    base: string;
+    /** Lowercase ISO 4217 code. */
+    quote: string;
+    /** Exact decimal string; null when the override was cleared. */
+    rate: string | null;
+  }>;
+};
+
+/** The org's FX rates changed: the `fx.rates_updated` delivery body. */
+export type FxRatesUpdatedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "fx.rates_updated";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: FxRatesUpdatedEventData;
+};
+
 /** `data` of a `webhook_endpoint.disabled` event: Sent to your other active endpoints when one is disabled after every delivery failed for 72 hours (or 1000 attempts in a row). */
 export type WebhookEndpointDisabledEventData = {
   endpointId: string;
@@ -2098,9 +2151,14 @@ export type StripeCreditAppliedEventData = {
   customerRef: string | null;
   /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
   amountMinor: number;
+  /** The commission's currency. */
   currency: string;
+  /** What was (or will be) sent to Stripe, in appliedCurrency: amountMinor converted at your FX rate when the balance currency differs. A debit uses its credit's currency and rate. */
+  appliedAmountMinor: number | null;
+  /** The Stripe customer balance currency the row is applied in. */
+  appliedCurrency: string | null;
   stripeCustomerId: string | null;
-  status: "pending" | "applied" | "failed" | "no_customer" | "canceled";
+  status: "pending" | "applied" | "failed" | "no_customer" | "ambiguous_customer" | "fx_rate_missing" | "canceled";
   attempts: number;
   stripeBalanceTransactionId: string | null;
   lastError: string | null;
@@ -2120,7 +2178,7 @@ export type StripeCreditAppliedEvent = {
   data: StripeCreditAppliedEventData;
 };
 
-/** `data` of a `stripe_credit.failed` event: The Stripe balance credit rail stopped retrying a credit or debit after its last attempt: no Stripe customer matched (`no_customer`) or Stripe refused it (`failed`). `lastError` says why. */
+/** `data` of a `stripe_credit.failed` event: The Stripe balance credit rail stopped retrying a credit or debit after its last attempt: no Stripe customer matched (`no_customer`), several did (`ambiguous_customer`), no FX rate converts to the balance currency (`fx_rate_missing`) or Stripe refused it (`failed`). `POST /v1/programs/{id}/stripe-credits/requeue` gives the first three another round. `lastError` says why. */
 export type StripeCreditFailedEventData = {
   id: string;
   programId: string;
@@ -2132,9 +2190,14 @@ export type StripeCreditFailedEventData = {
   customerRef: string | null;
   /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
   amountMinor: number;
+  /** The commission's currency. */
   currency: string;
+  /** What was (or will be) sent to Stripe, in appliedCurrency: amountMinor converted at your FX rate when the balance currency differs. A debit uses its credit's currency and rate. */
+  appliedAmountMinor: number | null;
+  /** The Stripe customer balance currency the row is applied in. */
+  appliedCurrency: string | null;
   stripeCustomerId: string | null;
-  status: "pending" | "applied" | "failed" | "no_customer" | "canceled";
+  status: "pending" | "applied" | "failed" | "no_customer" | "ambiguous_customer" | "fx_rate_missing" | "canceled";
   attempts: number;
   stripeBalanceTransactionId: string | null;
   lastError: string | null;
@@ -2693,6 +2756,13 @@ export type PostProgramsIdReferrersResponse = {
   linkUrl: string | null;
 };
 
+export type PostProgramsIdEnrollmentsResponse = Enrollment & ({
+  /** With `mint`: their referral code in the program. */
+  code?: string;
+  /** With `mint`: their tracked link; null when only a coupon was minted. */
+  linkUrl?: string | null;
+});
+
 export type GetProgramsIdEnrollmentsResponse = {
   object: "list";
   data: Array<{
@@ -2720,6 +2790,13 @@ export type PostProgramsIdEnrollmentsEnrollmentIdRejectResponse = {
   id: string;
   status: "rejected";
 };
+
+export type PostPartnersResponse = Partner & ({
+  /** With `upsert`, when an existing partner was returned: what matched it. */
+  matchedBy?: "email" | "externalRef";
+  /** With `upsert`: true when the partner's own externalRef (another product's) was kept and yours was not applied to it (it is on their enrollment). */
+  externalRefKept?: boolean;
+});
 
 export type GetPartnersResponse = {
   object: "list";
@@ -2775,6 +2852,15 @@ export type PatchApiKeysIdResponse = {
   owner: string | null;
   expiresAt: string | null;
   programIds: Array<string> | null;
+};
+
+export type PostApiKeysIdRotateResponse = IssuedApiKey & {
+  /** The key this one replaces. */
+  rotatedFrom: {
+    id: string;
+    /** When the old key stops working (the end of the grace period). */
+    expiresAt: string;
+  };
 };
 
 export type DeleteApiKeysIdResponse = {
@@ -3791,6 +3877,7 @@ export type PostWebhookEndpointsResponse = {
   programIds: Array<string> | null;
   legacySignature: boolean;
   alertContacts: Array<string>;
+  status: "active" | "paused";
   /** Returned only here. whsec_ + base64 key (Standard Webhooks). */
   secret: string;
 };
@@ -3858,6 +3945,41 @@ export type PostSandboxSimulateResponse = {
   conversions: number;
   linesCreated: number;
   reversals: number;
+};
+
+export type GetSandboxStripeFixturesResponse = {
+  data: Array<{
+    event: string;
+    /** The `overrides` fields this fixture uses. */
+    overrides: Array<string>;
+  }>;
+};
+
+export type PostSandboxStripeFixturesResponse = {
+  /** The Stripe event id sent (`evt_fixture_…`, or your `eventId`). */
+  eventId: string;
+  event: string;
+  /** Billing events the connector parsed from the fixture. */
+  received: number;
+  results: Array<{
+    duplicate: boolean;
+    billingEventId: string | null;
+    conversions: number;
+    linesCreated: number;
+    reversals: number;
+    ignored?: string;
+  }>;
+  /** Commission events the fixture created (earned, reversed…). */
+  commissions: Array<{
+    id: string;
+    type: string;
+    partnerId: string;
+    amountMinor: number;
+    currency: string;
+    relatedCommissionId: string | null;
+  }>;
+  /** The Stripe event that was processed. */
+  payload: GetOpenapiJsonResponse;
 };
 
 export type PostImportProviderResponse = {
@@ -6815,7 +6937,19 @@ export type GetProgramsIdStripeCreditsResponse = {
   referrerMatch: "billing_link" | "metadata" | "email";
   metadataKey: string | null;
   refereeRewards: boolean;
+  /** Currency every credit is sent in; null = the Stripe customer's balance currency, else the commission's. */
+  balanceCurrency: string | null;
+  /** When set, a referrer no Stripe customer matches gets one created with this extra metadata. */
+  createCustomerIfMissing: {
+    metadata?: Record<string, string>;
+  } | null;
   keyConnected: boolean;
+  hasOwnKey: boolean;
+};
+
+export type PostProgramsIdStripeCreditsRequeueResponse = {
+  requeued: number;
+  creditIds: Array<string>;
 };
 
 export type GetProgramsIdStripeCreditsLogResponse = {
@@ -6831,9 +6965,14 @@ export type GetProgramsIdStripeCreditsLogResponse = {
     customerRef: string | null;
     /** Positive, integer minor units. Credits are sent to Stripe as a negative amount, debits as positive. */
     amountMinor: number;
+    /** The commission's currency. */
     currency: string;
+    /** What was (or will be) sent to Stripe, in appliedCurrency: amountMinor converted at your FX rate when the balance currency differs. A debit uses its credit's currency and rate. */
+    appliedAmountMinor: number | null;
+    /** The Stripe customer balance currency the row is applied in. */
+    appliedCurrency: string | null;
     stripeCustomerId: string | null;
-    status: "pending" | "applied" | "failed" | "no_customer" | "canceled";
+    status: "pending" | "applied" | "failed" | "no_customer" | "ambiguous_customer" | "fx_rate_missing" | "canceled";
     attempts: number;
     stripeBalanceTransactionId: string | null;
     lastError: string | null;
@@ -7684,8 +7823,13 @@ export type PostProgramsIdReferrersBody = {
 export type PostProgramsIdEnrollmentsBody = {
   partnerId: string;
   externalRef?: string;
+  mint?: {
+    coupon?: boolean;
+    link?: {
+      destinationUrl?: string;
+    };
+  };
 };
-export type PostProgramsIdEnrollmentsResponse = Enrollment;
 
 /** GET /v1/programs/{id}/enrollments: List program enrollments */
 export type GetProgramsIdEnrollmentsQuery = {
@@ -7711,12 +7855,12 @@ export type PostPartnersBody = {
   externalRef?: string;
   upsert?: boolean;
 };
-export type PostPartnersResponse = Partner;
 
 /** GET /v1/partners: List partners */
 export type GetPartnersQuery = {
   email?: string;
   externalRef?: string;
+  programId?: string;
   status?: "active" | "suspended" | "banned" | "archived";
   includeArchived?: "true" | "false";
   limit?: number;
@@ -7762,7 +7906,7 @@ export type GetProgramsIdGraphQuery = {
 /** POST /v1/api-keys: Create an API key */
 export type PostApiKeysBody = {
   name: string;
-  scopes?: Array<"admin" | "full" | "read" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
+  scopes?: Array<"admin" | "api_keys:mint" | "full" | "read" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
   publishable?: boolean;
   allowedOrigins?: Array<string>;
   apiVersion?: string;
@@ -7774,7 +7918,7 @@ export type PostApiKeysBody = {
 
 /** GET /v1/api-keys: List API keys */
 export type GetApiKeysQuery = {
-  mode?: "live" | "test";
+  mode?: "live" | "test" | "both";
   owner?: string;
   limit?: number;
   starting_after?: string;
@@ -7798,6 +7942,11 @@ export type PatchApiKeysIdBody = {
 export type DeleteApiKeysIdQuery = {
   cascade?: "true" | "false";
   pair?: "true" | "false";
+};
+
+/** POST /v1/api-keys/{id}/rotate: Rotate an API key */
+export type PostApiKeysIdRotateBody = {
+  graceHours?: number;
 };
 
 /** GET /v1/audit-logs: List audit log entries */
@@ -8342,6 +8491,8 @@ export type PostFxRatesResponse = FxRate;
 export type GetFxRatesQuery = {
   base?: string;
   quote?: string;
+  "effectiveAt[gte]"?: string;
+  "effectiveAt[lte]"?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -8826,10 +8977,12 @@ export type PostWebhookEndpointsBody = {
   legacySignature?: boolean;
   programIds?: Array<string> | null;
   alertContacts?: Array<string>;
+  status?: "active" | "paused";
 };
 
 /** GET /v1/webhook-endpoints: List webhook endpoints */
 export type GetWebhookEndpointsQuery = {
+  programId?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -8891,6 +9044,23 @@ export type PostSandboxSimulateBody = {
   scenario?: "subscription" | "refund" | "churn";
   priceMinor?: number;
   months?: number;
+};
+
+/** GET /v1/sandbox/stripe-fixtures: List Stripe event fixtures */
+
+/** POST /v1/sandbox/stripe-fixtures: Send a Stripe event fixture */
+export type PostSandboxStripeFixturesBody = {
+  connectionId: string;
+  event: "invoice.paid" | "charge.refunded" | "charge.dispute.created" | "customer.created" | "customer.updated" | "customer.subscription.created" | "customer.subscription.updated" | "customer.subscription.deleted";
+  eventId?: string;
+  overrides?: {
+    customerRef?: string;
+    amountMinor?: number;
+    currency?: string;
+    metadata?: Record<string, string>;
+    invoiceId?: string;
+    chargeId?: string;
+  };
 };
 
 /** POST /v1/import/{provider}: Import partners from another tool */
@@ -10403,8 +10573,18 @@ export type PutProgramsIdStripeCreditsBody = {
   referrerMatch?: "billing_link" | "metadata" | "email";
   metadataKey?: string;
   refereeRewards?: boolean;
+  balanceCurrency?: string | null;
+  createCustomerIfMissing?: {
+    metadata?: Record<string, string>;
+  } | null;
+  secretKey?: string | null;
 };
 export type PutProgramsIdStripeCreditsResponse = GetProgramsIdStripeCreditsResponse;
+
+/** POST /v1/programs/{id}/stripe-credits/requeue: Requeue stuck Stripe balance credits */
+export type PostProgramsIdStripeCreditsRequeueBody = {
+  creditIds?: Array<string>;
+};
 
 /** GET /v1/programs/{id}/stripe-credits/log: List a program's Stripe balance credits */
 export type GetProgramsIdStripeCreditsLogQuery = {
@@ -10591,6 +10771,10 @@ export type WebhookPayloads = {
   "dispute.resolved": DisputeResolvedEvent;
   /** A data-subject request finished */
   "privacy.request_completed": PrivacyRequestCompletedEvent;
+  /** An API key expires soon */
+  "api_key.expiring": ApiKeyExpiringEvent;
+  /** The org's FX rates changed */
+  "fx.rates_updated": FxRatesUpdatedEvent;
   /** A failing webhook endpoint was disabled */
   "webhook_endpoint.disabled": WebhookEndpointDisabledEvent;
   /** A webhook endpoint keeps failing */
@@ -10706,6 +10890,7 @@ export const operations = {
   getV1ApiKeysId: { method: 'GET', path: '/v1/api-keys/{id}' },
   patchV1ApiKeysId: { method: 'PATCH', path: '/v1/api-keys/{id}' },
   deleteV1ApiKeysId: { method: 'DELETE', path: '/v1/api-keys/{id}' },
+  postV1ApiKeysIdRotate: { method: 'POST', path: '/v1/api-keys/{id}/rotate' },
   getV1AuditLogs: { method: 'GET', path: '/v1/audit-logs' },
   getV1TestClock: { method: 'GET', path: '/v1/test_clock' },
   postV1TestClockAdvance: { method: 'POST', path: '/v1/test_clock/advance' },
@@ -10848,6 +11033,8 @@ export const operations = {
   postV1WebhookEndpointsIdReplay: { method: 'POST', path: '/v1/webhook-endpoints/{id}/replay' },
   postV1WebhookDeliveriesIdReplay: { method: 'POST', path: '/v1/webhook-deliveries/{id}/replay' },
   postV1SandboxSimulate: { method: 'POST', path: '/v1/sandbox/simulate' },
+  getV1SandboxStripeFixtures: { method: 'GET', path: '/v1/sandbox/stripe-fixtures' },
+  postV1SandboxStripeFixtures: { method: 'POST', path: '/v1/sandbox/stripe-fixtures' },
   postV1ImportProvider: { method: 'POST', path: '/v1/import/{provider}' },
   getV1OpenapiJson: { method: 'GET', path: '/v1/openapi.json' },
   getV1OpenapiYaml: { method: 'GET', path: '/v1/openapi.yaml' },
@@ -11090,6 +11277,7 @@ export const operations = {
   deleteV1StripeCreditsConnection: { method: 'DELETE', path: '/v1/stripe-credits/connection' },
   getV1ProgramsIdStripeCredits: { method: 'GET', path: '/v1/programs/{id}/stripe-credits' },
   putV1ProgramsIdStripeCredits: { method: 'PUT', path: '/v1/programs/{id}/stripe-credits' },
+  postV1ProgramsIdStripeCreditsRequeue: { method: 'POST', path: '/v1/programs/{id}/stripe-credits/requeue' },
   getV1ProgramsIdStripeCreditsLog: { method: 'GET', path: '/v1/programs/{id}/stripe-credits/log' },
   postWebhooksBillingConnectionId: { method: 'POST', path: '/webhooks/billing/{connectionId}' },
   postWebhooksAuthConnectionId: { method: 'POST', path: '/webhooks/auth/{connectionId}' },

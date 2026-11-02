@@ -83,7 +83,7 @@ export const operations = {
   getExportAccounting: { method: "GET", path: "/v1/export/accounting", pathParams: [], query: ["format","year"], body: false, kind: "text" },
   getExportFull: { method: "GET", path: "/v1/export/full", pathParams: [], query: [], body: false, kind: "text" },
   getFraudCases: { method: "GET", path: "/v1/fraud/cases", pathParams: [], query: ["status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
-  getFxRates: { method: "GET", path: "/v1/fx-rates", pathParams: [], query: ["base","quote","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getFxRates: { method: "GET", path: "/v1/fx-rates", pathParams: [], query: ["base","quote","effectiveAt[gte]","effectiveAt[lte]","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getGraphql: { method: "GET", path: "/v1/graphql", pathParams: [], query: [], body: false, kind: "json" },
   getHealth: { method: "GET", path: "/v1/health", pathParams: [], query: [], body: false, kind: "json", public: true },
   getHostsCurrent: { method: "GET", path: "/v1/hosts/current", pathParams: [], query: ["themePreview"], body: false, kind: "json", public: true },
@@ -147,7 +147,7 @@ export const operations = {
   getPartnerRecruit: { method: "GET", path: "/v1/partner/recruit", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerReferrals: { method: "GET", path: "/v1/partner/referrals", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerReferralsIdTransparency: { method: "GET", path: "/v1/partner/referrals/{id}/transparency", pathParams: ["id"], query: [], body: false, kind: "json" },
-  getPartners: { method: "GET", path: "/v1/partners", pathParams: [], query: ["email","externalRef","status","includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getPartners: { method: "GET", path: "/v1/partners", pathParams: [], query: ["email","externalRef","programId","status","includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerSecurity: { method: "GET", path: "/v1/partner/security", pathParams: [], query: [], body: false, kind: "json" },
   getPartnersId: { method: "GET", path: "/v1/partners/{id}", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
   getPartnersIdBalances: { method: "GET", path: "/v1/partners/{id}/balances", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -213,6 +213,7 @@ export const operations = {
   getRoiPatternsPattern: { method: "GET", path: "/v1/roi/patterns/{pattern}", pathParams: ["pattern"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getRoiSummary: { method: "GET", path: "/v1/roi/summary", pathParams: [], query: ["from","to","programId","partnerId","windowDays","currency","format","model","includeProjection"], body: false, kind: "json" },
   getRoiTraceCustomerRef: { method: "GET", path: "/v1/roi/trace/{customerRef}", pathParams: ["customerRef"], query: ["windowDays","format"], body: false, kind: "json" },
+  getSandboxStripeFixtures: { method: "GET", path: "/v1/sandbox/stripe-fixtures", pathParams: [], query: [], body: false, kind: "json" },
   getSetupStatus: { method: "GET", path: "/v1/setup/status", pathParams: [], query: [], body: false, kind: "json" },
   getStatus: { method: "GET", path: "/v1/status", pathParams: [], query: [], body: false, kind: "json", public: true },
   getStatusIncidents: { method: "GET", path: "/v1/status/incidents", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list", public: true },
@@ -232,7 +233,7 @@ export const operations = {
   getVersions: { method: "GET", path: "/v1/versions", pathParams: [], query: [], body: false, kind: "json", public: true },
   getWebhookDeliveries: { method: "GET", path: "/v1/webhook-deliveries", pathParams: [], query: ["endpointId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getWebhookDeliveriesId: { method: "GET", path: "/v1/webhook-deliveries/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
-  getWebhookEndpoints: { method: "GET", path: "/v1/webhook-endpoints", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getWebhookEndpoints: { method: "GET", path: "/v1/webhook-endpoints", pathParams: [], query: ["programId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getWebhookEndpointsId: { method: "GET", path: "/v1/webhook-endpoints/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getWebhookEndpointsIdDeliveries: { method: "GET", path: "/v1/webhook-endpoints/{id}/deliveries", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getZapierEvents: { method: "GET", path: "/v1/zapier/events", pathParams: [], query: [], body: false, kind: "json" },
@@ -263,6 +264,7 @@ export const operations = {
   postAgentsRegister: { method: "POST", path: "/v1/agents/register", pathParams: [], query: [], body: true, kind: "json", public: true },
   postAnomaliesScan: { method: "POST", path: "/v1/anomalies/scan", pathParams: [], query: [], body: false, kind: "json" },
   postApiKeys: { method: "POST", path: "/v1/api-keys", pathParams: [], query: [], body: true, kind: "json" },
+  postApiKeysIdRotate: { method: "POST", path: "/v1/api-keys/{id}/rotate", pathParams: ["id"], query: [], body: true, kind: "json" },
   postAssets: { method: "POST", path: "/v1/assets", pathParams: [], query: [], body: true, kind: "json" },
   postAttributionReplay: { method: "POST", path: "/v1/attribution/replay", pathParams: [], query: [], body: true, kind: "json" },
   postAuthBackchannelLogout: { method: "POST", path: "/v1/auth/backchannel-logout", pathParams: [], query: [], body: true, kind: "json", public: true },
@@ -391,6 +393,7 @@ export const operations = {
   postProgramsIdGroups: { method: "POST", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdPromotions: { method: "POST", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdReferrers: { method: "POST", path: "/v1/programs/{id}/referrers", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postProgramsIdStripeCreditsRequeue: { method: "POST", path: "/v1/programs/{id}/stripe-credits/requeue", pathParams: ["id"], query: [], body: true, kind: "json" },
   postPromotionsIdEnd: { method: "POST", path: "/v1/promotions/{id}/end", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPublicProgramsHandleJoin: { method: "POST", path: "/v1/public/programs/{handle}/join", pathParams: ["handle"], query: [], body: true, kind: "json" },
   postQualityRecompute: { method: "POST", path: "/v1/quality/recompute", pathParams: [], query: [], body: false, kind: "json" },
@@ -403,6 +406,7 @@ export const operations = {
   postRewardsRedeemByCode: { method: "POST", path: "/v1/rewards/redeem-by-code", pathParams: [], query: [], body: true, kind: "json" },
   postRoiPatternsPatternReview: { method: "POST", path: "/v1/roi/patterns/{pattern}/review", pathParams: ["pattern"], query: [], body: true, kind: "json" },
   postSandboxSimulate: { method: "POST", path: "/v1/sandbox/simulate", pathParams: [], query: [], body: true, kind: "json" },
+  postSandboxStripeFixtures: { method: "POST", path: "/v1/sandbox/stripe-fixtures", pathParams: [], query: [], body: true, kind: "json" },
   postSupportAppsAdapterTest: { method: "POST", path: "/v1/support/apps/{adapter}/test", pathParams: ["adapter"], query: [], body: true, kind: "json" },
   postSupportCardsOrgIdAdapter: { method: "POST", path: "/v1/support/cards/{orgId}/{adapter}", pathParams: ["orgId","adapter"], query: [], body: true, kind: "json", public: true },
   postSupportPlatformChatlyCard: { method: "POST", path: "/v1/support/platform/chatly-card", pathParams: [], query: [], body: true, kind: "json", public: true },
@@ -546,6 +550,8 @@ export function buildResources(t: Transport) {
       update: (id: string, body: T.PatchApiKeysIdBody, options?: RequestOptions): Promise<T.PatchApiKeysIdResponse> => t.op("patchApiKeysId", { path: { id }, body }, options),
       /** Create an API key. POST /v1/api-keys */
       create: (body: T.PostApiKeysBody, options?: RequestOptions): Promise<T.PostApiKeysResponse> => t.op("postApiKeys", { body }, options),
+      /** Rotate an API key. POST /v1/api-keys/{id}/rotate */
+      rotate: (id: string, body: T.PostApiKeysIdRotateBody, options?: RequestOptions): Promise<T.PostApiKeysIdRotateResponse> => t.op("postApiKeysIdRotate", { path: { id }, body }, options),
     },
     assets: {
       /** Delete a marketing asset. DELETE /v1/assets/{id} */
@@ -1509,6 +1515,8 @@ export function buildResources(t: Transport) {
         retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdStripeCreditsResponse> => t.op("getProgramsIdStripeCredits", { path: { id } }, options),
         /** List a program's Stripe balance credits. GET /v1/programs/{id}/stripe-credits/log */
         log: (id: string, query?: (T.GetProgramsIdStripeCreditsLogQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdStripeCreditsLogResponse['data'][number], T.GetProgramsIdStripeCreditsLogResponse> => t.list("getProgramsIdStripeCreditsLog", { path: { id }, query }, options),
+        /** Requeue stuck Stripe balance credits. POST /v1/programs/{id}/stripe-credits/requeue */
+        requeue: (id: string, body: T.PostProgramsIdStripeCreditsRequeueBody, options?: RequestOptions): Promise<T.PostProgramsIdStripeCreditsRequeueResponse> => t.op("postProgramsIdStripeCreditsRequeue", { path: { id }, body }, options),
         /** Set a program's Stripe balance credit settings. PUT /v1/programs/{id}/stripe-credits */
         update: (id: string, body: T.PutProgramsIdStripeCreditsBody, options?: RequestOptions): Promise<T.PutProgramsIdStripeCreditsResponse> => t.op("putProgramsIdStripeCredits", { path: { id }, body }, options),
       },
@@ -1606,6 +1614,12 @@ export function buildResources(t: Transport) {
     sandbox: {
       /** Simulate billing history. POST /v1/sandbox/simulate */
       simulate: (body: T.PostSandboxSimulateBody, options?: RequestOptions): Promise<T.PostSandboxSimulateResponse> => t.op("postSandboxSimulate", { body }, options),
+      stripeFixtures: {
+        /** List Stripe event fixtures. GET /v1/sandbox/stripe-fixtures */
+        retrieve: (options?: RequestOptions): Promise<T.GetSandboxStripeFixturesResponse> => t.op("getSandboxStripeFixtures", {  }, options),
+        /** Send a Stripe event fixture. POST /v1/sandbox/stripe-fixtures */
+        create: (body: T.PostSandboxStripeFixturesBody, options?: RequestOptions): Promise<T.PostSandboxStripeFixturesResponse> => t.op("postSandboxStripeFixtures", { body }, options),
+      },
     },
     setup: {
       /** Get setup progress. GET /v1/setup/status */

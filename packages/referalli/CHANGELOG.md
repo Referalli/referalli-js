@@ -5,6 +5,8 @@
 - New `referalli/webhooks` entry point: verify and parse webhook deliveries without the full client.
 - API additions: one-call referrers (`POST /v1/programs/{id}/referrers`), partner summary, `GET /v1/programs?slug=`, `portalUrl` on the org, portal links, program-scoped API keys and the Stripe balance credit rail.
 - New typed errors `ProgramScopedKeyError` (403), `RestrictedSessionError` (403) and `StripeKeyRequiredError`.
+- Also in this release: API key rotate, `apiVersion: "latest"`, enrollment `mint`, partner upsert `matchedBy`, paused webhook create and `programId` filter, per-program Stripe credit key, Stripe credit requeue, `effectiveAt` filters on FX rates and Stripe fixture replay (`/v1/sandbox/stripe-fixtures`).
+- New typed errors `StripeKeyInvalidError`, `StripeKeyWrongModeError`, `StripeKeyPermissionError` (422), `StripeUnavailableError` (502) and `ApiKeyExpiredError` (409).
 - Fixed: `(id, options)` calls keep working when a method gains a query parameter (options passed in the query slot are moved back).
 
 ## 0.2.0 - 2026-10-24

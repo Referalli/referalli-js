@@ -87,6 +87,11 @@ export class StripeKeyRequiredError extends ApiError {
   override readonly name: string = "StripeKeyRequiredError";
 }
 
+/** `api_key_expired` (HTTP 409). */
+export class ApiKeyExpiredError extends ApiError {
+  override readonly name: string = "ApiKeyExpiredError";
+}
+
 /** `replay` (HTTP 409). */
 export class ReplayError extends ApiError {
   override readonly name: string = "ReplayError";
@@ -117,6 +122,21 @@ export class IdempotencyKeyReusedError extends ApiError {
   override readonly name: string = "IdempotencyKeyReusedError";
 }
 
+/** `stripe_key_invalid` (HTTP 422). */
+export class StripeKeyInvalidError extends ApiError {
+  override readonly name: string = "StripeKeyInvalidError";
+}
+
+/** `stripe_key_wrong_mode` (HTTP 422). */
+export class StripeKeyWrongModeError extends ApiError {
+  override readonly name: string = "StripeKeyWrongModeError";
+}
+
+/** `stripe_key_permission` (HTTP 422). */
+export class StripeKeyPermissionError extends ApiError {
+  override readonly name: string = "StripeKeyPermissionError";
+}
+
 /** `payload_too_large` (HTTP 413). */
 export class PayloadTooLargeError extends ApiError {
   override readonly name: string = "PayloadTooLargeError";
@@ -140,6 +160,11 @@ export class InternalServerError extends ApiError {
 /** `atlas_error` (HTTP 502). */
 export class AtlasError extends ApiError {
   override readonly name: string = "AtlasError";
+}
+
+/** `stripe_unavailable` (HTTP 502). */
+export class StripeUnavailableError extends ApiError {
+  override readonly name: string = "StripeUnavailableError";
 }
 
 /** `sso_provider_error` (HTTP 502). */
@@ -171,17 +196,22 @@ export const errorClasses: Record<string, typeof ApiError> = {
   conflict: ConflictError,
   idempotency_in_progress: IdempotencyInProgressError,
   stripe_key_required: StripeKeyRequiredError,
+  api_key_expired: ApiKeyExpiredError,
   replay: ReplayError,
   live_mode_only: LiveModeOnlyError,
   test_mode_only: TestModeOnlyError,
   test_mode_unsupported: TestModeUnsupportedError,
   gone: GoneError,
   idempotency_key_reused: IdempotencyKeyReusedError,
+  stripe_key_invalid: StripeKeyInvalidError,
+  stripe_key_wrong_mode: StripeKeyWrongModeError,
+  stripe_key_permission: StripeKeyPermissionError,
   payload_too_large: PayloadTooLargeError,
   connection_paused: ConnectionPausedError,
   rate_limited: RateLimitedError,
   internal_error: InternalServerError,
   atlas_error: AtlasError,
+  stripe_unavailable: StripeUnavailableError,
   sso_provider_error: SsoProviderError,
   sso_not_configured: SsoNotConfiguredError,
 };
