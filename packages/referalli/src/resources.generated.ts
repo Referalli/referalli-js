@@ -11,6 +11,7 @@ export const operations = {
   deleteApiKeysId: { method: "DELETE", path: "/v1/api-keys/{id}", pathParams: ["id"], query: ["cascade","pair"], body: false, kind: "json" },
   deleteAssetsId: { method: "DELETE", path: "/v1/assets/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteAuthConnectionsId: { method: "DELETE", path: "/v1/auth/connections/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
+  deleteBillingAccountsAccountRef: { method: "DELETE", path: "/v1/billing/accounts/{accountRef}", pathParams: ["accountRef"], query: [], body: false, kind: "json" },
   deleteBillingConnectionsId: { method: "DELETE", path: "/v1/billing/connections/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteBillingInternalCustomersCustomerRef: { method: "DELETE", path: "/v1/billing/internal-customers/{customerRef}", pathParams: ["customerRef"], query: [], body: false, kind: "json" },
   deleteBrandingDomain: { method: "DELETE", path: "/v1/branding/domain", pathParams: [], query: [], body: false, kind: "json" },
@@ -665,6 +666,8 @@ export function buildResources(t: Transport) {
       /** Open the subscription portal. POST /v1/billing/portal */
       portal: (options?: RequestOptions): Promise<T.PostBillingPortalResponse> => t.op("postBillingPortal", {  }, options),
       accounts: {
+        /** Delete a billing account. DELETE /v1/billing/accounts/{accountRef} */
+        delete: (accountRef: string, options?: RequestOptions): Promise<T.DeleteBillingAccountsAccountRefResponse> => t.op("deleteBillingAccountsAccountRef", { path: { accountRef } }, options),
         /** Get a billing account's owner. GET /v1/billing/accounts/{accountRef} */
         retrieve: (accountRef: string, options?: RequestOptions): Promise<T.GetBillingAccountsAccountRefResponse> => t.op("getBillingAccountsAccountRef", { path: { accountRef } }, options),
         /** Set a billing account's owner. PUT /v1/billing/accounts/{accountRef}/owner */

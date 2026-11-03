@@ -1664,11 +1664,13 @@ export type CustomerAliasedEvent = {
   data: CustomerAliasedEventData;
 };
 
-/** `data` of a `billing_account.owner_changed` event: An organization the app bills under has a new owner (set with `PUT /v1/billing/accounts/{accountRef}/owner` or by an auth platform); its payments now earn for that owner's referral. */
+/** `data` of a `billing_account.owner_changed` event: An organization the app bills under has a new owner, a new id (`previousAccountRef` is the old one) or was deleted (`deleted`, no owner), set with `PUT /v1/billing/accounts/{accountRef}/owner`, `DELETE /v1/billing/accounts/{accountRef}` or by an auth platform. Its payments earn for `ownerCustomerRef`'s referral. */
 export type BillingAccountOwnerChangedEventData = {
   accountRef: string;
-  ownerCustomerRef: string;
+  ownerCustomerRef: string | null;
   previousOwnerCustomerRef: string | null;
+  previousAccountRef: string | null;
+  deleted: boolean;
 };
 
 /** A billing account's owner changed: the `billing_account.owner_changed` delivery body. */
@@ -3490,17 +3492,24 @@ export type PostBillingConnectionsIdEventsResponse = {
 
 export type PutBillingAccountsAccountRefOwnerResponse = {
   accountRef: string;
-  ownerCustomerRef: string;
+  /** Null after a deletion (or a rename of an account with no owner). */
+  ownerCustomerRef: string | null;
   previousOwnerCustomerRef: string | null;
   changed: boolean;
   relinked: number;
   reprocessedPayments: number;
+  /** The previous id, on a rename. */
+  renamedFrom: string | null;
+  deleted: boolean;
 };
 
 export type GetBillingAccountsAccountRefResponse = {
   accountRef: string;
-  ownerCustomerRef: string;
+  ownerCustomerRef: string | null;
   since: string;
+  /** The id the account was renamed to; it follows that account. */
+  renamedTo: string | null;
+  deleted: boolean;
 };
 
 export type PutBillingConnectionsIdValueMappingResponse = {
@@ -5708,11 +5717,15 @@ export type GetAuthConnectionsIdUsersCustomerRefReferralResponse = {
 export type PostAuthConnectionsIdAccountsResponse = {
   ok: true;
   accountRef: string;
-  ownerCustomerRef: string;
+  /** Null after a deletion (or a rename of an account with no owner). */
+  ownerCustomerRef: string | null;
   previousOwnerCustomerRef: string | null;
   changed: boolean;
   relinked: number;
   reprocessedPayments: number;
+  /** The previous id, on a rename. */
+  renamedFrom: string | null;
+  deleted: boolean;
 };
 
 export type PostAuthConnectionsIdSignalsResponse = {
@@ -8936,8 +8949,12 @@ export type PostBillingConnectionsIdEventsBody = {
 
 /** PUT /v1/billing/accounts/{accountRef}/owner: Set a billing account's owner */
 export type PutBillingAccountsAccountRefOwnerBody = {
-  ownerCustomerRef: string;
+  ownerCustomerRef?: string;
+  previousAccountRef?: string;
 };
+
+/** DELETE /v1/billing/accounts/{accountRef}: Delete a billing account */
+export type DeleteBillingAccountsAccountRefResponse = PutBillingAccountsAccountRefOwnerResponse;
 
 /** GET /v1/billing/accounts/{accountRef}: Get a billing account's owner */
 
@@ -10846,7 +10863,9 @@ export type PostAuthConnectionsIdWidgetTokensResponse = WidgetSession;
 /** POST /v1/auth/connections/{id}/accounts: Set an organization's owner (signed protocol) */
 export type PostAuthConnectionsIdAccountsBody = {
   accountRef: string;
-  ownerCustomerRef: string;
+  ownerCustomerRef?: string;
+  previousAccountRef?: string;
+  deleted?: true;
 };
 
 /** POST /v1/auth/connections/{id}/signals: Report a user signal (signed protocol) */
@@ -11661,6 +11680,7 @@ export const operations = {
   deleteV1BillingConnectionsId: { method: 'DELETE', path: '/v1/billing/connections/{id}' },
   postV1BillingConnectionsIdEvents: { method: 'POST', path: '/v1/billing/connections/{id}/events' },
   putV1BillingAccountsAccountRefOwner: { method: 'PUT', path: '/v1/billing/accounts/{accountRef}/owner' },
+  deleteV1BillingAccountsAccountRef: { method: 'DELETE', path: '/v1/billing/accounts/{accountRef}' },
   getV1BillingAccountsAccountRef: { method: 'GET', path: '/v1/billing/accounts/{accountRef}' },
   putV1BillingConnectionsIdValueMapping: { method: 'PUT', path: '/v1/billing/connections/{id}/value-mapping' },
   postV1BillingConnectionsIdValueMappingPreview: { method: 'POST', path: '/v1/billing/connections/{id}/value-mapping/preview' },

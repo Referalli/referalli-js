@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 - 2026-11-03
+
+- Types for billing account renames and deletions: `previousAccountRef` on `PUT /v1/billing/accounts/{accountRef}/owner`, `DELETE /v1/billing/accounts/{accountRef}`, and `billing_account.owner_changed` with `previousAccountRef`, `deleted` and a nullable `ownerCustomerRef`.
+
 ## 0.3.2 - 2026-11-03
 
 - Cookie-free hand-off: `getHandoffToken()` on `aff.js` (`window.aff`) and the `referalli/browser` tracker returns a signed token of the visit's referral context (24 h, consent rules apply); `associate({ handoffToken })` on the Node client, and `referalliAuthEvents`' `getReferral` can return one.
