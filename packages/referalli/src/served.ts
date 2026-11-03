@@ -117,6 +117,9 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
     getReferral:view,
     signupMetadata:function(){var v=view();var m={referalli_anon_id:v.anonId};if(v.clickId)m.referalli_click_id=v.clickId;if(v.code)m.referalli_coupon=v.code;return m;},
     identify:identify,
+    getHandoffToken:function(){var v=view();if(!v.anonId)return Promise.resolve(null);
+      return fetch(BASE+'/t/${token}/handoff',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({anonId:v.anonId,clickId:v.clickId||undefined,code:v.code||undefined})})
+        .then(function(r){return r.ok?r.json():null;}).then(function(j){return j&&j.handoffToken||null;},function(){return null;});},
     forget:forget,
     consent:function(g){gate.push(g===true);},
     consentState:function(){return cstate;},

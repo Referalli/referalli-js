@@ -81,4 +81,14 @@ export {
   type ListPage,
   type ReferalliClientOptions,
 } from './node.js';
+export {
+  createOutbox,
+  memoryOutboxStore,
+  type FlushResult,
+  type GenericBillingEvent,
+  type Outbox,
+  type OutboxEntry,
+  type OutboxOptions,
+  type OutboxStore,
+} from './outbox.js';
 export { createMobileClient, MobileApiError, type MobileClientOptions } from './mobile.js';

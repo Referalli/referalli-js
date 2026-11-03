@@ -120,6 +120,20 @@ app.post('/webhooks/referalli', express.raw({ type: 'application/json' }), async
 
 Deliveries signed more than 5 minutes ago, or more than 5 minutes in the future, are rejected (set this with `toleranceSec`). While you rotate a secret, pass both secrets as an array. `verifyWebhook(rawBody, headers, secret)` is a synchronous version that returns a boolean.
 
+### Queue billing events (outbox)
+
+So an outage longer than the client's retries does not lose a payment, queue `generic` billing events and flush them:
+
+```ts
+import { createOutbox } from 'referalli';
+
+const outbox = createOutbox({ store, connectionId: 'bcon_...', secret: process.env.REFERALLI_BILLING_SECRET });
+await outbox.enqueue({ providerEventId: invoice.id, type: 'invoice_paid', customerRef: user.id, amountGross: 4900, currency: 'usd', occurredAt: invoice.paidAt });
+setInterval(() => void outbox.flush(), 60_000);
+```
+
+`store` is an `OutboxStore` (`add`, `due`, `markSent`, `markFailed`) on a table of yours; `memoryOutboxStore()` is for tests. Events are keyed by `providerEventId`, so a resend is recorded once. See [SDKs](https://referalli.com/docs/sdks#queue-billing-events-outbox) for a Postgres store.
+
 ## Configuration
 
 ```ts

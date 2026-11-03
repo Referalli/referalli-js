@@ -17,6 +17,11 @@ export class BadRequestError extends ApiError {
   override readonly name: string = "BadRequestError";
 }
 
+/** `invalid_handoff_token` (HTTP 400). */
+export class InvalidHandoffTokenError extends ApiError {
+  override readonly name: string = "InvalidHandoffTokenError";
+}
+
 /** `unauthorized` (HTTP 401). */
 export class AuthenticationError extends ApiError {
   override readonly name: string = "AuthenticationError";
@@ -212,6 +217,7 @@ export const errorClasses: Record<string, typeof ApiError> = {
   validation_error: ValidationError,
   mode_mismatch: ModeMismatchError,
   bad_request: BadRequestError,
+  invalid_handoff_token: InvalidHandoffTokenError,
   unauthorized: AuthenticationError,
   step_up_required: StepUpRequiredError,
   reauth_required: ReauthRequiredError,

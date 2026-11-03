@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 - 2026-11-03
+
+- Cookie-free hand-off: `getHandoffToken()` on `aff.js` (`window.aff`) and the `referalli/browser` tracker returns a signed token of the visit's referral context (24 h, consent rules apply); `associate({ handoffToken })` on the Node client, and `referalliAuthEvents`' `getReferral` can return one.
+- Typed client for the new endpoints: `GET /v1/org/tracking-tokens`, `POST /v1/referrals/handoff-tokens`, `GET`/`PUT /v1/billing/accounts/{accountRef}`, and the `billing_account.owner_changed` webhook event; error class for `invalid_handoff_token`.
+- New `createOutbox({ store, connectionId, secret? })`: a durable queue for `generic` billing events. `enqueue(event)` stores it, `flush()` sends what is due (signed `POST /webhooks/billing/{id}`, or `POST /v1/billing/connections/{id}/events` with the API key) and retries failures with backoff (30 s doubling to 1 h, 50 attempts by default). Redelivery is safe: events are keyed by `providerEventId`. Ships `memoryOutboxStore()` and the `OutboxStore` interface for your own table.
+
 ## 0.3.1 - 2026-11-03
 
 - New endpoints: `POST /v1/billing/connections/{id}/events` (billing events with an API key), `GET /v1/programs/handle-availability`, `PUT /v1/auth/connections/{id}/origins`, `GET /v1/auth/connections/{id}`; `terms` on public program pages; the `signup_and_pay` sandbox scenario; `name` and `scopes` on `PATCH /v1/api-keys/{id}`.

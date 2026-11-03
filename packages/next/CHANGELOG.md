@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 - 2026-11-03
+
+- New `@referalli/next/server` entry: `<ReferralPanel>` as a React Server Component. Given `customerRef` (or `getCustomerRef()` from your session), it fetches the user's code and link with your API key (`POST /v1/widget/tokens`, then `GET /t/{tk}/widget/me`) and renders them with a copy button, with no `widget.js`. It renders nothing when the user is not enrolled. `live` swaps to the live widget after hydration. `getReferralPanel()` returns the data.
+
 ## 0.4.0 - 2026-11-03
 
 - Middleware: `consent: 'cookiemunch'` (or `{ cookiemunch: { category } }`) reads Cookie Munch's `CookieMunch` consent cookie. The category defaults to `referrals` with a fallback to `marketing`, as aff.js does. Until the visitor decides, no cookie is set. The function form of `consent` still works.

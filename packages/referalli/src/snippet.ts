@@ -71,6 +71,12 @@ export interface AffApi {
   /** Referral context keyed for auth-platform signup metadata. */
   signupMetadata(): { referalli_click_id?: string; referalli_anon_id: string; referalli_coupon?: string };
   identify(opts: { customerRef?: string; emailHash?: string }): Promise<void>;
+  /**
+   * The context as a signed, 24-hour hand-off token to keep in your own session
+   * and pass to `associate` as `handoffToken` (no cookie needed at sign-up).
+   * Null with no context, after `forget()` or a denial, or on a network error.
+   */
+  getHandoffToken(): Promise<string | null>;
   /** Delete the stored context (consent withdrawn) and stop sending. */
   forget(): void;
   /** The push path for pages without a supported CMP. Idempotent; the latest signal wins. */
@@ -248,6 +254,21 @@ export async function initSnippet(env: SnippetEnv, config: SnippetConfig): Promi
         return;
       }
       await sendIdentify(opts);
+    },
+    getHandoffToken: async () => {
+      const v = view();
+      if (!v.anonId) return null;
+      try {
+        const res = (await env.fetchFn(`${config.baseUrl}/t/${config.token}/handoff`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ anonId: v.anonId, clickId: v.clickId ?? undefined, code: v.code ?? undefined }),
+        })) as { ok?: boolean; json?: () => Promise<{ handoffToken?: string }> };
+        if (!res?.ok || !res.json) return null;
+        return (await res.json()).handoffToken ?? null;
+      } catch {
+        return null;
+      }
     },
     forget: () => {
       gone = true;

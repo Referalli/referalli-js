@@ -6,6 +6,7 @@ Next.js support for [Referalli](https://referalli.com):
 - `getReferral()` for server components, route handlers and server actions
 - Signup attribution
 - Webhook route handlers
+- `<ReferralPanel>` as a server component (`@referalli/next/server`)
 
 ```sh
 npm install @referalli/next referalli
@@ -63,6 +64,19 @@ export default async function Page() {
 ```
 
 To render the referral before the client reads the cookie, pass it to `<ReferalliProvider initialReferral={referral}>` from `@referalli/react`. In Pages Router API routes, use `getReferralFromRequest(req)`.
+
+## Referral panel as a server component
+
+```tsx
+import { ReferralPanel } from '@referalli/next/server';
+
+export default async function Page() {
+  const user = await getCurrentUser(); // your session
+  return <ReferralPanel programId="prg_..." trackingToken="tk_..." customerRef={user?.id} styled />;
+}
+```
+
+It fetches the user's code and link with `REFERALLI_API_KEY` on the server and renders them with a copy button, with no `widget.js`. It renders nothing when the user is not enrolled. Pass `live` to swap to the live widget after hydration, or `getCustomerRef` instead of `customerRef`. `getReferralPanel()` returns the data.
 
 ## Attribute a signup (server action)
 

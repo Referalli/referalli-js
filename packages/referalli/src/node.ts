@@ -134,6 +134,8 @@ export class ReferalliClient {
     anonId?: string;
     referralToken?: string;
     couponCode?: string;
+    /** From `aff.getHandoffToken()` / `POST /v1/referrals/handoff-tokens`: fills anonId, referralToken and couponCode when not sent. */
+    handoffToken?: string;
     emailHash?: string;
     ip?: string;
     ua?: string;
@@ -225,7 +227,14 @@ export class ReferalliClient {
  *   // Auth.js config: events: { createUser: events.createUser }
  */
 /** What `getReferral` returns: the visitor's referral context, or nothing. */
-export type ReferralLookup = { anonId?: string | null; clickId?: string | null; code?: string | null; coupon?: string | null } | null | undefined;
+export type ReferralLookup = {
+  anonId?: string | null;
+  clickId?: string | null;
+  code?: string | null;
+  coupon?: string | null;
+  /** A hand-off token you kept in your own session (`aff.getHandoffToken()`), for sign-ups without the cookie. */
+  handoffToken?: string | null;
+} | null | undefined;
 
 export interface AuthEventsOptions {
   programId: string;
@@ -240,6 +249,7 @@ export interface Associates {
     anonId?: string;
     referralToken?: string;
     couponCode?: string;
+    handoffToken?: string;
     emailHash?: string;
     idempotencyKey?: string;
   }): Promise<unknown>;
@@ -254,7 +264,7 @@ export function referalliAuthEvents(client: Associates, opts: AuthEventsOptions)
       if (!customerRef) return;
       const ref = (await opts.getReferral?.(user)) ?? {};
       const emailHash = user.email ? await sha256Hex(user.email.toLowerCase()) : undefined;
-      if (!ref.anonId && !ref.clickId && !ref.coupon && !emailHash) return;
+      if (!ref.anonId && !ref.clickId && !ref.coupon && !ref.handoffToken && !emailHash) return;
       await client
         .associate({
           programId: opts.programId,
@@ -262,6 +272,7 @@ export function referalliAuthEvents(client: Associates, opts: AuthEventsOptions)
           anonId: ref.anonId ?? undefined,
           referralToken: ref.clickId ?? undefined,
           couponCode: ref.coupon ?? undefined,
+          handoffToken: ref.handoffToken ?? undefined,
           emailHash,
           idempotencyKey: `authjs:${customerRef}`,
         })

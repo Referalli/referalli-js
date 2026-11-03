@@ -36,6 +36,7 @@ function browser(href: string, attrs: Record<string, string> = {}, opts: Snippet
     },
     fetch: (url: string, init: { body: string }) => {
       sent.push({ url, body: JSON.parse(init.body) });
+      if (url.endsWith('/handoff')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ handoffToken: 'rh_served' }) });
       return Promise.resolve();
     },
     URL,
@@ -50,12 +51,23 @@ function browser(href: string, attrs: Record<string, string> = {}, opts: Snippet
   const load = (url = href) => {
     window.location.href = url;
     runInNewContext(renderSnippetJs('tk_1', 'https://internal:4000', opts), ctx);
-    return window.aff as { getReferral(): any; identify(o: object): void; forget(): void };
+    return window.aff as { getReferral(): any; identify(o: object): void; forget(): void; getHandoffToken(): Promise<string | null> };
   };
   return { load, store, cookies, cookieWrites, sent };
 }
 
 describe('served aff.js', () => {
+  it('getHandoffToken posts the context to /handoff, and is null after forget()', async () => {
+    const b = browser('https://shop.example.com/?via=dana&ref_click_id=clk_9');
+    const aff = b.load();
+    expect(await aff.getHandoffToken()).toBe('rh_served');
+    const call = b.sent.find((s) => s.url.endsWith('/handoff'))!;
+    expect(call.url).toBe('https://track.example.com/t/tk_1/handoff');
+    expect(call.body).toMatchObject({ code: 'dana', clickId: 'clk_9', anonId: aff.getReferral().anonId });
+    aff.forget();
+    expect(await aff.getHandoffToken()).toBeNull();
+  });
+
   it('posts to the origin it was loaded from, not the inlined base', () => {
     const b = browser('https://shop.example.com/?via=dana');
     b.load();

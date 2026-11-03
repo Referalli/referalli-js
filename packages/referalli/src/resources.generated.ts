@@ -54,6 +54,7 @@ export const operations = {
   getAuthConnectionsIdUsersCustomerRefReferral: { method: "GET", path: "/v1/auth/connections/{id}/users/{customerRef}/referral", pathParams: ["id","customerRef"], query: [], body: false, kind: "json", public: true },
   getAuthConnectionsProviders: { method: "GET", path: "/v1/auth/connections/providers", pathParams: [], query: [], body: false, kind: "json" },
   getAuthProviders: { method: "GET", path: "/v1/auth/providers", pathParams: [], query: [], body: false, kind: "json", public: true },
+  getBillingAccountsAccountRef: { method: "GET", path: "/v1/billing/accounts/{accountRef}", pathParams: ["accountRef"], query: [], body: false, kind: "json" },
   getBillingConnections: { method: "GET", path: "/v1/billing/connections", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getBillingConnectionsId: { method: "GET", path: "/v1/billing/connections/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getBillingEvents: { method: "GET", path: "/v1/billing/events", pathParams: [], query: ["customerRef","status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -121,6 +122,7 @@ export const operations = {
   getOrgSsoConnectionsIdSamlMetadata: { method: "GET", path: "/v1/org/sso/connections/{id}/saml-metadata", pathParams: ["id"], query: [], body: false, kind: "json" },
   getOrgTaxProfile: { method: "GET", path: "/v1/org/tax-profile", pathParams: [], query: [], body: false, kind: "json" },
   getOrgTrackingConsent: { method: "GET", path: "/v1/org/tracking-consent", pathParams: [], query: [], body: false, kind: "json" },
+  getOrgTrackingTokens: { method: "GET", path: "/v1/org/tracking-tokens", pathParams: [], query: [], body: false, kind: "json" },
   getOutreach: { method: "GET", path: "/v1/outreach", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerAchievements: { method: "GET", path: "/v1/partner/achievements", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerAdvance: { method: "GET", path: "/v1/partner/advance", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -277,6 +279,7 @@ export const operations = {
   postAttributionReplay: { method: "POST", path: "/v1/attribution/replay", pathParams: [], query: [], body: true, kind: "json" },
   postAuthBackchannelLogout: { method: "POST", path: "/v1/auth/backchannel-logout", pathParams: [], query: [], body: true, kind: "json", public: true },
   postAuthConnections: { method: "POST", path: "/v1/auth/connections", pathParams: [], query: [], body: true, kind: "json" },
+  postAuthConnectionsIdAccounts: { method: "POST", path: "/v1/auth/connections/{id}/accounts", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   postAuthConnectionsIdAliases: { method: "POST", path: "/v1/auth/connections/{id}/aliases", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   postAuthConnectionsIdErase: { method: "POST", path: "/v1/auth/connections/{id}/erase", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   postAuthConnectionsIdPartners: { method: "POST", path: "/v1/auth/connections/{id}/partners", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
@@ -409,6 +412,7 @@ export const operations = {
   postPublicProgramsHandleJoin: { method: "POST", path: "/v1/public/programs/{handle}/join", pathParams: ["handle"], query: [], body: true, kind: "json" },
   postQualityRecompute: { method: "POST", path: "/v1/quality/recompute", pathParams: [], query: [], body: false, kind: "json" },
   postReferralsAssociate: { method: "POST", path: "/v1/referrals/associate", pathParams: [], query: [], body: true, kind: "json" },
+  postReferralsHandoffTokens: { method: "POST", path: "/v1/referrals/handoff-tokens", pathParams: [], query: [], body: true, kind: "json" },
   postReferralsIdApprove: { method: "POST", path: "/v1/referrals/{id}/approve", pathParams: ["id"], query: [], body: false, kind: "json" },
   postReferralsIdReassign: { method: "POST", path: "/v1/referrals/{id}/reassign", pathParams: ["id"], query: [], body: true, kind: "json" },
   postReferralsIdVoid: { method: "POST", path: "/v1/referrals/{id}/void", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -440,6 +444,7 @@ export const operations = {
   postZapierHooks: { method: "POST", path: "/v1/zapier/hooks", pathParams: [], query: [], body: true, kind: "json" },
   putAuthConnectionsIdOrigins: { method: "PUT", path: "/v1/auth/connections/{id}/origins", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   putAuthConnectionsIdSecret: { method: "PUT", path: "/v1/auth/connections/{id}/secret", pathParams: ["id"], query: [], body: true, kind: "json" },
+  putBillingAccountsAccountRefOwner: { method: "PUT", path: "/v1/billing/accounts/{accountRef}/owner", pathParams: ["accountRef"], query: [], body: true, kind: "json" },
   putBillingConnectionsIdCredentials: { method: "PUT", path: "/v1/billing/connections/{id}/credentials", pathParams: ["id"], query: [], body: true, kind: "json" },
   putBillingConnectionsIdSecret: { method: "PUT", path: "/v1/billing/connections/{id}/secret", pathParams: ["id"], query: [], body: true, kind: "json" },
   putBillingConnectionsIdValueMapping: { method: "PUT", path: "/v1/billing/connections/{id}/value-mapping", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -610,6 +615,8 @@ export function buildResources(t: Transport) {
         update: (id: string, body: T.PatchAuthConnectionsIdBody, options?: RequestOptions): Promise<T.PatchAuthConnectionsIdResponse> => t.op("patchAuthConnectionsId", { path: { id }, body }, options),
         /** Connect an auth platform. POST /v1/auth/connections */
         create: (body: T.PostAuthConnectionsBody, options?: RequestOptions): Promise<T.PostAuthConnectionsResponse> => t.op("postAuthConnections", { body }, options),
+        /** Set an organization's owner (signed protocol). POST /v1/auth/connections/{id}/accounts */
+        accounts: (id: string, body: T.PostAuthConnectionsIdAccountsBody, options?: RequestOptions): Promise<T.PostAuthConnectionsIdAccountsResponse> => t.op("postAuthConnectionsIdAccounts", { path: { id }, body }, options),
         /** Change a user's id (signed protocol). POST /v1/auth/connections/{id}/aliases */
         aliases: (id: string, body: T.PostAuthConnectionsIdAliasesBody, options?: RequestOptions): Promise<T.PostAuthConnectionsIdAliasesResponse> => t.op("postAuthConnectionsIdAliases", { path: { id }, body }, options),
         /** Erase a user (signed protocol). POST /v1/auth/connections/{id}/erase */
@@ -657,6 +664,12 @@ export function buildResources(t: Transport) {
       checkout: (body: T.PostBillingCheckoutBody, options?: RequestOptions): Promise<T.PostBillingCheckoutResponse> => t.op("postBillingCheckout", { body }, options),
       /** Open the subscription portal. POST /v1/billing/portal */
       portal: (options?: RequestOptions): Promise<T.PostBillingPortalResponse> => t.op("postBillingPortal", {  }, options),
+      accounts: {
+        /** Get a billing account's owner. GET /v1/billing/accounts/{accountRef} */
+        retrieve: (accountRef: string, options?: RequestOptions): Promise<T.GetBillingAccountsAccountRefResponse> => t.op("getBillingAccountsAccountRef", { path: { accountRef } }, options),
+        /** Set a billing account's owner. PUT /v1/billing/accounts/{accountRef}/owner */
+        updateOwner: (accountRef: string, body: T.PutBillingAccountsAccountRefOwnerBody, options?: RequestOptions): Promise<T.PutBillingAccountsAccountRefOwnerResponse> => t.op("putBillingAccountsAccountRefOwner", { path: { accountRef }, body }, options),
+      },
       connections: {
         /** Delete a billing connection. DELETE /v1/billing/connections/{id} */
         delete: (id: string, options?: RequestOptions): Promise<T.DeleteBillingConnectionsIdResponse> => t.op("deleteBillingConnectionsId", { path: { id } }, options),
@@ -1015,6 +1028,8 @@ export function buildResources(t: Transport) {
     org: {
       /** Get the organization. GET /v1/org */
       retrieve: (options?: RequestOptions): Promise<T.GetOrgResponse> => t.op("getOrg", {  }, options),
+      /** Both modes' tracking tokens. GET /v1/org/tracking-tokens */
+      trackingTokens: (options?: RequestOptions): Promise<T.GetOrgTrackingTokensResponse> => t.op("getOrgTrackingTokens", {  }, options),
       /** Update the organization. PATCH /v1/org */
       update: (body: T.PatchOrgBody, options?: RequestOptions): Promise<T.PatchOrgResponse> => t.op("patchOrg", { body }, options),
       /** Connect a 1099 filing provider. PUT /v1/org/tax-filing */
@@ -1597,6 +1612,8 @@ export function buildResources(t: Transport) {
       update: (id: string, body: T.PatchReferralsIdBody, options?: RequestOptions): Promise<T.PatchReferralsIdResponse> => t.op("patchReferralsId", { path: { id }, body }, options),
       /** Attribute a new customer. POST /v1/referrals/associate */
       associate: (body: T.PostReferralsAssociateBody, options?: RequestOptions): Promise<T.PostReferralsAssociateResponse> => t.op("postReferralsAssociate", { body }, options),
+      /** Mint a hand-off token. POST /v1/referrals/handoff-tokens */
+      handoffTokens: (body: T.PostReferralsHandoffTokensBody, options?: RequestOptions): Promise<T.PostReferralsHandoffTokensResponse> => t.op("postReferralsHandoffTokens", { body }, options),
       /** Approve a held referral. POST /v1/referrals/{id}/approve */
       approve: (id: string, options?: RequestOptions): Promise<T.PostReferralsIdApproveResponse> => t.op("postReferralsIdApprove", { path: { id } }, options),
       /** Reassign a referral. POST /v1/referrals/{id}/reassign */

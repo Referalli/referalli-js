@@ -90,6 +90,25 @@ describe('browser snippet', () => {
     expect(ctx.sent).toHaveLength(1);
   });
 
+  it('getHandoffToken mints a token for the context, and is null on failure or after forget()', async () => {
+    let answer: () => unknown = () => ({ ok: true, json: async () => ({ handoffToken: 'rh_abc' }) });
+    const base = ctx.env.fetchFn;
+    ctx.env.fetchFn = async (url, init) => (url.endsWith('/handoff') ? (await base(url, init), answer()) : base(url, init));
+    const aff = await initSnippet(ctx.env, config);
+    expect(await aff.getHandoffToken()).toBe('rh_abc');
+    const call = ctx.sent.find((s) => s.url.endsWith('/handoff'))!;
+    expect(call.url).toBe('https://t.merchant.com/t/tk_abc/handoff');
+    expect(call.body).toEqual({ anonId: aff.getReferral().anonId, clickId: 'clk_123', code: 'jamie' });
+    answer = () => ({ ok: false });
+    expect(await aff.getHandoffToken()).toBeNull();
+    answer = () => {
+      throw new Error('offline');
+    };
+    expect(await aff.getHandoffToken()).toBeNull();
+    aff.forget();
+    expect(await aff.getHandoffToken()).toBeNull();
+  });
+
   it('identify posts customer ref and email hash', async () => {
     const aff = await initSnippet(ctx.env, config);
     await aff.identify({ customerRef: 'cus_1', emailHash: 'h1' });

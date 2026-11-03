@@ -218,6 +218,12 @@ export type AssociateResponse = {
   };
 };
 
+export type HandoffToken = {
+  /** Opaque; keep it in your own session and pass it to `POST /v1/referrals/associate`. */
+  handoffToken: string;
+  expiresAt: string;
+};
+
 export type CommissionEvent = {
   id: string;
   programId: string;
@@ -756,6 +762,31 @@ export type Org = {
   liveOrgId?: string;
 };
 
+export type TrackingTokens = {
+  /** The caller's mode (the key's, or the session's referalli-mode). */
+  mode: "live" | "test";
+  live: {
+    orgId: string;
+    trackingToken: string;
+    /** The aff.js URL for this mode. */
+    scriptUrl: string;
+    /** The org's verified link domain, else Referalli's public origin. */
+    linkBaseUrl: string;
+    /** A partner link, with `{code}` for the link code. */
+    linkTemplate: string;
+  };
+  test: {
+    orgId: string;
+    trackingToken: string;
+    /** The aff.js URL for this mode. */
+    scriptUrl: string;
+    /** The org's verified link domain, else Referalli's public origin. */
+    linkBaseUrl: string;
+    /** A partner link, with `{code}` for the link code. */
+    linkTemplate: string;
+  };
+};
+
 export type Member = {
   userId: string;
   role: "owner" | "admin" | "finance" | "analyst" | "support";
@@ -845,6 +876,8 @@ export type AuthConnection = {
   name: string;
   status: string;
   createdAt: string;
+  /** When the connection last filed a new sign-up (its signedUpAt); null when never. Webhook connections count only sign-ups that carried referral context; test sign-ups never count. */
+  lastSignupAt?: string | null;
   rotation: {
     inProgress: boolean;
     previousSecretExpiresAt?: string;
@@ -1629,6 +1662,25 @@ export type CustomerAliasedEvent = {
   livemode: boolean;
   createdAt: string;
   data: CustomerAliasedEventData;
+};
+
+/** `data` of a `billing_account.owner_changed` event: An organization the app bills under has a new owner (set with `PUT /v1/billing/accounts/{accountRef}/owner` or by an auth platform); its payments now earn for that owner's referral. */
+export type BillingAccountOwnerChangedEventData = {
+  accountRef: string;
+  ownerCustomerRef: string;
+  previousOwnerCustomerRef: string | null;
+};
+
+/** A billing account's owner changed: the `billing_account.owner_changed` delivery body. */
+export type BillingAccountOwnerChangedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "billing_account.owner_changed";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: BillingAccountOwnerChangedEventData;
 };
 
 /** `data` of a `commission.earned` event: A payment (or a signup, trial or product-event bounty) earned a partner a commission line. Payment fields are null for bounties. */
@@ -3434,6 +3486,21 @@ export type PostBillingConnectionsIdEventsResponse = {
     /** Recorded as ignored_by_filter: earned nothing. */
     ignored?: "filter" | "internal_customer";
   }>;
+};
+
+export type PutBillingAccountsAccountRefOwnerResponse = {
+  accountRef: string;
+  ownerCustomerRef: string;
+  previousOwnerCustomerRef: string | null;
+  changed: boolean;
+  relinked: number;
+  reprocessedPayments: number;
+};
+
+export type GetBillingAccountsAccountRefResponse = {
+  accountRef: string;
+  ownerCustomerRef: string;
+  since: string;
 };
 
 export type PutBillingConnectionsIdValueMappingResponse = {
@@ -5585,10 +5652,11 @@ export type PostAuthConnectionsIdPingResponse = {
   orgName: string;
   autoEnrollUsers: boolean;
   serverTime: string;
-  /** What the connection takes beyond sign-ups: `partners` is user-chosen referral codes through `/partners`; `origins` is setting its own `allowedOrigins` through `PUT …/origins`. */
+  /** What the connection takes beyond sign-ups: `partners` is user-chosen referral codes through `/partners`; `origins` is setting its own `allowedOrigins` through `PUT …/origins`; `accounts` is organization owners through `/accounts`. */
   capabilities: {
     partners: boolean;
     origins: boolean;
+    accounts: boolean;
   };
 };
 
@@ -5635,6 +5703,16 @@ export type GetAuthConnectionsIdUsersCustomerRefReferralResponse = {
   code: string | null;
   linkUrl: string | null;
   enrolledAt: string;
+};
+
+export type PostAuthConnectionsIdAccountsResponse = {
+  ok: true;
+  accountRef: string;
+  ownerCustomerRef: string;
+  previousOwnerCustomerRef: string | null;
+  changed: boolean;
+  relinked: number;
+  reprocessedPayments: number;
 };
 
 export type PostAuthConnectionsIdSignalsResponse = {
@@ -7579,6 +7657,15 @@ export type PostTOrgTokenVisitBody = {
 
 /** GET /t/{orgToken}/codes/{code}: Look up a referral code */
 
+/** POST /t/{orgToken}/handoff: Mint a hand-off token */
+export type PostTOrgTokenHandoffBody = {
+  anonId?: string;
+  clickId?: string;
+  /** The referral (link or coupon) code from the landing URL. */
+  code?: string;
+};
+export type PostTOrgTokenHandoffResponse = HandoffToken;
+
 /** POST /t/{orgToken}/identify: Identify a visitor */
 export type PostTOrgTokenIdentifyBody = {
   anonId: string;
@@ -7867,6 +7954,9 @@ export type PatchOrgBody = {
   settings?: Record<string, unknown>;
   payoutKycRequired?: boolean;
 };
+
+/** GET /v1/org/tracking-tokens: Both modes' tracking tokens */
+export type GetOrgTrackingTokensResponse = TrackingTokens;
 
 /** GET /v1/org/members: List team members */
 export type GetOrgMembersQuery = {
@@ -8524,6 +8614,7 @@ export type PostReferralsAssociateBody = {
   anonId?: string;
   referralToken?: string;
   couponCode?: string;
+  handoffToken?: string;
   emailHash?: string;
   ip?: string;
   ua?: string;
@@ -8544,6 +8635,15 @@ export type PostReferralsAssociateBody = {
   };
 };
 export type PostReferralsAssociateResponse = AssociateResponse;
+
+/** POST /v1/referrals/handoff-tokens: Mint a hand-off token */
+export type PostReferralsHandoffTokensBody = {
+  anonId?: string;
+  clickId?: string;
+  /** The referral (link or coupon) code from the landing URL. */
+  code?: string;
+};
+export type PostReferralsHandoffTokensResponse = HandoffToken;
 
 /** GET /v1/referrals: List referrals */
 export type GetReferralsQuery = {
@@ -8833,6 +8933,13 @@ export type PatchBillingConnectionsIdResponse = BillingConnection;
 export type PostBillingConnectionsIdEventsBody = {
   events: Array<Record<string, unknown>>;
 };
+
+/** PUT /v1/billing/accounts/{accountRef}/owner: Set a billing account's owner */
+export type PutBillingAccountsAccountRefOwnerBody = {
+  ownerCustomerRef: string;
+};
+
+/** GET /v1/billing/accounts/{accountRef}: Get a billing account's owner */
 
 /** PUT /v1/billing/connections/{id}/value-mapping: Set the value mapping */
 export type PutBillingConnectionsIdValueMappingBody = {
@@ -10736,6 +10843,12 @@ export type PostAuthConnectionsIdWidgetTokensResponse = WidgetSession;
 
 /** GET /v1/auth/connections/{id}/users/{customerRef}/referral: Get a user's referral link (signed protocol) */
 
+/** POST /v1/auth/connections/{id}/accounts: Set an organization's owner (signed protocol) */
+export type PostAuthConnectionsIdAccountsBody = {
+  accountRef: string;
+  ownerCustomerRef: string;
+};
+
 /** POST /v1/auth/connections/{id}/signals: Report a user signal (signed protocol) */
 export type PostAuthConnectionsIdSignalsBody = {
   customerRef: string;
@@ -11319,6 +11432,8 @@ export type WebhookPayloads = {
   "referral.rejected": ReferralRejectedEvent;
   /** A customer's id changed */
   "customer.aliased": CustomerAliasedEvent;
+  /** A billing account's owner changed */
+  "billing_account.owner_changed": BillingAccountOwnerChangedEvent;
   /** A commission line was earned */
   "commission.earned": CommissionEarnedEvent;
   /** A commission line was reversed */
@@ -11392,6 +11507,7 @@ export const operations = {
   getGoOrgTokenCode: { method: 'GET', path: '/go/{orgToken}/{code}' },
   postTOrgTokenVisit: { method: 'POST', path: '/t/{orgToken}/visit' },
   getTOrgTokenCodesCode: { method: 'GET', path: '/t/{orgToken}/codes/{code}' },
+  postTOrgTokenHandoff: { method: 'POST', path: '/t/{orgToken}/handoff' },
   postTOrgTokenIdentify: { method: 'POST', path: '/t/{orgToken}/identify' },
   getTOrgTokenWidgetJs: { method: 'GET', path: '/t/{orgToken}/widget.js' },
   getTOrgTokenWidgetMe: { method: 'GET', path: '/t/{orgToken}/widget/me' },
@@ -11434,6 +11550,7 @@ export const operations = {
   postV1MobilePurchases: { method: 'POST', path: '/v1/mobile/purchases' },
   getV1Org: { method: 'GET', path: '/v1/org' },
   patchV1Org: { method: 'PATCH', path: '/v1/org' },
+  getV1OrgTrackingTokens: { method: 'GET', path: '/v1/org/tracking-tokens' },
   getV1OrgMembers: { method: 'GET', path: '/v1/org/members' },
   postV1OrgMembers: { method: 'POST', path: '/v1/org/members' },
   patchV1OrgMembersUserId: { method: 'PATCH', path: '/v1/org/members/{userId}' },
@@ -11514,6 +11631,7 @@ export const operations = {
   postV1WidgetTokens: { method: 'POST', path: '/v1/widget/tokens' },
   postV1WidgetSession: { method: 'POST', path: '/v1/widget/session' },
   postV1ReferralsAssociate: { method: 'POST', path: '/v1/referrals/associate' },
+  postV1ReferralsHandoffTokens: { method: 'POST', path: '/v1/referrals/handoff-tokens' },
   getV1Referrals: { method: 'GET', path: '/v1/referrals' },
   getV1ReferralsId: { method: 'GET', path: '/v1/referrals/{id}' },
   patchV1ReferralsId: { method: 'PATCH', path: '/v1/referrals/{id}' },
@@ -11542,6 +11660,8 @@ export const operations = {
   patchV1BillingConnectionsId: { method: 'PATCH', path: '/v1/billing/connections/{id}' },
   deleteV1BillingConnectionsId: { method: 'DELETE', path: '/v1/billing/connections/{id}' },
   postV1BillingConnectionsIdEvents: { method: 'POST', path: '/v1/billing/connections/{id}/events' },
+  putV1BillingAccountsAccountRefOwner: { method: 'PUT', path: '/v1/billing/accounts/{accountRef}/owner' },
+  getV1BillingAccountsAccountRef: { method: 'GET', path: '/v1/billing/accounts/{accountRef}' },
   putV1BillingConnectionsIdValueMapping: { method: 'PUT', path: '/v1/billing/connections/{id}/value-mapping' },
   postV1BillingConnectionsIdValueMappingPreview: { method: 'POST', path: '/v1/billing/connections/{id}/value-mapping/preview' },
   postV1BillingConnectionsIdRotateSecret: { method: 'POST', path: '/v1/billing/connections/{id}/rotate-secret' },
@@ -11818,6 +11938,7 @@ export const operations = {
   postV1AuthConnectionsIdUsers: { method: 'POST', path: '/v1/auth/connections/{id}/users' },
   postV1AuthConnectionsIdWidgetTokens: { method: 'POST', path: '/v1/auth/connections/{id}/widget-tokens' },
   getV1AuthConnectionsIdUsersCustomerRefReferral: { method: 'GET', path: '/v1/auth/connections/{id}/users/{customerRef}/referral' },
+  postV1AuthConnectionsIdAccounts: { method: 'POST', path: '/v1/auth/connections/{id}/accounts' },
   postV1AuthConnectionsIdSignals: { method: 'POST', path: '/v1/auth/connections/{id}/signals' },
   postV1AuthConnectionsInstall: { method: 'POST', path: '/v1/auth/connections/install' },
   getV1OauthAuthorize: { method: 'GET', path: '/v1/oauth/authorize' },
