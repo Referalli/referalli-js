@@ -42,8 +42,11 @@ export interface SnippetOptions {
   consentAdapters?: string[];
 }
 
+/** The cookie window aff.js is served with (also published at /t/{orgToken}/config.json). */
+export const snippetCookieDays = (cookieDays?: number) => Math.max(1, Math.min(400, Math.round(cookieDays ?? 60)));
+
 export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOptions = {}): string {
-  const days = Math.max(1, Math.min(400, Math.round(opts.cookieDays ?? 60)));
+  const days = snippetCookieDays(opts.cookieDays);
   const consent = consentConfig(opts.consent);
   const ids = opts.consentAdapters?.length ? opts.consentAdapters.filter((id) => (AUTO_ORDER as readonly string[]).includes(id)) : [...AUTO_ORDER];
   const src = consentSource(ids);
@@ -62,17 +65,20 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   var a=attr('data-attribution');var first=a==='first'||(a!=='last'&&${opts.firstTouch ? 'true' : 'false'});
   var referralOnly=attr('data-persist')==='referral-only';
   var secure=location.protocol==='https:'?'; Secure':'';
-  var cd=attr('data-cookie-domain');var dom=cd&&/^\\.?[a-z0-9.-]+$/i.test(cd)?'; domain='+cd:'';
+  // Only a domain this page is on, with two labels or more; else host-only.
+  var cd=attr('data-cookie-domain'),cdh=(cd||'').replace(/^\\./,'').toLowerCase(),hn=String(location.hostname||'').toLowerCase();
+  var dom=/^[a-z0-9-]+(\\.[a-z0-9-]+)+$/.test(cdh)&&(hn===cdh||hn.slice(-cdh.length-1)==='.'+cdh)?'; domain='+cd:'';
   var gone=false,dropped=false,sent=false,cstate='unknown',pendingId=null;
   var KEYS=WKEYS.concat(${JSON.stringify((opts.legacyKeys ?? []).filter((k) => /^[A-Za-z0-9_]{1,64}$/.test(k) && !REFERRAL_COOKIE_NAMES.includes(k)))});
   function readKey(k){var r=null;try{r=localStorage.getItem(k);}catch(e){}
     if(!r){var m=document.cookie.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));if(m)r=decodeURIComponent(m[1]);}
     if(!r)return null;try{var c=JSON.parse(r);if(!c||typeof c.anonId!=='string'||(c.exp&&c.exp<Date.now()))return null;return c;}catch(e){return null;}}
   function read(){for(var i=0;i<KEYS.length;i++){var c=readKey(KEYS[i]);if(c)return c;}return null;}
-  function write(c){if(gone||dropped)return;var r=JSON.stringify(c);var t='='+encodeURIComponent(r)+'; path=/; max-age='+(days*86400)+'; SameSite=Lax'+dom+secure;
+  function write(c){if(gone||dropped)return;var r=JSON.stringify(c),v=encodeURIComponent(r);var t='='+v+'; path=/; max-age='+(days*86400)+'; SameSite=Lax';
     for(var i=0;i<WKEYS.length;i++){var k=WKEYS[i];
       try{localStorage.setItem(k,r);}catch(e){}
-      try{document.cookie=k+t;}catch(e){}}}
+      // A refused domain (a public suffix) doesn't read back: go host-only.
+      try{document.cookie=k+t+dom+secure;if(dom&&document.cookie.indexOf(k+'='+v)<0){dom='';document.cookie=k+t+secure;}}catch(e){}}}
   function clear(){for(var i=0;i<KEYS.length;i++){var k=KEYS[i];try{localStorage.removeItem(k);}catch(e){}
     try{document.cookie=k+'=; path=/; max-age=0; SameSite=Lax'+dom+secure;if(dom)document.cookie=k+'=; path=/; max-age=0; SameSite=Lax'+secure;}catch(e){}}}
   function forget(){gone=true;clear();}

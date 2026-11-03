@@ -28,4 +28,12 @@ export {
   type ReferralLinkProps,
   type ReferralLinkState,
 } from './widgets.js';
+export {
+  REFERRAL_WIDGET_TAG,
+  ReferralPanel,
+  type GetAuthToken,
+  type ReferralPanelProps,
+  type ReferralWidgetAttributes,
+  type ReferralWidgetElement,
+} from './referral-panel.js';
 export type { ReferralContext } from 'referalli/browser';

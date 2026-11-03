@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 - 2026-11-03
+
+- New `<ReferralPanel programId auth getAuthToken token tokenUrl lang trackingToken baseUrl className onReady onError />`: the signed-in referral panel (`<referalli-referral-widget>`). Loads `widget.js` once, sets `getAuthToken` as a property, renders nothing on the server, removes its element on unmount. The tracking token and base URL default to `<ReferalliProvider>`'s.
+- JSX typing for `<referalli-referral-widget>` and `HTMLElementTagNameMap` entry; exports `ReferralWidgetElement`, `ReferralWidgetAttributes`, `GetAuthToken`, `REFERRAL_WIDGET_TAG`.
+
 ## 0.3.0 - 2026-11-02
 
 - Depends on `referalli` ^0.3.0 (the `referalli/webhooks` entry point, new endpoints and typed errors).

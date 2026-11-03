@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 - 2026-11-03
+
+- New endpoints: `POST /v1/billing/connections/{id}/events` (billing events with an API key), `GET /v1/programs/handle-availability`, `PUT /v1/auth/connections/{id}/origins`, `GET /v1/auth/connections/{id}`; `terms` on public program pages; the `signup_and_pay` sandbox scenario; `name` and `scopes` on `PATCH /v1/api-keys/{id}`.
+- Served `aff.js`: `data-cookie-domain` is used only when the page's host is on that domain (and has two labels); a refused domain cookie is rewritten host-only.
+
 ## 0.3.0 - 2026-11-02
 
 - New `referalli/webhooks` entry point: verify and parse webhook deliveries without the full client.

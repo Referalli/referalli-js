@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { renderSnippetJs, type SnippetOptions } from '../src/served.js';
 
 /** Runs the real served aff.js against a minimal fake browser. */
-function browser(href: string, attrs: Record<string, string> = {}, opts: SnippetOptions = {}) {
+function browser(href: string, attrs: Record<string, string> = {}, opts: SnippetOptions = {}, jar: { refuseDomain?: boolean } = {}) {
   const store = new Map<string, string>();
   const cookieWrites: string[] = [];
   const cookies = new Map<string, string>();
@@ -17,6 +17,8 @@ function browser(href: string, attrs: Record<string, string> = {}, opts: Snippet
     set cookie(v: string) {
       cookieWrites.push(v);
       const [pair, ...flags] = v.split('; ');
+      // A browser silently drops a cookie for a public-suffix domain.
+      if (jar.refuseDomain && flags.some((f) => f.startsWith('domain='))) return;
       const [k, val] = pair!.split('=');
       if (flags.includes('max-age=0')) cookies.delete(k!);
       else cookies.set(k!, val!);
@@ -26,7 +28,7 @@ function browser(href: string, attrs: Record<string, string> = {}, opts: Snippet
   const ctx = {
     window,
     document,
-    location: { protocol: page.protocol },
+    location: { protocol: page.protocol, hostname: page.hostname },
     localStorage: {
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => store.set(k, v),
@@ -120,6 +122,35 @@ describe('served aff.js', () => {
     const b = browser('https://app.example.com/?via=dana', { 'data-cookie-domain': 'x; path=/evil' });
     b.load();
     expect(b.cookieWrites[0]).not.toContain('domain=');
+  });
+
+  it('uses the cookie domain only when the page is on it and it is not a bare TLD', () => {
+    const domainOf = (href: string, cd: string) => {
+      const b = browser(href, { 'data-cookie-domain': cd });
+      b.load();
+      return /; domain=([^;]*)/.exec(b.cookieWrites[0]!)?.[1] ?? null;
+    };
+    expect(domainOf('https://app.example.com/?via=d', 'example.com')).toBe('example.com');
+    expect(domainOf('https://example.com/?via=d', '.example.com')).toBe('.example.com');
+    expect(domainOf('https://APP.Example.com/?via=d', '.EXAMPLE.com')).toBe('.EXAMPLE.com');
+    expect(domainOf('https://app.example.com/?via=d', '.other.com')).toBeNull();
+    expect(domainOf('https://app.notexample.com/?via=d', 'example.com')).toBeNull();
+    expect(domainOf('https://app.example.com/?via=d', '.com')).toBeNull();
+    expect(domainOf('https://app.example.com/?via=d', 'com')).toBeNull();
+    expect(domainOf('https://app.example.com/?via=d', 'example..com')).toBeNull();
+  });
+
+  it('rewrites host-only when the browser refuses the cookie domain', () => {
+    const b = browser('https://shop.example.co.uk/?via=dana', { 'data-cookie-domain': '.co.uk' }, {}, { refuseDomain: true });
+    const aff = b.load();
+    expect(b.cookieWrites[0]).toContain('; domain=.co.uk');
+    expect(b.cookieWrites[1]).toMatch(/^referalli_ctx=/);
+    expect(b.cookieWrites[1]).not.toContain('domain=');
+    // later writes skip the refused domain
+    expect(b.cookieWrites.slice(2).some((w) => w.includes('domain='))).toBe(false);
+    expect(b.cookies.has('referalli_ctx')).toBe(true);
+    expect(b.cookies.has('referally_ctx')).toBe(true);
+    expect(aff.getReferral().code).toBe('dana');
   });
 
   it("reads an imported tool's parameter, after the built-in ones", () => {

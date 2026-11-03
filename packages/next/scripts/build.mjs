@@ -14,7 +14,11 @@ const tsc = require.resolve('typescript/bin/tsc');
 const core = realpathSync(dirname(require.resolve('referalli/package.json')));
 if (!existsSync(join(core, 'dist', 'esm', 'index.d.ts'))) execFileSync(process.execPath, [join(core, 'scripts', 'build.mjs')], { stdio: 'inherit' });
 
+const react = realpathSync(dirname(require.resolve('@referalli/react/package.json')));
+if (!existsSync(join(react, 'dist', 'esm', 'index.d.ts'))) execFileSync(process.execPath, [join(react, 'scripts', 'build.mjs')], { stdio: 'inherit' });
+
 const types = relative(root, join(core, 'dist', 'esm'));
+const reactTypes = relative(root, join(react, 'dist', 'esm'));
 rmSync(join(root, 'dist'), { recursive: true, force: true });
 for (const project of ['tsconfig.build.json', 'tsconfig.cjs.json']) {
   const tmp = join(root, `.${project}.tmp.json`);
@@ -22,7 +26,7 @@ for (const project of ['tsconfig.build.json', 'tsconfig.cjs.json']) {
     tmp,
     JSON.stringify({
       extends: `./${project}`,
-      compilerOptions: { paths: { referalli: [`${types}/index.d.ts`], 'referalli/*': [`${types}/*.d.ts`] } },
+      compilerOptions: { paths: { referalli: [`${types}/index.d.ts`], 'referalli/*': [`${types}/*.d.ts`], '@referalli/react': [`${reactTypes}/index.d.ts`] } },
     }),
   );
   try {

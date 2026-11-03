@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 - 2026-11-03
+
+- Middleware: `consent: 'cookiemunch'` (or `{ cookiemunch: { category } }`) reads Cookie Munch's `CookieMunch` consent cookie. The category defaults to `referrals` with a fallback to `marketing`, as aff.js does. Until the visitor decides, no cookie is set. The function form of `consent` still works.
+- Middleware: with the Cookie Munch reader and `publishableKey`, a landing with no decision yet is recorded without a cookie, marked `unknown`. The function form still sends nothing until a decision. A granted landing's evidence carries the CMP's provider and Cookie Munch's stamp.
+- README: the first example sets `consent: 'cookiemunch'`, and a new Consent section explains the options. Without `consent`, the default is still always granted.
+- New `@referalli/next/client` entry (`'use client'`): re-exports `ReferralPanel` and `ReferalliProvider` from `@referalli/react`, now a dependency. `<ReferralPanel programId="prg_…" auth="atlas" />` renders the signed-in referral panel.
+
 ## 0.3.0 - 2026-11-02
 
 - Depends on `referalli` ^0.3.0 (the `referalli/webhooks` entry point, new endpoints and typed errors).

@@ -49,6 +49,7 @@ export const operations = {
   getAssistantSuggestions: { method: "GET", path: "/v1/assistant/suggestions", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getAuditLogs: { method: "GET", path: "/v1/audit-logs", pathParams: [], query: ["actor","actorType","action","subjectType","subjectId","created[gte]","created[lte]","limit","starting_after","ending_before"], body: false, kind: "list" },
   getAuthConnections: { method: "GET", path: "/v1/auth/connections", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getAuthConnectionsId: { method: "GET", path: "/v1/auth/connections/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getAuthConnectionsIdExport: { method: "GET", path: "/v1/auth/connections/{id}/export", pathParams: ["id"], query: ["customerRef"], body: false, kind: "json", public: true },
   getAuthConnectionsIdUsersCustomerRefReferral: { method: "GET", path: "/v1/auth/connections/{id}/users/{customerRef}/referral", pathParams: ["id","customerRef"], query: [], body: false, kind: "json", public: true },
   getAuthConnectionsProviders: { method: "GET", path: "/v1/auth/connections/providers", pathParams: [], query: [], body: false, kind: "json" },
@@ -184,6 +185,7 @@ export const operations = {
   getProfitabilityRebuildJobId: { method: "GET", path: "/v1/profitability/rebuild/{jobId}", pathParams: ["jobId"], query: [], body: false, kind: "json" },
   getProfitabilitySettings: { method: "GET", path: "/v1/profitability/settings", pathParams: [], query: ["programId"], body: false, kind: "json" },
   getPrograms: { method: "GET", path: "/v1/programs", pathParams: [], query: ["slug","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getProgramsHandleAvailability: { method: "GET", path: "/v1/programs/handle-availability", pathParams: [], query: ["handle"], body: false, kind: "json" },
   getProgramsId: { method: "GET", path: "/v1/programs/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdAutopricing: { method: "GET", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdCreditRail: { method: "GET", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -196,10 +198,10 @@ export const operations = {
   getProgramsIdRefereeReward: { method: "GET", path: "/v1/programs/{id}/referee-reward", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdStripeCredits: { method: "GET", path: "/v1/programs/{id}/stripe-credits", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdStripeCreditsLog: { method: "GET", path: "/v1/programs/{id}/stripe-credits/log", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
-  getProgramsIdTerms: { method: "GET", path: "/v1/programs/{id}/terms", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProgramsIdTerms: { method: "GET", path: "/v1/programs/{id}/terms", pathParams: ["id"], query: ["locale"], body: false, kind: "json" },
   getProgramsIdTermsAcceptances: { method: "GET", path: "/v1/programs/{id}/terms-acceptances", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProspects: { method: "GET", path: "/v1/prospects", pathParams: [], query: ["status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
-  getPublicProgramsHandle: { method: "GET", path: "/v1/public/programs/{handle}", pathParams: ["handle"], query: [], body: false, kind: "json", public: true },
+  getPublicProgramsHandle: { method: "GET", path: "/v1/public/programs/{handle}", pathParams: ["handle"], query: ["locale"], body: false, kind: "json", public: true },
   getReferrals: { method: "GET", path: "/v1/referrals", pathParams: [], query: ["programId","partnerId","status","customerRef","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getReferralsId: { method: "GET", path: "/v1/referrals/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getReferralsIdJourney: { method: "GET", path: "/v1/referrals/{id}/journey", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -247,6 +249,7 @@ export const operations = {
   patchAdminStatusIncidentsId: { method: "PATCH", path: "/v1/admin/status/incidents/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchApiKeysId: { method: "PATCH", path: "/v1/api-keys/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchAuthConnectionsId: { method: "PATCH", path: "/v1/auth/connections/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
+  patchAuthConnectionsIdOrigins: { method: "PATCH", path: "/v1/auth/connections/{id}/origins", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   patchBillingConnectionsId: { method: "PATCH", path: "/v1/billing/connections/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchOrg: { method: "PATCH", path: "/v1/org", pathParams: [], query: [], body: true, kind: "json" },
   patchOrgMembersUserId: { method: "PATCH", path: "/v1/org/members/{userId}", pathParams: ["userId"], query: [], body: true, kind: "json" },
@@ -289,6 +292,7 @@ export const operations = {
   postBillingActivate: { method: "POST", path: "/v1/billing/activate", pathParams: [], query: [], body: true, kind: "json" },
   postBillingCheckout: { method: "POST", path: "/v1/billing/checkout", pathParams: [], query: [], body: true, kind: "json" },
   postBillingConnections: { method: "POST", path: "/v1/billing/connections", pathParams: [], query: [], body: true, kind: "json" },
+  postBillingConnectionsIdEvents: { method: "POST", path: "/v1/billing/connections/{id}/events", pathParams: ["id"], query: [], body: true, kind: "json" },
   postBillingConnectionsIdRotateSecret: { method: "POST", path: "/v1/billing/connections/{id}/rotate-secret", pathParams: ["id"], query: [], body: false, kind: "json" },
   postBillingConnectionsIdValueMappingPreview: { method: "POST", path: "/v1/billing/connections/{id}/value-mapping/preview", pathParams: ["id"], query: [], body: true, kind: "json" },
   postBillingInternalCustomers: { method: "POST", path: "/v1/billing/internal-customers", pathParams: [], query: [], body: true, kind: "json" },
@@ -434,6 +438,7 @@ export const operations = {
   postWidgetTokens: { method: "POST", path: "/v1/widget/tokens", pathParams: [], query: [], body: true, kind: "json" },
   postZapierConversions: { method: "POST", path: "/v1/zapier/conversions", pathParams: [], query: [], body: true, kind: "json" },
   postZapierHooks: { method: "POST", path: "/v1/zapier/hooks", pathParams: [], query: [], body: true, kind: "json" },
+  putAuthConnectionsIdOrigins: { method: "PUT", path: "/v1/auth/connections/{id}/origins", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   putAuthConnectionsIdSecret: { method: "PUT", path: "/v1/auth/connections/{id}/secret", pathParams: ["id"], query: [], body: true, kind: "json" },
   putBillingConnectionsIdCredentials: { method: "PUT", path: "/v1/billing/connections/{id}/credentials", pathParams: ["id"], query: [], body: true, kind: "json" },
   putBillingConnectionsIdSecret: { method: "PUT", path: "/v1/billing/connections/{id}/secret", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -595,6 +600,8 @@ export function buildResources(t: Transport) {
         delete: (id: string, options?: RequestOptions): Promise<T.DeleteAuthConnectionsIdResponse> => t.op("deleteAuthConnectionsId", { path: { id } }, options),
         /** List auth connections. GET /v1/auth/connections */
         list: (query?: (T.GetAuthConnectionsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetAuthConnectionsResponse['data'][number], T.GetAuthConnectionsResponse> => t.list("getAuthConnections", { query }, options),
+        /** Get an auth connection. GET /v1/auth/connections/{id} */
+        retrieve: (id: string, options?: RequestOptions): Promise<T.GetAuthConnectionsIdResponse> => t.op("getAuthConnectionsId", { path: { id } }, options),
         /** Export a user (signed protocol). GET /v1/auth/connections/{id}/export */
         export: (id: string, query: T.GetAuthConnectionsIdExportQuery, options?: RequestOptions): Promise<T.GetAuthConnectionsIdExportResponse> => t.op("getAuthConnectionsIdExport", { path: { id }, query }, options),
         /** List identity connectors. GET /v1/auth/connections/providers */
@@ -625,6 +632,12 @@ export function buildResources(t: Transport) {
         install: (body: T.PostAuthConnectionsInstallBody, options?: RequestOptions): Promise<T.PostAuthConnectionsInstallResponse> => t.op("postAuthConnectionsInstall", { body }, options),
         /** Set a vendor-issued secret. PUT /v1/auth/connections/{id}/secret */
         updateSecret: (id: string, body: T.PutAuthConnectionsIdSecretBody, options?: RequestOptions): Promise<T.PutAuthConnectionsIdSecretResponse> => t.op("putAuthConnectionsIdSecret", { path: { id }, body }, options),
+        origins: {
+          /** Set a connection's allowed origins (signed protocol, PATCH). PATCH /v1/auth/connections/{id}/origins */
+          update: (id: string, body: T.PatchAuthConnectionsIdOriginsBody, options?: RequestOptions): Promise<T.PatchAuthConnectionsIdOriginsResponse> => t.op("patchAuthConnectionsIdOrigins", { path: { id }, body }, options),
+          /** Set a connection's allowed origins (signed protocol). PUT /v1/auth/connections/{id}/origins */
+          replace: (id: string, body: T.PutAuthConnectionsIdOriginsBody, options?: RequestOptions): Promise<T.PutAuthConnectionsIdOriginsResponse> => t.op("putAuthConnectionsIdOrigins", { path: { id }, body }, options),
+        },
         users: {
           /** Get a user's referral link (signed protocol). GET /v1/auth/connections/{id}/users/{customerRef}/referral */
           referral: (id: string, customerRef: string, options?: RequestOptions): Promise<T.GetAuthConnectionsIdUsersCustomerRefReferralResponse> => t.op("getAuthConnectionsIdUsersCustomerRefReferral", { path: { id, customerRef } }, options),
@@ -655,6 +668,8 @@ export function buildResources(t: Transport) {
         update: (id: string, body: T.PatchBillingConnectionsIdBody, options?: RequestOptions): Promise<T.PatchBillingConnectionsIdResponse> => t.op("patchBillingConnectionsId", { path: { id }, body }, options),
         /** Create a billing connection. POST /v1/billing/connections */
         create: (body: T.PostBillingConnectionsBody, options?: RequestOptions): Promise<T.PostBillingConnectionsResponse> => t.op("postBillingConnections", { body }, options),
+        /** Send events to a generic connection. POST /v1/billing/connections/{id}/events */
+        events: (id: string, body: T.PostBillingConnectionsIdEventsBody, options?: RequestOptions): Promise<T.PostBillingConnectionsIdEventsResponse> => t.op("postBillingConnectionsIdEvents", { path: { id }, body }, options),
         /** Rotate the webhook signing secret. POST /v1/billing/connections/{id}/rotate-secret */
         rotateSecret: (id: string, options?: RequestOptions): Promise<T.PostBillingConnectionsIdRotateSecretResponse> => t.op("postBillingConnectionsIdRotateSecret", { path: { id } }, options),
         /** Set provider API credentials. PUT /v1/billing/connections/{id}/credentials */
@@ -1460,12 +1475,14 @@ export function buildResources(t: Transport) {
     programs: {
       /** List programs. GET /v1/programs */
       list: (query?: (T.GetProgramsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsResponse['data'][number], T.GetProgramsResponse> => t.list("getPrograms", { query }, options),
+      /** Check a public handle. GET /v1/programs/handle-availability */
+      handleAvailability: (query: T.GetProgramsHandleAvailabilityQuery, options?: RequestOptions): Promise<T.GetProgramsHandleAvailabilityResponse> => t.op("getProgramsHandleAvailability", { query }, options),
       /** Get a program. GET /v1/programs/{id} */
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdResponse> => t.op("getProgramsId", { path: { id } }, options),
       /** Get the referral tree. GET /v1/programs/{id}/graph */
       graph: (id: string, query: T.GetProgramsIdGraphQuery, options?: RequestOptions): Promise<T.GetProgramsIdGraphResponse> => t.op("getProgramsIdGraph", { path: { id }, query }, options),
       /** Get a program's terms. GET /v1/programs/{id}/terms */
-      terms: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdTermsResponse> => t.op("getProgramsIdTerms", { path: { id } }, options),
+      terms: (id: string, query?: (T.GetProgramsIdTermsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetProgramsIdTermsResponse> => t.op("getProgramsIdTerms", { path: { id }, query }, options),
       /** List terms acceptances. GET /v1/programs/{id}/terms-acceptances */
       termsAcceptances: (id: string, query?: (T.GetProgramsIdTermsAcceptancesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdTermsAcceptancesResponse['data'][number], T.GetProgramsIdTermsAcceptancesResponse> => t.list("getProgramsIdTermsAcceptances", { path: { id }, query }, options),
       /** Update a program. PATCH /v1/programs/{id} */
@@ -1560,7 +1577,7 @@ export function buildResources(t: Transport) {
     public: {
       programs: {
         /** Get a program's public page. GET /v1/public/programs/{handle} */
-        retrieve: (handle: string, options?: RequestOptions): Promise<T.GetPublicProgramsHandleResponse> => t.op("getPublicProgramsHandle", { path: { handle } }, options),
+        retrieve: (handle: string, query?: (T.GetPublicProgramsHandleQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPublicProgramsHandleResponse> => t.op("getPublicProgramsHandle", { path: { handle }, query }, options),
         /** Join a program. POST /v1/public/programs/{handle}/join */
         join: (handle: string, body: T.PostPublicProgramsHandleJoinBody, options?: RequestOptions): Promise<T.PostPublicProgramsHandleJoinResponse> => t.op("postPublicProgramsHandleJoin", { path: { handle }, body }, options),
       },

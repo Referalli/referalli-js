@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { PartnerSignup, ReferalliProvider, ReferralLink, useReferral } from '../src/index.js';
+import { PartnerSignup, ReferalliProvider, ReferralLink, ReferralPanel, useReferral } from '../src/index.js';
 
 function Probe() {
   const r = useReferral();
@@ -22,5 +22,14 @@ describe('SSR', () => {
     expect(html).toContain('DANA');
     expect(html).toContain('https://shop.example/?via=DANA');
     expect(html).toContain('href="https://referalli.com/join/acme"');
+  });
+
+  it('renders no referral panel on the server', () => {
+    const html = renderToString(
+      <ReferalliProvider publishableKey="tok_1">
+        <ReferralPanel programId="prg_1" auth="atlas" />
+      </ReferalliProvider>,
+    );
+    expect(html).toBe('');
   });
 });

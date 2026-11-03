@@ -57,7 +57,7 @@ export type * from './generated.js';
 
 // Kept for existing integrations and the API server.
 export { initSnippet, type AffApi, type SnippetConfig, type SnippetEnv } from './snippet.js';
-export { renderSnippetJs, type SnippetOptions } from './served.js';
+export { renderSnippetJs, snippetCookieDays, type SnippetOptions } from './served.js';
 export {
   AUTO_ORDER,
   CONSENT_ADAPTER_IDS,

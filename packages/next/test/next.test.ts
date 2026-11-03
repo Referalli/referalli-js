@@ -1,6 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server.js';
 import { describe, expect, it, vi } from 'vitest';
+import type { CaptureOptions } from '../src/middleware.js';
 
 const cookieJar = new Map<string, string>();
 vi.mock('next/headers.js', () => ({
@@ -151,5 +152,78 @@ describe('middleware: legacy twin and consent (REF-H18, REF-P01)', () => {
     const req = new NextRequest('https://shop.example/?via=DANA', { headers: { cookie: 'referalli_ctx=x' } });
     const denied = setCookies(captureReferral(req, NextResponse.next(), { consent: () => 'denied' }));
     expect(denied.map((c) => c.split(';')[0])).toEqual(['referalli_ctx=', 'referally_ctx=']);
+  });
+
+  it('function-form consent sends nothing while unknown', () => {
+    const fetchFn = vi.fn(async () => new Response('{}'));
+    const res = captureReferral(new NextRequest('https://shop.example/?via=DANA'), NextResponse.next(), {
+      consent: () => 'unknown',
+      publishableKey: 'tok_1',
+      fetch: fetchFn as unknown as typeof fetch,
+    });
+    expect(res.headers.get('set-cookie')).toBeNull();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('function-form consent still sets the cookie when granted', () => {
+    const res = captureReferral(new NextRequest('https://shop.example/?via=DANA'), NextResponse.next(), { consent: () => 'granted' });
+    expect(cookieValue(res)).toMatchObject({ code: 'DANA' });
+  });
+});
+
+describe('middleware: Cookie Munch consent', () => {
+  const cm = (v: unknown, encode = true) => ({ cookie: `CookieMunch=${encode ? encodeURIComponent(JSON.stringify(v)) : String(v)}` });
+  const base = { necessary: true, preferences: false, statistics: false, method: 'explicit', stamp: 'st_1', ver: 1 };
+  const run = (headers: Record<string, string> | undefined, opts: CaptureOptions = { consent: 'cookiemunch' }) =>
+    referalliMiddleware(opts)(new NextRequest('https://shop.example/?via=DANA', { headers }));
+  const visitBody = async (headers: Record<string, string> | undefined) => {
+    const fetchFn = vi.fn(async () => new Response('{}'));
+    const waits: Promise<unknown>[] = [];
+    const res = captureReferral(
+      new NextRequest('https://shop.example/?via=DANA', { headers }),
+      NextResponse.next(),
+      { consent: 'cookiemunch', publishableKey: 'tok_1', fetch: fetchFn as unknown as typeof fetch },
+      { waitUntil: (p) => void waits.push(p) },
+    );
+    await Promise.all(waits);
+    const calls = fetchFn.mock.calls as unknown as [string, RequestInit][];
+    return { res, body: calls[0] ? JSON.parse(String(calls[0][1].body)) : null };
+  };
+
+  it('sets no cookie before the visitor decides, but still records the landing', async () => {
+    expect(run(undefined).headers.get('set-cookie')).toBeNull();
+    const { res, body } = await visitBody(undefined);
+    expect(res.headers.get('set-cookie')).toBeNull();
+    expect(body).toMatchObject({ code: 'DANA', consent: { provider: 'cookiemunch', state: 'unknown' } });
+  });
+
+  it('sets the cookie once the referrals category is accepted, with the stamp as evidence', async () => {
+    const accepted = cm({ ...base, marketing: false, custom: { referrals: true } });
+    expect(cookieValue(run(accepted))).toMatchObject({ code: 'DANA' });
+    const { body } = await visitBody(accepted);
+    expect(body.consent).toMatchObject({ provider: 'cookiemunch', state: 'granted', stamp: 'st_1' });
+  });
+
+  it('a yes to another category only is not a yes to referrals', async () => {
+    expect(run(cm({ ...base, statistics: true, marketing: true, custom: { referrals: false } })).headers.get('set-cookie')).toBeNull();
+    expect(run(cm({ ...base, statistics: true, marketing: false })).headers.get('set-cookie')).toBeNull();
+    expect((await visitBody(cm({ ...base, statistics: true, marketing: false }))).body).toBeNull();
+  });
+
+  it('falls back to marketing when the site has no referrals category, unless a category is named', () => {
+    const named: CaptureOptions = { consent: { cookiemunch: { category: 'affiliates' } } };
+    expect(cookieValue(run(cm({ ...base, marketing: true })))).toMatchObject({ code: 'DANA' });
+    expect(run(cm({ ...base, marketing: true }), named).headers.get('set-cookie')).toBeNull();
+    expect(cookieValue(run(cm({ ...base, marketing: false, custom: { affiliates: true } }), named))).toMatchObject({ code: 'DANA' });
+  });
+
+  it('reads plain JSON and the relaxed literal encoding', () => {
+    expect(cookieValue(run(cm(JSON.stringify({ ...base, marketing: true }), false)))).toMatchObject({ code: 'DANA' });
+    expect(cookieValue(run(cm("{stamp:'st_2',necessary:true,marketing:true,method:'explicit',ver:1}", false)))).toMatchObject({ code: 'DANA' });
+  });
+
+  it('clears the referral cookie when the visitor declined', () => {
+    const res = run({ cookie: `${cm({ ...base, marketing: false }).cookie}; referalli_ctx=x` });
+    expect((res.headers as Headers & { getSetCookie(): string[] }).getSetCookie().map((c) => c.split(';')[0])).toEqual(['referalli_ctx=', 'referally_ctx=']);
   });
 });

@@ -3,8 +3,8 @@
  * `ref_click_id`) into a first-party cookie on your own domain, before any
  * page renders. Edge-safe.
  *
- *   // middleware.ts
- *   export { referalliMiddleware as middleware } from '@referalli/next/middleware';
+ *   // middleware.ts: wait for the visitor's Cookie Munch decision
+ *   export const middleware = referalliMiddleware({ consent: 'cookiemunch' });
  *   // or, with options / your own middleware:
  *   import { captureReferral } from '@referalli/next/middleware';
  *   export function middleware(req: NextRequest) {
@@ -45,11 +45,66 @@ export interface CaptureOptions {
   baseUrl?: string;
   fetch?: typeof fetch;
   /**
-   * Read the visitor's consent from the request (your CMP's cookie). On
-   * `unknown` no cookie is set and nothing is sent; on `denied` the context
-   * is deleted. Default: always granted (sites that need no opt-in).
+   * The visitor's consent for the referral cookie. `'cookiemunch'` (or
+   * `{ cookiemunch: { category } }`; default category `referrals`, falling
+   * back to `marketing`) reads Cookie Munch's `CookieMunch` cookie; a
+   * function reads your own CMP's cookie. On `unknown` no cookie is set (with
+   * the Cookie Munch reader and `publishableKey`, the landing is still recorded,
+   * marked `unknown`; the function form sends nothing); on
+   * `denied` the context is deleted and nothing is sent.
+   * Default: always granted (only for sites that need no opt-in).
    */
-  consent?: (req: Req) => ConsentState;
+  consent?: 'cookiemunch' | { cookiemunch: { category?: string } } | ((req: Req) => ConsentState);
+}
+
+/** The name of Cookie Munch's consent cookie (cookiemunch.net/docs/consent-cookie). */
+export const COOKIE_MUNCH_COOKIE = 'CookieMunch';
+
+/** Cookie Munch's cookie value: URL-encoded JSON, plain JSON, or Cookiebot's relaxed literal (`{stamp:'…',marketing:true}`). */
+function parseCookieMunch(raw: string | undefined): Record<string, any> | null {
+  if (!raw) return null;
+  let s = raw;
+  try {
+    s = decodeURIComponent(raw);
+  } catch {
+    // already decoded
+  }
+  for (const text of [s, s.replace(/'/g, '"').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')]) {
+    try {
+      const v: unknown = JSON.parse(text);
+      if (v && typeof v === 'object' && !Array.isArray(v)) return v as Record<string, any>;
+    } catch {
+      // try the next encoding
+    }
+  }
+  return null;
+}
+
+/**
+ * Port of aff.js's Cookie Munch adapter (`referalli` src/consent/adapters/cookiemunch.ts),
+ * reading the cookie instead of `window.CookieMunch.consent`: no cookie is no decision yet;
+ * custom categories sit under `custom` in the cookie, standard ones at the top level.
+ * shortcut: `ver` is not compared with the site's `consent.version` (the server can't see the
+ * site config); the embed deletes an aged-out cookie on the visitor's next page view.
+ */
+function readCookieMunch(req: Req, category: string | undefined): { state: ConsentState; stamp?: string } {
+  const c = parseCookieMunch(req.cookies.get(COOKIE_MUNCH_COOKIE)?.value);
+  if (!c) return { state: 'unknown' };
+  const cat = category || 'referrals';
+  let v: unknown = typeof c[cat] === 'boolean' ? c[cat] : c.custom?.[cat];
+  if (typeof v !== 'boolean' && !category) v = c.marketing;
+  return { state: v === true ? 'granted' : 'denied', ...(c.stamp ? { stamp: String(c.stamp) } : {}) };
+}
+
+function readConsent(req: Req, opt: CaptureOptions['consent']): { provider: string; state: ConsentState; stamp?: string } {
+  if (!opt) return { provider: 'none', state: 'granted' };
+  const provider = typeof opt === 'function' ? 'server' : 'cookiemunch';
+  try {
+    if (typeof opt === 'function') return { provider, state: opt(req) };
+    return { provider, ...readCookieMunch(req, opt === 'cookiemunch' ? undefined : opt.cookiemunch?.category) };
+  } catch {
+    return { provider, state: 'unknown' };
+  }
 }
 
 type Req = Pick<NextRequest, 'nextUrl' | 'headers' | 'cookies'>;
@@ -60,27 +115,26 @@ type Req = Pick<NextRequest, 'nextUrl' | 'headers' | 'cookies'>;
  */
 export function captureReferral<R extends NextResponse>(req: Req, res: R, opts: CaptureOptions = {}, event?: Pick<NextFetchEvent, 'waitUntil'>): R {
   const secure = req.nextUrl.protocol === 'https:';
-  let consent: ConsentState = 'granted';
-  try {
-    consent = opts.consent ? opts.consent(req) : 'granted';
-  } catch {
-    consent = 'unknown';
-  }
+  const evidence = readConsent(req, opts.consent);
+  const consent = evidence.state;
   if (consent === 'denied') {
     if (REFERRAL_COOKIE_NAMES.some((n) => req.cookies.get(n))) {
       for (const c of clearReferralCookies({ domain: opts.cookieDomain, secure })) res.headers.append('set-cookie', c);
     }
     return res;
   }
-  if (consent !== 'granted') return res;
+  // Only the built-in Cookie Munch reader records an undecided landing; the function form sends nothing until a decision.
+  if (consent !== 'granted' && typeof opts.consent === 'function') return res;
   const fromUrl = referralFromUrl(req.nextUrl, opts.params ?? REFERRAL_PARAMS);
   if (!fromUrl.code && !fromUrl.clickId) return res;
   let stored: StoredReferral | null = null;
   for (const name of REFERRAL_COOKIE_NAMES) stored ??= parseReferral(req.cookies.get(name)?.value);
   const ctx: StoredReferral = mergeReferral(stored, fromUrl, { cookieDays: opts.cookieDays, firstTouch: opts.firstTouch });
-  // `referalli_ctx` and its legacy twin `referally_ctx`, as the browser tracker writes them.
-  for (const c of serializeReferralCookies(ctx, { cookieDays: opts.cookieDays, domain: opts.cookieDomain, secure })) {
-    res.headers.append('set-cookie', c);
+  // `referalli_ctx` and its legacy twin `referally_ctx`, as the browser tracker writes them; only with consent.
+  if (consent === 'granted') {
+    for (const c of serializeReferralCookies(ctx, { cookieDays: opts.cookieDays, domain: opts.cookieDomain, secure })) {
+      res.headers.append('set-cookie', c);
+    }
   }
   if (opts.publishableKey) {
     const base = (opts.baseUrl ?? 'https://referalli.com').replace(/\/+$/, '');
@@ -93,7 +147,7 @@ export function captureReferral<R extends NextResponse>(req: Req, res: R, opts: 
         clickId: ctx.clickId ?? undefined,
         url: req.nextUrl.href,
         referer: req.headers.get('referer') ?? undefined,
-        ...(opts.consent ? { consent: { provider: 'server', state: 'granted', at: new Date().toISOString() } } : {}),
+        ...(opts.consent ? { consent: { ...evidence, at: new Date().toISOString() } } : {}),
       }),
     }).then(
       () => undefined,

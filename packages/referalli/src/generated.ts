@@ -308,9 +308,23 @@ export type ProgramTerms = {
   holdDays: number;
   /** Overrides, tiers or new-vs-expansion rates can change the rate a partner earns. */
   ratesVary: boolean;
+  /** The same sentence in each partner-portal locale. */
   summary: {
     en: string;
+    es: string;
+    de: string;
+    fr: string;
+    pt: string;
+    it: string;
+    nl: string;
+    sv: string;
+    ja: string;
+    zh: string;
   };
+  /** With `?locale=` or `Accept-Language`: the locale chosen (`en` when the one asked for is not supported). */
+  locale?: string;
+  /** With `?locale=` or `Accept-Language`: the summary in `locale`. */
+  text?: string;
 };
 
 export type BillingFilter = {
@@ -2459,6 +2473,16 @@ export type WebhookEndpointRecoveredEvent = {
   data: WebhookEndpointRecoveredEventData;
 };
 
+export type GetTOrgTokenConfigJsonResponse = {
+  /** How long aff.js keeps the context, in days (1 to 400): the default it is served with. */
+  cookieWindowDays: number;
+  cookieName: string;
+  /** The pre-rename cookie name, written alongside until 2027-01-31. */
+  legacyCookieName: string;
+  /** localStorage keys aff.js writes (same names and value as the cookies). */
+  storageKeys: Array<string>;
+};
+
 export type PostTOrgTokenVisitResponse = {
   ok: true;
   clickId: string | null;
@@ -2962,6 +2986,13 @@ export type GetOrgReferralParamsResponse = {
   params: Array<string>;
 };
 
+export type GetProgramsHandleAvailabilityResponse = {
+  handle: string;
+  available: boolean;
+  /** `invalid`: not 3 to 48 of a-z, 0-9 and `-`; `taken`: another program (in any org) has it. */
+  reason?: "taken" | "invalid";
+};
+
 export type GetProgramsResponse = {
   object: "list";
   data: Array<Program>;
@@ -3390,6 +3421,19 @@ export type GetBillingConnectionsResponse = {
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type PostBillingConnectionsIdEventsResponse = {
+  received: number;
+  results: Array<{
+    duplicate: boolean;
+    billingEventId: string | null;
+    conversions: number;
+    linesCreated: number;
+    reversals: number;
+    /** Recorded as ignored_by_filter: earned nothing. */
+    ignored?: "filter" | "internal_customer";
+  }>;
 };
 
 export type PutBillingConnectionsIdValueMappingResponse = {
@@ -4175,7 +4219,48 @@ export type PostSandboxSimulateResponse = {
   conversions: number;
   linesCreated: number;
   reversals: number;
-};
+} | ({
+  scenario: "signup_and_pay";
+  /** Both steps succeeded: the sign-up was attributed and the payment earned a commission. */
+  ok: boolean;
+  /** The signup step, then the payment step. */
+  steps: Array<({
+    step: "signup";
+    ok: boolean;
+    via: "auth_connection" | "associate";
+    customerRef: string;
+    referralId: string | null;
+    partnerId: string | null;
+    /** Why the sign-up was not credited, when it was not. */
+    notes: Array<string>;
+  }) | ({
+    step: "payment";
+    ok: boolean;
+    billingConnectionId: string;
+    provider: string;
+    /** The payment.paid event id; null when the step did not run. */
+    eventId: string | null;
+    results: Array<{
+      duplicate: boolean;
+      billingEventId: string | null;
+      conversions: number;
+      linesCreated: number;
+      reversals: number;
+      ignored?: string;
+    }>;
+    /** Why the payment earned nothing (awaiting_secret, program mismatch, no rule…). */
+    notes: Array<string>;
+  })>;
+  /** Commission events the fixture created (earned, reversed…). */
+  commissions: Array<{
+    id: string;
+    type: string;
+    partnerId: string;
+    amountMinor: number;
+    currency: string;
+    relatedCommissionId: string | null;
+  }>;
+});
 
 export type GetSandboxBillingFixturesResponse = {
   data: Array<{
@@ -5500,10 +5585,21 @@ export type PostAuthConnectionsIdPingResponse = {
   orgName: string;
   autoEnrollUsers: boolean;
   serverTime: string;
-  /** What the connection takes beyond sign-ups: `partners` is user-chosen referral codes through `/partners`. */
+  /** What the connection takes beyond sign-ups: `partners` is user-chosen referral codes through `/partners`; `origins` is setting its own `allowedOrigins` through `PUT …/origins`. */
   capabilities: {
     partners: boolean;
+    origins: boolean;
   };
+};
+
+export type PutAuthConnectionsIdOriginsResponse = {
+  id: string;
+  allowedOrigins: Array<string>;
+};
+
+export type PatchAuthConnectionsIdOriginsResponse = {
+  id: string;
+  allowedOrigins: Array<string>;
 };
 
 export type PostAuthConnectionsIdAliasesResponse = {
@@ -5756,6 +5852,8 @@ export type GetPublicProgramsHandleResponse = {
   pitch: string;
   autoApprove: boolean;
   commission: GetOpenapiJsonResponse | null;
+  /** The program's terms (as `GET /v1/programs/{id}/terms`, with `?locale=`/`Accept-Language`); null when it has no rule yet. */
+  terms: ProgramTerms | null;
   branding: {
     logoUrl: string | null;
     theme: GetOpenapiJsonResponse | null;
@@ -7449,6 +7547,8 @@ export type GetTOrgTokenAffJsQuery = {
 };
 export type GetTOrgTokenAffJsResponse = string;
 
+/** GET /t/{orgToken}/config.json: Get the tracking script config */
+
 /** GET /go/{orgToken}/{code}: Follow a tracked link */
 export type GetGoOrgTokenCodeQuery = {
   cx?: string;
@@ -8047,6 +8147,11 @@ export type GetProgramsQuery = {
   "created[lte]"?: string;
 };
 
+/** GET /v1/programs/handle-availability: Check a public handle */
+export type GetProgramsHandleAvailabilityQuery = {
+  handle: string;
+};
+
 /** GET /v1/programs/{id}: Get a program */
 export type GetProgramsIdResponse = Program;
 
@@ -8256,6 +8361,8 @@ export type GetApiKeysIdResponse = ApiKey;
 
 /** PATCH /v1/api-keys/{id}: Update an API key */
 export type PatchApiKeysIdBody = {
+  name?: string;
+  scopes?: Array<"admin" | "api_keys:mint" | "full" | "read" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
   apiVersion?: string;
   owner?: string | null;
   expiresInDays?: number | null;
@@ -8591,6 +8698,9 @@ export type GetCommissionRulesQuery = {
 };
 
 /** GET /v1/programs/{id}/terms: Get a program's terms */
+export type GetProgramsIdTermsQuery = {
+  locale?: string;
+};
 export type GetProgramsIdTermsResponse = ProgramTerms;
 
 /** GET /v1/commissions: List commission ledger events */
@@ -8718,6 +8828,11 @@ export type PatchBillingConnectionsIdBody = {
 export type PatchBillingConnectionsIdResponse = BillingConnection;
 
 /** DELETE /v1/billing/connections/{id}: Delete a billing connection */
+
+/** POST /v1/billing/connections/{id}/events: Send events to a generic connection */
+export type PostBillingConnectionsIdEventsBody = {
+  events: Array<Record<string, unknown>>;
+};
 
 /** PUT /v1/billing/connections/{id}/value-mapping: Set the value mapping */
 export type PutBillingConnectionsIdValueMappingBody = {
@@ -9390,10 +9505,16 @@ export type PostWebhookDeliveriesIdReplayResponse = Ok;
 /** POST /v1/sandbox/simulate: Simulate billing history */
 export type PostSandboxSimulateBody = {
   programId: string;
-  partnerId: string;
-  scenario?: "subscription" | "refund" | "churn";
+  partnerId?: string;
+  scenario?: "subscription" | "refund" | "churn" | "signup_and_pay";
   priceMinor?: number;
   months?: number;
+  code?: string;
+  authConnectionId?: string;
+  billingConnectionId?: string;
+  customerRef?: string;
+  amountMinor?: number;
+  currency?: string;
 };
 
 /** GET /v1/sandbox/billing-fixtures: List billing event fixtures */
@@ -10481,12 +10602,8 @@ export type GetAuthConnectionsQuery = {
 
 /** GET /v1/auth/connections/providers: List identity connectors */
 
-/** PUT /v1/auth/connections/{id}/secret: Set a vendor-issued secret */
-export type PutAuthConnectionsIdSecretBody = {
-  secret: string;
-};
-
-/** POST /v1/auth/connections/{id}/rotate-secret: Rotate an auth connection secret */
+/** GET /v1/auth/connections/{id}: Get an auth connection */
+export type GetAuthConnectionsIdResponse = AuthConnection;
 
 /** PATCH /v1/auth/connections/{id}: Update an auth connection */
 export type PatchAuthConnectionsIdBody = {
@@ -10517,6 +10634,13 @@ export type PatchAuthConnectionsIdBody = {
 
 /** DELETE /v1/auth/connections/{id}: Delete an auth connection */
 export type DeleteAuthConnectionsIdResponse = Ok;
+
+/** PUT /v1/auth/connections/{id}/secret: Set a vendor-issued secret */
+export type PutAuthConnectionsIdSecretBody = {
+  secret: string;
+};
+
+/** POST /v1/auth/connections/{id}/rotate-secret: Rotate an auth connection secret */
 
 /** POST /v1/auth/connections/{id}/revoke-previous-secret: Revoke the previous auth secret */
 
@@ -10574,6 +10698,16 @@ export type GetAuthConnectionsIdExportQuery = {
 
 /** POST /v1/auth/connections/{id}/ping: Test an auth connection (signed protocol) */
 export type PostAuthConnectionsIdPingBody = Record<string, unknown>;
+
+/** PUT /v1/auth/connections/{id}/origins: Set a connection's allowed origins (signed protocol) */
+export type PutAuthConnectionsIdOriginsBody = {
+  allowedOrigins: Array<string>;
+};
+
+/** PATCH /v1/auth/connections/{id}/origins: Set a connection's allowed origins (signed protocol, PATCH) */
+export type PatchAuthConnectionsIdOriginsBody = {
+  allowedOrigins: Array<string>;
+};
 
 /** POST /v1/auth/connections/{id}/aliases: Change a user's id (signed protocol) */
 export type PostAuthConnectionsIdAliasesBody = {
@@ -10750,6 +10884,9 @@ export type GetOnchainConnectionsQuery = {
 };
 
 /** GET /v1/public/programs/{handle}: Get a program's public page */
+export type GetPublicProgramsHandleQuery = {
+  locale?: string;
+};
 
 /** POST /v1/public/programs/{handle}/join: Join a program */
 export type PostPublicProgramsHandleJoinBody = {
@@ -11251,6 +11388,7 @@ export type WebhookPayloads = {
 /** Every operation, by operationId. */
 export const operations = {
   getTOrgTokenAffJs: { method: 'GET', path: '/t/{orgToken}/aff.js' },
+  getTOrgTokenConfigJson: { method: 'GET', path: '/t/{orgToken}/config.json' },
   getGoOrgTokenCode: { method: 'GET', path: '/go/{orgToken}/{code}' },
   postTOrgTokenVisit: { method: 'POST', path: '/t/{orgToken}/visit' },
   getTOrgTokenCodesCode: { method: 'GET', path: '/t/{orgToken}/codes/{code}' },
@@ -11332,6 +11470,7 @@ export const operations = {
   putV1OrgReferralParams: { method: 'PUT', path: '/v1/org/referral-params' },
   postV1Programs: { method: 'POST', path: '/v1/programs' },
   getV1Programs: { method: 'GET', path: '/v1/programs' },
+  getV1ProgramsHandleAvailability: { method: 'GET', path: '/v1/programs/handle-availability' },
   getV1ProgramsId: { method: 'GET', path: '/v1/programs/{id}' },
   patchV1ProgramsId: { method: 'PATCH', path: '/v1/programs/{id}' },
   postV1ProgramsIdReferrers: { method: 'POST', path: '/v1/programs/{id}/referrers' },
@@ -11402,6 +11541,7 @@ export const operations = {
   getV1BillingConnectionsId: { method: 'GET', path: '/v1/billing/connections/{id}' },
   patchV1BillingConnectionsId: { method: 'PATCH', path: '/v1/billing/connections/{id}' },
   deleteV1BillingConnectionsId: { method: 'DELETE', path: '/v1/billing/connections/{id}' },
+  postV1BillingConnectionsIdEvents: { method: 'POST', path: '/v1/billing/connections/{id}/events' },
   putV1BillingConnectionsIdValueMapping: { method: 'PUT', path: '/v1/billing/connections/{id}/value-mapping' },
   postV1BillingConnectionsIdValueMappingPreview: { method: 'POST', path: '/v1/billing/connections/{id}/value-mapping/preview' },
   postV1BillingConnectionsIdRotateSecret: { method: 'POST', path: '/v1/billing/connections/{id}/rotate-secret' },
@@ -11661,16 +11801,19 @@ export const operations = {
   postV1AuthConnections: { method: 'POST', path: '/v1/auth/connections' },
   getV1AuthConnections: { method: 'GET', path: '/v1/auth/connections' },
   getV1AuthConnectionsProviders: { method: 'GET', path: '/v1/auth/connections/providers' },
-  putV1AuthConnectionsIdSecret: { method: 'PUT', path: '/v1/auth/connections/{id}/secret' },
-  postV1AuthConnectionsIdRotateSecret: { method: 'POST', path: '/v1/auth/connections/{id}/rotate-secret' },
+  getV1AuthConnectionsId: { method: 'GET', path: '/v1/auth/connections/{id}' },
   patchV1AuthConnectionsId: { method: 'PATCH', path: '/v1/auth/connections/{id}' },
   deleteV1AuthConnectionsId: { method: 'DELETE', path: '/v1/auth/connections/{id}' },
+  putV1AuthConnectionsIdSecret: { method: 'PUT', path: '/v1/auth/connections/{id}/secret' },
+  postV1AuthConnectionsIdRotateSecret: { method: 'POST', path: '/v1/auth/connections/{id}/rotate-secret' },
   postV1AuthConnectionsIdRevokePreviousSecret: { method: 'POST', path: '/v1/auth/connections/{id}/revoke-previous-secret' },
   postV1AuthConnectionsIdSignups: { method: 'POST', path: '/v1/auth/connections/{id}/signups' },
   postV1AuthConnectionsIdPartners: { method: 'POST', path: '/v1/auth/connections/{id}/partners' },
   postV1AuthConnectionsIdErase: { method: 'POST', path: '/v1/auth/connections/{id}/erase' },
   getV1AuthConnectionsIdExport: { method: 'GET', path: '/v1/auth/connections/{id}/export' },
   postV1AuthConnectionsIdPing: { method: 'POST', path: '/v1/auth/connections/{id}/ping' },
+  putV1AuthConnectionsIdOrigins: { method: 'PUT', path: '/v1/auth/connections/{id}/origins' },
+  patchV1AuthConnectionsIdOrigins: { method: 'PATCH', path: '/v1/auth/connections/{id}/origins' },
   postV1AuthConnectionsIdAliases: { method: 'POST', path: '/v1/auth/connections/{id}/aliases' },
   postV1AuthConnectionsIdUsers: { method: 'POST', path: '/v1/auth/connections/{id}/users' },
   postV1AuthConnectionsIdWidgetTokens: { method: 'POST', path: '/v1/auth/connections/{id}/widget-tokens' },
