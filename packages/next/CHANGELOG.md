@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2 - 2026-11-04
+
+- **Changed:** with `consent`, the middleware sets and sends nothing until the visitor has decided. Before, the Cookie Munch reader recorded an undecided landing (`unknown`). Paired with the browser kit, that counted the landing twice once the visitor accepted. A visitor who accepts after landing is captured by `<ReferalliProvider consent="cookiemunch" persist="referral-only">` (docs: Next.js, "Visitors who accept after landing").
+
 ## 0.4.1 - 2026-11-03
 
 - New `@referalli/next/server` entry: `<ReferralPanel>` as a React Server Component. Given `customerRef` (or `getCustomerRef()` from your session), it fetches the user's code and link with your API key (`POST /v1/widget/tokens`, then `GET /t/{tk}/widget/me`) and renders them with a copy button, with no `widget.js`. It renders nothing when the user is not enrolled. `live` swaps to the live widget after hydration. `getReferralPanel()` returns the data.

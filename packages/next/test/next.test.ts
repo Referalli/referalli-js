@@ -190,11 +190,11 @@ describe('middleware: Cookie Munch consent', () => {
     return { res, body: calls[0] ? JSON.parse(String(calls[0][1].body)) : null };
   };
 
-  it('sets no cookie before the visitor decides, but still records the landing', async () => {
+  it('sets and sends nothing before the visitor decides (the browser kit records it on consent, so it is not counted twice)', async () => {
     expect(run(undefined).headers.get('set-cookie')).toBeNull();
     const { res, body } = await visitBody(undefined);
     expect(res.headers.get('set-cookie')).toBeNull();
-    expect(body).toMatchObject({ code: 'DANA', consent: { provider: 'cookiemunch', state: 'unknown' } });
+    expect(body).toBeNull();
   });
 
   it('sets the cookie once the referrals category is accepted, with the stamp as evidence', async () => {

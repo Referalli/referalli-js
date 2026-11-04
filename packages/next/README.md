@@ -48,7 +48,7 @@ The referral cookie is a marketing cookie. The `consent` option decides when the
 | `{ cookiemunch: { category: 'affiliates' } }` | The same, for a category you name. There is no fallback. |
 | `(req) => 'granted' \| 'denied' \| 'unknown'` | Your own CMP's cookie. |
 
-- **No decision yet** (`unknown`, for example no `CookieMunch` cookie): no cookie is set. With the Cookie Munch reader and `publishableKey`, the landing is still recorded, marked `unknown`, so it counts either way. The function form sends nothing until a decision.
+- **No decision yet** (`unknown`, for example no `CookieMunch` cookie): nothing is set or sent. The middleware can't see a decision made on the page, so add `<ReferalliProvider consent="cookiemunch" persist="referral-only">` to your root layout. It keeps the referral in memory and saves and records it once the visitor accepts. With the provider, leave `publishableKey` off the middleware so each landing is counted once.
 - **Granted:** the cookie is set. The landing is recorded with the consent evidence, including Cookie Munch's consent stamp.
 - **Denied:** an existing referral cookie is deleted, and nothing is sent.
 

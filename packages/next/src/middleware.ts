@@ -48,9 +48,11 @@ export interface CaptureOptions {
    * The visitor's consent for the referral cookie. `'cookiemunch'` (or
    * `{ cookiemunch: { category } }`; default category `referrals`, falling
    * back to `marketing`) reads Cookie Munch's `CookieMunch` cookie; a
-   * function reads your own CMP's cookie. On `unknown` no cookie is set (with
-   * the Cookie Munch reader and `publishableKey`, the landing is still recorded,
-   * marked `unknown`; the function form sends nothing); on
+   * function reads your own CMP's cookie. On `unknown` nothing is set or sent:
+   * the middleware can't see a decision made on the page, so a visitor who
+   * accepts after landing is captured by the browser kit
+   * (`<ReferalliProvider consent="cookiemunch" persist="referral-only">`), which
+   * keeps the referral in memory and saves and records it on consent. On
    * `denied` the context is deleted and nothing is sent.
    * Default: always granted (only for sites that need no opt-in).
    */
@@ -123,18 +125,16 @@ export function captureReferral<R extends NextResponse>(req: Req, res: R, opts: 
     }
     return res;
   }
-  // Only the built-in Cookie Munch reader records an undecided landing; the function form sends nothing until a decision.
-  if (consent !== 'granted' && typeof opts.consent === 'function') return res;
+  // Undecided: nothing set or sent. The browser kit records the landing when the visitor decides (once, not twice).
+  if (consent !== 'granted') return res;
   const fromUrl = referralFromUrl(req.nextUrl, opts.params ?? REFERRAL_PARAMS);
   if (!fromUrl.code && !fromUrl.clickId) return res;
   let stored: StoredReferral | null = null;
   for (const name of REFERRAL_COOKIE_NAMES) stored ??= parseReferral(req.cookies.get(name)?.value);
   const ctx: StoredReferral = mergeReferral(stored, fromUrl, { cookieDays: opts.cookieDays, firstTouch: opts.firstTouch });
-  // `referalli_ctx` and its legacy twin `referally_ctx`, as the browser tracker writes them; only with consent.
-  if (consent === 'granted') {
-    for (const c of serializeReferralCookies(ctx, { cookieDays: opts.cookieDays, domain: opts.cookieDomain, secure })) {
-      res.headers.append('set-cookie', c);
-    }
+  // `referalli_ctx` and its legacy twin `referally_ctx`, as the browser tracker writes them.
+  for (const c of serializeReferralCookies(ctx, { cookieDays: opts.cookieDays, domain: opts.cookieDomain, secure })) {
+    res.headers.append('set-cookie', c);
   }
   if (opts.publishableKey) {
     const base = (opts.baseUrl ?? 'https://referalli.com').replace(/\/+$/, '');
