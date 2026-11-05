@@ -36,6 +36,8 @@ export type ProgramSettings = {
   allowPaidSearch: boolean;
   challengeLinks: boolean;
   settlement: "payout" | "merchant_credit";
+  /** How long before the referral a payment still earns, 0 to 1440. Default 5. */
+  signupPaymentGraceMinutes: number;
   riskPolicy: {
     holdBotScore: number;
     holdDisposableEmail: boolean;
@@ -163,6 +165,7 @@ export type AttributionReasoning = {
   consideredTouchpoints?: number;
   windowDays?: number;
   notes?: Array<string>;
+  /** The attribution engine's codes behind `notes`, on stored referrals. Not the same list as the signed signups call's `reasoning.codes` (SignupReasonCode). */
   noteCodes?: Array<ReasonNote>;
   [key: string]: unknown;
 };
@@ -213,6 +216,7 @@ export type AssociateResponse = {
     reasoning: AttributionReasoning;
     orgId: string;
   }) | null;
+  /** Why a partner was skipped or the referral held, in English (no codes here). The matched referral carries its own `reasoning.notes` and `reasoning.noteCodes`. */
   reasoning?: {
     notes: Array<string>;
   };
@@ -495,8 +499,8 @@ export type BillingEvent = {
   occurredAt: string;
   connectionId: string | null;
   productRef: string;
-  /** ignored_by_filter: recorded, never processed (product filter or internal customer). */
-  status: "processed" | "ignored_by_filter";
+  /** ignored_by_filter: recorded, never processed (product filter or internal customer). parked: a refund or dispute waiting up to 7 days for its payment. */
+  status: "processed" | "ignored_by_filter" | "parked";
   /** Why it earned nothing. no_referral_in_scope (status processed): the customer is referred only in programs outside the connection's programIds. identity_unresolved / identity_ambiguous (status processed): the customer had no customerRef and an auth connection with resolveBillingCustomers matched no user, or several. */
   ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope" | "identity_unresolved" | "identity_ambiguous") | null;
   /** The productIds, priceIds and skus the event named. */
@@ -878,10 +882,18 @@ export type AuthConnection = {
   createdAt: string;
   /** When the connection last filed a new sign-up (its signedUpAt); null when never. Webhook connections count only sign-ups that carried referral context; test sign-ups never count. */
   lastSignupAt?: string | null;
+  /** The last inbound call (sign-up, partner, account…) this connection refused after its signature checked out, such as a body with fields the endpoint does not take. Compare `at` with `lastSignupAt`: a newer error means sign-ups are failing. Null when none. */
+  lastError?: {
+    at: string;
+    code: string;
+    message: string;
+  } | null;
   rotation: {
     inProgress: boolean;
     previousSecretExpiresAt?: string;
   };
+  /** A program-scoped key made this connection, so its signed calls (erase, export and the rest) reach only its own program. */
+  programBound?: boolean;
   /** Signed-protocol connections: the Atlas instance, or a custom label. */
   instanceId?: string | null;
   /** Atlas connections serving an Atlas ID app instead of an instance. */
@@ -910,6 +922,8 @@ export type CreatedAuthConnection = {
   metadataKeys?: Record<string, string>;
   /** Signed-protocol connections (atlas, custom). */
   programId?: string;
+  /** Made by a program-scoped key: signed calls reach only this program. */
+  programBound?: boolean;
   instanceId?: string;
   appId?: string;
   autoEnrollUsers?: boolean;
@@ -2067,6 +2081,32 @@ export type BillingEventRecordedEvent = {
   livemode: boolean;
   createdAt: string;
   data: BillingEventRecordedEventData;
+};
+
+/** `data` of a `billing_event.expired` event: A refund or dispute waited 7 days for a payment that never arrived, and reversed nothing. A payment arriving later earns in full; adjust it by hand if the refund still applies. */
+export type BillingEventExpiredEventData = {
+  /** The refund or dispute. */
+  billingEventId: string;
+  type: "refund" | "dispute";
+  customerRef: string;
+  invoiceRef: string | null;
+  chargeRef: string | null;
+  /** Lowercase ISO 4217 code. */
+  currency: string;
+  /** Integer minor units (cents). */
+  amountMinor: number;
+};
+
+/** A parked refund or dispute expired: the `billing_event.expired` delivery body. */
+export type BillingEventExpiredEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "billing_event.expired";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: BillingEventExpiredEventData;
 };
 
 /** `data` of a `roi.payback_reached` event: Once per credit grant, the first time its recipient's profit after it covered its cost. A later refund that un-pays it doesn't fire it again. */
@@ -8214,6 +8254,7 @@ export type PostProgramsBody = {
   allowPaidSearch?: boolean;
   challengeLinks?: boolean;
   settlement?: "payout" | "merchant_credit";
+  signupPaymentGraceMinutes?: number;
   riskPolicy?: {
     holdBotScore?: number;
     holdRiskScore?: number;
@@ -8279,6 +8320,7 @@ export type PatchProgramsIdBody = {
   allowPaidSearch?: boolean;
   challengeLinks?: boolean;
   settlement?: "payout" | "merchant_credit";
+  signupPaymentGraceMinutes?: number;
   riskPolicy?: {
     holdBotScore?: number;
     holdRiskScore?: number;
@@ -8315,6 +8357,7 @@ export type PatchProgramsIdBody = {
     allowPaidSearch?: boolean;
     challengeLinks?: boolean;
     settlement?: "payout" | "merchant_credit";
+    signupPaymentGraceMinutes?: number;
     riskPolicy?: {
       holdBotScore?: number;
       holdRiskScore?: number;
@@ -8438,13 +8481,14 @@ export type GetProgramsIdGraphQuery = {
 /** POST /v1/api-keys: Create an API key */
 export type PostApiKeysBody = {
   name: string;
-  scopes?: Array<"admin" | "api_keys:mint" | "full" | "read" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
+  scopes?: Array<"admin" | "api_keys:mint" | "full" | "read" | "connections:read" | "connections:write" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
   publishable?: boolean;
   allowedOrigins?: Array<string>;
   apiVersion?: string;
   mode?: "live" | "test" | "both";
   owner?: string;
   expiresInDays?: number;
+  expiresAt?: string;
   programIds?: Array<string>;
 };
 
@@ -8465,10 +8509,11 @@ export type GetApiKeysIdResponse = ApiKey;
 /** PATCH /v1/api-keys/{id}: Update an API key */
 export type PatchApiKeysIdBody = {
   name?: string;
-  scopes?: Array<"admin" | "api_keys:mint" | "full" | "read" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
+  scopes?: Array<"admin" | "api_keys:mint" | "full" | "read" | "connections:read" | "connections:write" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
   apiVersion?: string;
   owner?: string | null;
   expiresInDays?: number | null;
+  expiresAt?: string | null;
   programIds?: Array<string> | null;
 };
 
@@ -8988,7 +9033,7 @@ export type PostBillingConnectionsIdValueMappingPreviewResponse = ValueMappingPr
 /** GET /v1/billing/events: List billing events */
 export type GetBillingEventsQuery = {
   customerRef?: string;
-  status?: "processed" | "ignored_by_filter";
+  status?: "processed" | "ignored_by_filter" | "parked";
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -10785,12 +10830,14 @@ export type PostAuthConnectionsIdSignupsBody = {
     consent?: "granted" | "not_required";
   };
   risk?: {
+    /** 0 (human) to 1 (certainly a bot). A value above 1 and up to 100 is read as a percentage (85 → 0.85); above 100 is refused. */
     botScore?: number;
     disposableEmail?: boolean;
     emailVerified?: boolean;
     selfReferral?: boolean;
     velocity?: number;
     reasons?: Array<string>;
+    /** Overall risk, 0 (safe) to 1 (certainly fraudulent), compared with riskPolicy.holdRiskScore (default 0.8). A value above 1 and up to 100 (Atlas’s 0–100 scale) is read as a percentage (85 → 0.85); above 100 is refused. */
     score?: number;
     level?: "low" | "medium" | "high";
     dropped?: boolean;
@@ -11184,6 +11231,8 @@ export type PostOrgsOrgIdPrivacyExecutorKeyBody = {
   /** Never reused; a seen nonce is refused. */
   nonce?: string;
   iat?: number;
+  /** Limit the key to these programs of the org: it then answers only for people in them. Without it, the key reaches the whole org. Each set of programs has its own key, so minting one leaves the others working. */
+  programIds?: Array<string>;
 };
 
 /** GET /v1/org/hosted-pages: Get the hosted-page consent and chat */
@@ -11485,6 +11534,8 @@ export type WebhookPayloads = {
   "credit.redeemed": CreditRedeemedEvent;
   /** A billing event was recorded */
   "billing_event.recorded": BillingEventRecordedEvent;
+  /** A parked refund or dispute expired */
+  "billing_event.expired": BillingEventExpiredEvent;
   /** A credit grant paid back */
   "roi.payback_reached": RoiPaybackReachedEvent;
   /** A value pattern changed */

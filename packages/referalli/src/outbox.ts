@@ -49,6 +49,12 @@ export interface OutboxStore {
   markSent(id: string): Promise<void>;
   /** A failed attempt. `nextAttemptAt: null` means give up: keep the entry, but `due` no longer returns it. */
   markFailed(id: string, update: { attempts: number; nextAttemptAt: number | null; lastError: string }): Promise<void>;
+  /**
+   * Optional: atomically take the oldest due entry for `leaseMs`, so other
+   * workers skip it and it comes due again if this process dies. When present,
+   * `flush` uses it instead of `due`.
+   */
+  claim?(now: number, leaseMs: number): Promise<OutboxEntry | null>;
 }
 
 export interface OutboxOptions {
@@ -73,6 +79,8 @@ export interface OutboxOptions {
   baseDelayMs?: number;
   /** Longest retry delay in ms. Default 3 600 000 (1 hour). */
   maxDelayMs?: number;
+  /** Called when an event hits `maxAttempts`, after it is marked dead in the store. A throw here is ignored. */
+  onDead?: (entry: OutboxEntry) => void | Promise<void>;
   /** Clock for tests. Default `Date.now`. */
   now?: () => number;
 }
@@ -91,6 +99,10 @@ export interface Outbox {
   /** Send every due event, one at a time. Concurrent calls share one run. */
   flush(options?: { limit?: number }): Promise<FlushResult>;
 }
+
+const SEND_TIMEOUT_MS = 60_000;
+/** Longer than a send can take, so a live worker's claim never expires under it. */
+const LEASE_MS = 5 * 60_000;
 
 /**
  * A durable queue for billing events, so an outage longer than the client's
@@ -130,32 +142,50 @@ export function createOutbox(options: OutboxOptions): Outbox {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-webhook-signature': signature },
       body,
+      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`POST /webhooks/billing/${connectionId} answered ${res.status}: ${(await res.text().catch(() => '')).slice(0, 500)}`);
   };
 
-  const delay = (attempts: number) => Math.min(baseDelay * 2 ** (attempts - 1), maxDelay) * (0.75 + Math.random() * 0.25);
+  // Whole milliseconds: a fraction is refused by a bigint column.
+  const delay = (attempts: number) => Math.round(Math.min(baseDelay * 2 ** (attempts - 1), maxDelay) * (0.75 + Math.random() * 0.25));
 
   const run = async (limit: number): Promise<FlushResult> => {
     const result: FlushResult = { sent: 0, failed: 0, gaveUp: 0 };
-    for (const entry of await store.due(now(), limit)) {
+    const attempt = async (entry: OutboxEntry) => {
       try {
         await send(entry.event);
       } catch (err) {
         // Every failure is retried (a paused connection, a rotated key, an outage): only maxAttempts stops it.
         const attempts = entry.attempts + 1;
         const giveUp = attempts >= maxAttempts;
-        await store.markFailed(entry.id, {
-          attempts,
-          nextAttemptAt: giveUp ? null : now() + delay(attempts),
-          lastError: err instanceof Error ? err.message : String(err),
-        });
-        if (giveUp) result.gaveUp++;
-        else result.failed++;
-        continue;
+        const lastError = err instanceof Error ? err.message : String(err);
+        const nextAttemptAt = giveUp ? null : now() + delay(attempts);
+        await store.markFailed(entry.id, { attempts, nextAttemptAt, lastError });
+        if (!giveUp) {
+          result.failed++;
+          return;
+        }
+        result.gaveUp++;
+        try {
+          await options.onDead?.({ ...entry, attempts, nextAttemptAt, lastError });
+        } catch {
+          // The entry is safe in the store; a broken reporter must not stop the flush.
+        }
+        return;
       }
       await store.markSent(entry.id);
       result.sent++;
+    };
+    if (store.claim) {
+      // One at a time, so the lease only has to outlast one send rather than a whole batch.
+      for (let i = 0; i < limit; i++) {
+        const entry = await store.claim(now(), LEASE_MS);
+        if (!entry) break;
+        await attempt(entry);
+      }
+    } else {
+      for (const entry of await store.due(now(), limit)) await attempt(entry);
     }
     return result;
   };
@@ -201,6 +231,106 @@ export function memoryOutboxStore(): OutboxStore & { entries(): OutboxEntry[] } 
       return [...rows.values()].map((e) => ({ ...e }));
     },
   };
+}
+
+/** A query function shaped like node-postgres's `pool.query`. */
+export type PgQuery = (sql: string, params: unknown[]) => Promise<{ rows: any[] }>;
+
+const fromRow = (r: any): OutboxEntry => ({
+  id: r.id,
+  event: r.event,
+  attempts: r.attempts,
+  nextAttemptAt: r.next_attempt_at === null ? null : Number(r.next_attempt_at),
+  lastError: r.last_error,
+});
+
+/**
+ * An `OutboxStore` on a Postgres table, through your own query function, for
+ * several replicas:
+ *
+ *   const store = pgOutboxStore({ query: (sql, params) => pool.query(sql, params), table: 'referalli_outbox' });
+ *   await store.migrate();
+ *
+ * Columns: `id` text primary key (the providerEventId), `event` jsonb,
+ * `attempts` int, `next_attempt_at` bigint (epoch ms; null = dead),
+ * `last_error` text. A sent row is deleted; a dead row stays until you remove
+ * or requeue it (`store.dead()` lists them).
+ */
+export function pgOutboxStore(options: { query: PgQuery; table: string }): OutboxStore & {
+  claim(now: number, leaseMs: number): Promise<OutboxEntry | null>;
+  /** Create the table and its index if missing. Safe from replicas booting together. */
+  migrate(): Promise<void>;
+  /** Entries that hit the attempt cap. */
+  dead(): Promise<OutboxEntry[]>;
+} {
+  const { query, table: t } = options;
+  // It goes into the SQL text, so nothing but a plain identifier gets through.
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(t)) throw new TypeError(`pgOutboxStore: table must be a plain identifier, got ${JSON.stringify(t)}`);
+  const columns = 'id, event, attempts, next_attempt_at, last_error';
+  return {
+    async migrate() {
+      // One statement, so it runs in one transaction: the lock stops the catalog race between concurrent CREATE ... IF NOT EXISTS.
+      await query(
+        `DO $$ BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext('${t}'));
+  CREATE TABLE IF NOT EXISTS ${t} (
+    id text PRIMARY KEY,
+    event jsonb NOT NULL,
+    attempts int NOT NULL DEFAULT 0,
+    next_attempt_at bigint,
+    last_error text
+  );
+  CREATE INDEX IF NOT EXISTS ${t}_due_idx ON ${t} (next_attempt_at) WHERE next_attempt_at IS NOT NULL;
+END $$`,
+        [],
+      );
+    },
+    async add(e) {
+      // ::text first so every driver sends the JSON as text; a driver that sees a jsonb parameter may encode the string again.
+      await query(`INSERT INTO ${t} (${columns}) VALUES ($1, $2::text::jsonb, $3, $4, $5) ON CONFLICT (id) DO NOTHING`, [
+        e.id,
+        JSON.stringify(e.event),
+        e.attempts,
+        e.nextAttemptAt,
+        e.lastError,
+      ]);
+    },
+    async due(now, limit) {
+      const { rows } = await query(`SELECT ${columns} FROM ${t} WHERE next_attempt_at <= $1 ORDER BY next_attempt_at, id LIMIT $2`, [now, limit]);
+      return rows.map(fromRow);
+    },
+    async claim(now, leaseMs) {
+      // The lease is next_attempt_at itself: committed in the future, it hides the row from other workers and brings it back if this one dies.
+      const { rows } = await query(
+        `WITH due AS (
+  SELECT id FROM ${t} WHERE next_attempt_at <= $1 ORDER BY next_attempt_at, id LIMIT 1 FOR UPDATE SKIP LOCKED
+)
+UPDATE ${t} SET next_attempt_at = $2 FROM due WHERE ${t}.id = due.id
+RETURNING ${t}.id, ${t}.event, ${t}.attempts, ${t}.next_attempt_at, ${t}.last_error`,
+        [now, now + leaseMs],
+      );
+      return rows[0] ? fromRow(rows[0]) : null;
+    },
+    async markSent(id) {
+      await query(`DELETE FROM ${t} WHERE id = $1`, [id]);
+    },
+    async markFailed(id, u) {
+      await query(`UPDATE ${t} SET attempts = $2, next_attempt_at = $3, last_error = $4 WHERE id = $1`, [id, u.attempts, u.nextAttemptAt, u.lastError]);
+    },
+    async dead() {
+      const { rows } = await query(`SELECT ${columns} FROM ${t} WHERE next_attempt_at IS NULL ORDER BY id`, []);
+      return rows.map(fromRow);
+    },
+  };
+}
+
+/**
+ * Type-checks a generic billing event and refuses `amountMinor`: the API
+ * ignores unknown fields, so that payment would be recorded as 0 and earn nothing.
+ */
+export function buildBillingEvent(event: GenericBillingEvent & { amountMinor?: never }): GenericBillingEvent {
+  if ('amountMinor' in event) throw new TypeError('buildBillingEvent: billing events use amountGross (integer minor units), not amountMinor');
+  return event;
 }
 
 function toHex(bytes: Uint8Array): string {

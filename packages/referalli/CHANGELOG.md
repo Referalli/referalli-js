@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.4 - 2026-11-05
+
+- New `pgOutboxStore({ query, table })`: an `OutboxStore` on a Postgres table through your own query function, with `migrate()` and `dead()`. It claims rows with `FOR UPDATE SKIP LOCKED` and a 5-minute lease, so replicas don't send one row twice and a row held by a dead process is retried.
+- `OutboxStore` gains an optional `claim(now, leaseMs)`; stores without it work as before. New `onDead` option on `createOutbox`, called when an event hits `maxAttempts`.
+- New `stripeEventToBillingEvents(event, { customerRef })`: maps `invoice.paid`, `charge.refunded`, `charge.dispute.created`, `customer.subscription.created` and `.deleted` to generic billing events, with no `stripe` dependency.
+- New `buildBillingEvent()`: throws on `amountMinor` (the field is `amountGross`).
+- Fixed: the outbox's retry time is a whole number of milliseconds, so a `bigint` column accepts it. The signed route's send now times out after 60 s instead of hanging a flush.
+
 ## 0.3.3 - 2026-11-03
 
 - Types for billing account renames and deletions: `previousAccountRef` on `PUT /v1/billing/accounts/{accountRef}/owner`, `DELETE /v1/billing/accounts/{accountRef}`, and `billing_account.owner_changed` with `previousAccountRef`, `deleted` and a nullable `ownerCustomerRef`.

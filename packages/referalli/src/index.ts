@@ -82,13 +82,17 @@ export {
   type ReferalliClientOptions,
 } from './node.js';
 export {
+  buildBillingEvent,
   createOutbox,
   memoryOutboxStore,
+  pgOutboxStore,
   type FlushResult,
   type GenericBillingEvent,
   type Outbox,
   type OutboxEntry,
   type OutboxOptions,
   type OutboxStore,
+  type PgQuery,
 } from './outbox.js';
+export { stripeEventToBillingEvents, type StripeEventLike, type StripeEventMapOptions } from './stripe-events.js';
 export { createMobileClient, MobileApiError, type MobileClientOptions } from './mobile.js';
