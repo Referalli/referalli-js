@@ -35,7 +35,10 @@ function assertSendable(e: GenericBillingEvent): void {
   for (const k of ['amountGross', 'tax', 'fees', 'mrrDelta'] as const) {
     if (e[k] !== undefined && !Number.isInteger(e[k])) throw refuse(`${k} must be an integer in minor units`);
   }
-  if (e.currency !== undefined && e.currency.length !== 3) throw refuse('currency must be a 3-letter code');
+  if ((e.amountGross ?? 0) < 0) throw refuse('amountGross must not be negative: send a refund to reverse a payment');
+  if (e.currency !== undefined && !Intl.supportedValuesOf('currency').includes(e.currency.toUpperCase())) {
+    throw refuse('currency must be an ISO 4217 code such as usd');
+  }
   const chargeRef = e.metadata?.chargeRef;
   if (!e.customerRef && !((e.type === 'refund' || e.type === 'dispute') && (e.invoiceRef || chargeRef))) {
     throw refuse('customerRef is required (a refund or dispute may send only invoiceRef or metadata.chargeRef)');

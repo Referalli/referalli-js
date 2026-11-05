@@ -19,7 +19,7 @@ export interface ReferalliClientOptions {
 }
 
 /** The API version this SDK speaks (paginated list envelopes). */
-export const SDK_API_VERSION = '2026-11-01';
+export const SDK_API_VERSION = '2026-11-05';
 
 /** One page of a list endpoint (referalli-version 2026-11-01 and later). */
 export interface ListPage<T> {

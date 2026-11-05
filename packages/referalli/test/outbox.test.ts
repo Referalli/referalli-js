@@ -66,6 +66,8 @@ describe('createOutbox', () => {
       [{ occurredAt: undefined as never }, /occurredAt/],
       [{ occurredAt: 'yesterday' }, /occurredAt/],
       [{ currency: 'dollars' }, /currency/],
+      [{ currency: 'zzz' }, /currency/],
+      [{ amountGross: -100 }, /negative/],
       [{ customerRef: undefined }, /customerRef/],
     ];
     for (const [over, why] of bad) await expect(outbox.enqueue({ ...event('in_1'), ...over })).rejects.toThrow(why);

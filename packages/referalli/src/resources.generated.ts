@@ -4,7 +4,7 @@ import type * as T from './generated.js';
 import type { ListPromise, OperationSpec, PageParams, RequestOptions, Transport } from './core.js';
 
 /** The API version this SDK was generated against (sent as `referalli-version`). */
-export const API_VERSION = "2026-11-01";
+export const API_VERSION = "2026-11-05";
 
 /** Every operation: method, path, path params, query params (wire names), body and response kind. */
 export const operations = {

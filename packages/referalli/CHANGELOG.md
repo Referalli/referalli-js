@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.6 - 2026-11-05
+
+- `createOutbox.enqueue` also throws on a negative `amountGross` and on a currency that isn't ISO 4217, matching the server.
+
 ## 0.3.5 - 2026-11-05
 
 - `createOutbox.enqueue` throws on what the server could only refuse: an unknown type, a non-integer amount, a missing or unparseable `occurredAt`, a bad currency, a missing `customerRef`.
