@@ -72,7 +72,7 @@ export const operations = {
   getCliLogs: { method: "GET", path: "/v1/cli/logs", pathParams: [], query: ["after","wait","limit"], body: false, kind: "json" },
   getCliTopics: { method: "GET", path: "/v1/cli/topics", pathParams: [], query: [], body: false, kind: "json" },
   getCommissionRules: { method: "GET", path: "/v1/commission-rules", pathParams: [], query: ["programId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
-  getCommissions: { method: "GET", path: "/v1/commissions", pathParams: [], query: ["partnerId","programId","type","referralId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getCommissions: { method: "GET", path: "/v1/commissions", pathParams: [], query: ["partnerId","programId","type","referralId","customerRef","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getCommissionsId: { method: "GET", path: "/v1/commissions/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getContracts: { method: "GET", path: "/v1/contracts", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getCoupons: { method: "GET", path: "/v1/coupons", pathParams: [], query: ["programId","partnerId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },

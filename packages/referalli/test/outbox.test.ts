@@ -58,6 +58,47 @@ describe('createOutbox', () => {
     expect(store.entries()).toEqual([]);
   });
 
+  it('refuses at enqueue what the server could only refuse', async () => {
+    const outbox = createOutbox({ store: memoryOutboxStore(), connectionId: 'bcon_1', client: new Referalli({ apiKey: 'rk_test', fetch: server([]).fetch }) });
+    const bad: Array<[Partial<GenericBillingEvent>, RegExp]> = [
+      [{ type: 'nope' as never }, /unknown type/],
+      [{ amountGross: -1.5 }, /amountGross/],
+      [{ occurredAt: undefined as never }, /occurredAt/],
+      [{ occurredAt: 'yesterday' }, /occurredAt/],
+      [{ currency: 'dollars' }, /currency/],
+      [{ customerRef: undefined }, /customerRef/],
+    ];
+    for (const [over, why] of bad) await expect(outbox.enqueue({ ...event('in_1'), ...over })).rejects.toThrow(why);
+    await outbox.enqueue({ ...event('in_2'), type: 'refund', customerRef: undefined, invoiceRef: 'in_2' });
+    await outbox.enqueue({ ...event('in_3'), type: 'dispute', customerRef: undefined, metadata: { chargeRef: 'ch_1' } });
+  });
+
+  it.each([400, 422])('a %i goes straight to dead and reports it, on both send paths', async (status) => {
+    for (const via of ['client', 'secret'] as const) {
+      const { fetch, seen } = server([status]);
+      const store = memoryOutboxStore();
+      const dead: string[] = [];
+      const outbox = createOutbox({
+        store,
+        connectionId: 'bcon_1',
+        ...(via === 'client' ? { client: new Referalli({ apiKey: 'rk_test', fetch }) } : { secret: 's', fetch }),
+        onDead: (e) => void dead.push(e.id),
+      });
+      await outbox.enqueue(event('in_1'));
+      expect(await outbox.flush()).toMatchObject({ gaveUp: 1, failed: 0 });
+      expect(seen).toHaveLength(1);
+      expect(dead).toEqual(['in_1']);
+      expect(store.entries()[0]!.nextAttemptAt).toBeNull();
+    }
+  });
+
+  it.each([401, 403, 404, 429, 500])('a %i keeps retrying', async (status) => {
+    const { fetch } = server([status]);
+    const outbox = createOutbox({ store: memoryOutboxStore(), connectionId: 'bcon_1', secret: 's', fetch });
+    await outbox.enqueue(event('in_1'));
+    expect(await outbox.flush()).toMatchObject({ failed: 1, gaveUp: 0 });
+  });
+
   it('gives up after maxAttempts and leaves the entry in the store', async () => {
     let t = 0;
     const { fetch } = server([500, 500]);

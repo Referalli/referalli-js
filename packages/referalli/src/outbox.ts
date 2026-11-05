@@ -25,6 +25,23 @@ export interface GenericBillingEvent {
   skus?: string[];
 }
 
+const EVENT_TYPES = new Set(['invoice_paid', 'sub_created', 'sub_updated', 'refund', 'dispute', 'sub_canceled', 'customer_updated']);
+
+/** The server's rules for a generic event: what fails here could only ever be refused later, after the caller has moved on. */
+function assertSendable(e: GenericBillingEvent): void {
+  const refuse = (why: string) => new TypeError(`createOutbox: event ${e.providerEventId}: ${why}`);
+  if (!EVENT_TYPES.has(e.type)) throw refuse(`unknown type ${String(e.type)}`);
+  if (typeof e.occurredAt !== 'string' || Number.isNaN(Date.parse(e.occurredAt))) throw refuse('occurredAt must be an ISO 8601 instant');
+  for (const k of ['amountGross', 'tax', 'fees', 'mrrDelta'] as const) {
+    if (e[k] !== undefined && !Number.isInteger(e[k])) throw refuse(`${k} must be an integer in minor units`);
+  }
+  if (e.currency !== undefined && e.currency.length !== 3) throw refuse('currency must be a 3-letter code');
+  const chargeRef = e.metadata?.chargeRef;
+  if (!e.customerRef && !((e.type === 'refund' || e.type === 'dispute') && (e.invoiceRef || chargeRef))) {
+    throw refuse('customerRef is required (a refund or dispute may send only invoiceRef or metadata.chargeRef)');
+  }
+}
+
 /** A queued event. Times are epoch milliseconds. */
 export interface OutboxEntry {
   /** The event's `providerEventId`. */
@@ -144,7 +161,7 @@ export function createOutbox(options: OutboxOptions): Outbox {
       body,
       signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
     });
-    if (!res.ok) throw new Error(`POST /webhooks/billing/${connectionId} answered ${res.status}: ${(await res.text().catch(() => '')).slice(0, 500)}`);
+    if (!res.ok) throw Object.assign(new Error(`POST /webhooks/billing/${connectionId} answered ${res.status}: ${(await res.text().catch(() => '')).slice(0, 500)}`), { status: res.status });
   };
 
   // Whole milliseconds: a fraction is refused by a bigint column.
@@ -156,9 +173,11 @@ export function createOutbox(options: OutboxOptions): Outbox {
       try {
         await send(entry.event);
       } catch (err) {
-        // Every failure is retried (a paused connection, a rotated key, an outage): only maxAttempts stops it.
+        // A paused connection, a rotated key or an outage can recover, so those retry up to maxAttempts.
+        // A refused event never will: resending the same bytes gets the same 400.
         const attempts = entry.attempts + 1;
-        const giveUp = attempts >= maxAttempts;
+        const status = (err as { status?: unknown } | null)?.status;
+        const giveUp = attempts >= maxAttempts || status === 400 || status === 422;
         const lastError = err instanceof Error ? err.message : String(err);
         const nextAttemptAt = giveUp ? null : now() + delay(attempts);
         await store.markFailed(entry.id, { attempts, nextAttemptAt, lastError });
@@ -194,6 +213,7 @@ export function createOutbox(options: OutboxOptions): Outbox {
   return {
     async enqueue(event) {
       if (!event?.providerEventId) throw new TypeError('createOutbox: an event needs a providerEventId');
+      assertSendable(event);
       await store.add({ id: event.providerEventId, event, attempts: 0, nextAttemptAt: now(), lastError: null });
     },
     flush({ limit = 100 } = {}) {

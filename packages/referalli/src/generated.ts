@@ -501,6 +501,8 @@ export type BillingEvent = {
   productRef: string;
   /** ignored_by_filter: recorded, never processed (product filter or internal customer). parked: a refund or dispute waiting up to 7 days for its payment. */
   status: "processed" | "ignored_by_filter" | "parked";
+  /** When a parked event is dropped if its payment has not arrived. Null unless status is parked. */
+  parkedUntil: string | null;
   /** Why it earned nothing. no_referral_in_scope (status processed): the customer is referred only in programs outside the connection's programIds. identity_unresolved / identity_ambiguous (status processed): the customer had no customerRef and an auth connection with resolveBillingCustomers matched no user, or several. */
   ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope" | "identity_unresolved" | "identity_ambiguous") | null;
   /** The productIds, priceIds and skus the event named. */
@@ -7808,7 +7810,7 @@ export type GetAuthOidcStartQuery = {
   recruiter?: string;
   login_hint?: string;
   return_host?: string;
-  prompt?: "login";
+  prompt?: "login" | "create";
 };
 export type GetAuthOidcStartResponse = void;
 
@@ -7820,7 +7822,7 @@ export type GetAuthAtlasStartQuery = {
   recruiter?: string;
   login_hint?: string;
   return_host?: string;
-  prompt?: "login";
+  prompt?: "login" | "create";
 };
 export type GetAuthAtlasStartResponse = void;
 
@@ -8867,6 +8869,7 @@ export type GetCommissionsQuery = {
   programId?: string;
   type?: "earned" | "adjusted" | "reversed" | "approved" | "paid";
   referralId?: string;
+  customerRef?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;

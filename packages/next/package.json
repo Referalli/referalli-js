@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@referalli/react": "^0.4.0",
-    "referalli": "^0.3.4"
+    "referalli": "^0.3.5"
   },
   "peerDependencies": {
     "next": ">=13.4"

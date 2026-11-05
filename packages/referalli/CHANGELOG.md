@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.5 - 2026-11-05
+
+- `createOutbox.enqueue` throws on what the server could only refuse: an unknown type, a non-integer amount, a missing or unparseable `occurredAt`, a bad currency, a missing `customerRef`.
+- A `400` or `422` on send marks the event dead at once and fires `onDead`. `401`, `403`, `404`, `429` and `5xx` keep retrying.
+
 ## 0.3.4 - 2026-11-05
 
 - New `pgOutboxStore({ query, table })`: an `OutboxStore` on a Postgres table through your own query function, with `migrate()` and `dead()`. It claims rows with `FOR UPDATE SKIP LOCKED` and a 5-minute lease, so replicas don't send one row twice and a row held by a dead process is retried.
