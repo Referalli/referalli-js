@@ -445,6 +445,8 @@ export type BillingConnection = {
   hasCredentials: boolean;
   /** Where cash / credit / discount / cost live in this connection's payload; null uses the built-in extractor. */
   valueMapping: ValueMapping | null;
+  /** A payment above this is held for release. null: the default, 1,000,000,000 minor units. */
+  maxAmountMinor: number | null;
   /** Only matching events earn; the rest are recorded as ignored_by_filter. null takes every event. */
   filter: BillingFilter | null;
   /** The provider metadata key that holds your customerRef, when it is not referalli_customer_ref. */
@@ -499,12 +501,12 @@ export type BillingEvent = {
   occurredAt: string;
   connectionId: string | null;
   productRef: string;
-  /** ignored_by_filter: recorded, never processed (product filter or internal customer). parked: a refund or dispute waiting up to 7 days for its payment. */
-  status: "processed" | "ignored_by_filter" | "parked";
+  /** held: a payment over the connection limit or dated in the future; it earns nothing until released with POST /v1/billing/events/{id}/release. ignored_by_filter: recorded, never processed (product filter or internal customer). parked: a refund or dispute waiting up to 7 days for its payment. */
+  status: "processed" | "ignored_by_filter" | "parked" | "held";
   /** When a parked event is dropped if its payment has not arrived. Null unless status is parked. */
   parkedUntil: string | null;
   /** Why it earned nothing. no_referral_in_scope (status processed): the customer is referred only in programs outside the connection's programIds. identity_unresolved / identity_ambiguous (status processed): the customer had no customerRef and an auth connection with resolveBillingCustomers matched no user, or several. */
-  ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope" | "identity_unresolved" | "identity_ambiguous") | null;
+  ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope" | "identity_unresolved" | "identity_ambiguous" | "amount_over_limit" | "occurred_in_future") | null;
   /** The productIds, priceIds and skus the event named. */
   catalog: Record<string, Array<string>> | null;
 };
@@ -1362,6 +1364,7 @@ export type RoiGrant = {
 export type RoiPatternEntry = {
   subject: {
     customerRef?: string;
+    customerRefHash?: string;
     partnerId?: string;
   };
   programId: string | null;
@@ -2083,6 +2086,31 @@ export type BillingEventRecordedEvent = {
   livemode: boolean;
   createdAt: string;
   data: BillingEventRecordedEventData;
+};
+
+/** `data` of a `billing_event.held` event: A payment over its connection's `maxAmountMinor`, or dated more than a day ahead, earned nothing and waits for POST /v1/billing/events/{id}/release. */
+export type BillingEventHeldEventData = {
+  /** The payment. */
+  billingEventId: string;
+  reason: "amount_over_limit" | "occurred_in_future";
+  customerRef: string;
+  invoiceRef: string;
+  /** Lowercase ISO 4217 code. */
+  currency: string;
+  /** Integer minor units (cents). */
+  amountMinor: number;
+};
+
+/** A payment was held for review: the `billing_event.held` delivery body. */
+export type BillingEventHeldEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "billing_event.held";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: BillingEventHeldEventData;
 };
 
 /** `data` of a `billing_event.expired` event: A refund or dispute waited 7 days for a payment that never arrived, and reversed nothing. A payment arriving later earns in full; adjust it by hand if the refund still applies. */
@@ -3521,15 +3549,7 @@ export type GetBillingConnectionsResponse = {
 
 export type PostBillingConnectionsIdEventsResponse = {
   received: number;
-  results: Array<{
-    duplicate: boolean;
-    billingEventId: string | null;
-    conversions: number;
-    linesCreated: number;
-    reversals: number;
-    /** Recorded as ignored_by_filter: earned nothing. */
-    ignored?: "filter" | "internal_customer";
-  }>;
+  results: Array<PostBillingEventsIdReleaseResponse>;
 };
 
 export type PutBillingAccountsAccountRefOwnerResponse = {
@@ -3579,6 +3599,18 @@ export type GetBillingEventsResponse = {
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type PostBillingEventsIdReleaseResponse = {
+  duplicate: boolean;
+  billingEventId: string | null;
+  conversions: number;
+  linesCreated: number;
+  reversals: number;
+  /** Recorded as ignored_by_filter: earned nothing. */
+  ignored?: "filter" | "internal_customer";
+  /** Recorded as held: earns nothing until released. */
+  held?: "amount_over_limit" | "occurred_in_future";
 };
 
 export type PostBillingInternalCustomersResponse = {
@@ -5438,6 +5470,8 @@ export type PostPrivacyForgetResponse = {
   ok: true;
   /** Erasure by customerRef. */
   pseudonym?: string;
+  /** True when this customerRef was erased by an earlier request: a retry succeeds. */
+  alreadyErased?: boolean;
   partners?: Array<{
     partnerId: string;
     alreadyForgotten: boolean;
@@ -7540,15 +7574,7 @@ export type GetProgramsIdCreditRailLogResponse = {
 
 export type PostWebhooksBillingConnectionIdResponse = {
   received: number;
-  results: Array<{
-    duplicate: boolean;
-    billingEventId: string | null;
-    conversions: number;
-    linesCreated: number;
-    reversals: number;
-    /** Recorded as ignored_by_filter: earned nothing. */
-    ignored?: "filter" | "internal_customer";
-  }>;
+  results: Array<PostBillingEventsIdReleaseResponse>;
 };
 
 export type PostWebhooksAuthConnectionIdResponse = {
@@ -8985,6 +9011,7 @@ export type PatchBillingConnectionsIdBody = {
   } | null;
   customerRefMetadataKey?: string | null;
   programIds?: Array<string> | null;
+  maxAmountMinor?: number | null;
 };
 export type PatchBillingConnectionsIdResponse = BillingConnection;
 
@@ -9036,13 +9063,15 @@ export type PostBillingConnectionsIdValueMappingPreviewResponse = ValueMappingPr
 /** GET /v1/billing/events: List billing events */
 export type GetBillingEventsQuery = {
   customerRef?: string;
-  status?: "processed" | "ignored_by_filter" | "parked";
+  status?: "processed" | "ignored_by_filter" | "parked" | "held";
   limit?: number;
   starting_after?: string;
   ending_before?: string;
   "created[gte]"?: string;
   "created[lte]"?: string;
 };
+
+/** POST /v1/billing/events/{id}/release: Release a held payment */
 
 /** GET /v1/billing/internal-customers: List internal customers */
 export type GetBillingInternalCustomersResponse = Array<InternalCustomer>;
@@ -11537,6 +11566,8 @@ export type WebhookPayloads = {
   "credit.redeemed": CreditRedeemedEvent;
   /** A billing event was recorded */
   "billing_event.recorded": BillingEventRecordedEvent;
+  /** A payment was held for review */
+  "billing_event.held": BillingEventHeldEvent;
   /** A parked refund or dispute expired */
   "billing_event.expired": BillingEventExpiredEvent;
   /** A credit grant paid back */
@@ -11740,6 +11771,7 @@ export const operations = {
   postV1BillingConnectionsIdValueMappingPreview: { method: 'POST', path: '/v1/billing/connections/{id}/value-mapping/preview' },
   postV1BillingConnectionsIdRotateSecret: { method: 'POST', path: '/v1/billing/connections/{id}/rotate-secret' },
   getV1BillingEvents: { method: 'GET', path: '/v1/billing/events' },
+  postV1BillingEventsIdRelease: { method: 'POST', path: '/v1/billing/events/{id}/release' },
   getV1BillingInternalCustomers: { method: 'GET', path: '/v1/billing/internal-customers' },
   postV1BillingInternalCustomers: { method: 'POST', path: '/v1/billing/internal-customers' },
   deleteV1BillingInternalCustomersCustomerRef: { method: 'DELETE', path: '/v1/billing/internal-customers/{customerRef}' },

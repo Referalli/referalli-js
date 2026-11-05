@@ -299,6 +299,7 @@ export const operations = {
   postBillingConnectionsIdEvents: { method: "POST", path: "/v1/billing/connections/{id}/events", pathParams: ["id"], query: [], body: true, kind: "json" },
   postBillingConnectionsIdRotateSecret: { method: "POST", path: "/v1/billing/connections/{id}/rotate-secret", pathParams: ["id"], query: [], body: false, kind: "json" },
   postBillingConnectionsIdValueMappingPreview: { method: "POST", path: "/v1/billing/connections/{id}/value-mapping/preview", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postBillingEventsIdRelease: { method: "POST", path: "/v1/billing/events/{id}/release", pathParams: ["id"], query: [], body: false, kind: "json" },
   postBillingInternalCustomers: { method: "POST", path: "/v1/billing/internal-customers", pathParams: [], query: [], body: true, kind: "json" },
   postBillingPortal: { method: "POST", path: "/v1/billing/portal", pathParams: [], query: [], body: false, kind: "json" },
   postBrandingDomain: { method: "POST", path: "/v1/branding/domain", pathParams: [], query: [], body: true, kind: "json" },
@@ -655,8 +656,6 @@ export function buildResources(t: Transport) {
       },
     },
     billing: {
-      /** List billing events. GET /v1/billing/events */
-      events: (query?: (T.GetBillingEventsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetBillingEventsResponse['data'][number], T.GetBillingEventsResponse> => t.list("getBillingEvents", { query }, options),
       /** Get the plan. GET /v1/billing/plan */
       plan: (options?: RequestOptions): Promise<T.GetBillingPlanResponse> => t.op("getBillingPlan", {  }, options),
       /** Activate a plan directly. POST /v1/billing/activate */
@@ -698,6 +697,12 @@ export function buildResources(t: Transport) {
           /** Set the value mapping. PUT /v1/billing/connections/{id}/value-mapping */
           update: (id: string, body: T.PutBillingConnectionsIdValueMappingBody, options?: RequestOptions): Promise<T.PutBillingConnectionsIdValueMappingResponse> => t.op("putBillingConnectionsIdValueMapping", { path: { id }, body }, options),
         },
+      },
+      events: {
+        /** List billing events. GET /v1/billing/events */
+        list: (query?: (T.GetBillingEventsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetBillingEventsResponse['data'][number], T.GetBillingEventsResponse> => t.list("getBillingEvents", { query }, options),
+        /** Release a held payment. POST /v1/billing/events/{id}/release */
+        release: (id: string, options?: RequestOptions): Promise<T.PostBillingEventsIdReleaseResponse> => t.op("postBillingEventsIdRelease", { path: { id } }, options),
       },
       internalCustomers: {
         /** Remove an internal customer. DELETE /v1/billing/internal-customers/{customerRef} */

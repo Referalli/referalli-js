@@ -39,6 +39,8 @@ function assertSendable(e: GenericBillingEvent): void {
   if (e.currency !== undefined && !Intl.supportedValuesOf('currency').includes(e.currency.toUpperCase())) {
     throw refuse('currency must be an ISO 4217 code such as usd');
   }
+  // shortcut: the server's default limit, since a connection's own isn't known here; it warns rather than refuses because the server holds these for release.
+  if ((e.amountGross ?? 0) > 1_000_000_000) console.warn(`createOutbox: event ${e.providerEventId}: amountGross ${e.amountGross} is over the default limit, so Referalli will hold it for release`);
   const chargeRef = e.metadata?.chargeRef;
   if (!e.customerRef && !((e.type === 'refund' || e.type === 'dispute') && (e.invoiceRef || chargeRef))) {
     throw refuse('customerRef is required (a refund or dispute may send only invoiceRef or metadata.chargeRef)');

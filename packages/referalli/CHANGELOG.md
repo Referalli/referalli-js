@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.7 - 2026-11-05
+
+- `createOutbox.enqueue` warns when `amountGross` is over 1,000,000,000 minor units, the server's default limit. The event is still sent: the server holds it for release instead of refusing it.
+
 ## 0.3.6 - 2026-11-05
 
 - `createOutbox.enqueue` also throws on a negative `amountGross` and on a currency that isn't ISO 4217, matching the server.

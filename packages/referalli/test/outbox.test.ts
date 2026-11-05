@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createOutbox, memoryOutboxStore, Referalli, type GenericBillingEvent } from '../src/index.js';
 
 const event = (id: string): GenericBillingEvent => ({
@@ -56,6 +56,15 @@ describe('createOutbox', () => {
     expect(await outbox.flush()).toEqual({ sent: 1, failed: 0, gaveUp: 0 });
     expect(seen[1]!.headers['idempotency-key']).toBe(seen[0]!.headers['idempotency-key']);
     expect(store.entries()).toEqual([]);
+  });
+
+  it('warns over the default payment limit but still queues the event', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const store = memoryOutboxStore();
+    const outbox = createOutbox({ store, connectionId: 'bcon_1', client: new Referalli({ apiKey: 'rk_test', fetch: server([200]).fetch }) });
+    await outbox.enqueue({ ...event('big'), amountGross: 1_000_000_001 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('hold it for release'));
+    warn.mockRestore();
   });
 
   it('refuses at enqueue what the server could only refuse', async () => {
