@@ -482,6 +482,7 @@ export const operations = {
   putProfitabilityProductsProductRef: { method: "PUT", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: true, kind: "json" },
   putProfitabilitySettings: { method: "PUT", path: "/v1/profitability/settings", pathParams: [], query: [], body: true, kind: "json" },
   putProgramsIdAutopricing: { method: "PUT", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: true, kind: "json" },
+  putProgramsIdCommissionRule: { method: "PUT", path: "/v1/programs/{id}/commission-rule", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdCreditRail: { method: "PUT", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdIncrementality: { method: "PUT", path: "/v1/programs/{id}/incrementality", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdNegotiationPolicy: { method: "PUT", path: "/v1/programs/{id}/negotiation-policy", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -1516,6 +1517,8 @@ export function buildResources(t: Transport) {
       applyLeveling: (id: string, options?: RequestOptions): Promise<T.PostProgramsIdApplyLevelingResponse> => t.op("postProgramsIdApplyLeveling", { path: { id } }, options),
       /** Make a user a referrer. POST /v1/programs/{id}/referrers */
       referrers: (id: string, body: T.PostProgramsIdReferrersBody, options?: RequestOptions): Promise<T.PostProgramsIdReferrersResponse> => t.op("postProgramsIdReferrers", { path: { id }, body }, options),
+      /** Set a program's commission rule. PUT /v1/programs/{id}/commission-rule */
+      updateCommissionRule: (id: string, body: T.PutProgramsIdCommissionRuleBody, options?: RequestOptions): Promise<T.PutProgramsIdCommissionRuleResponse> => t.op("putProgramsIdCommissionRule", { path: { id }, body }, options),
       /** Set the incrementality holdout. PUT /v1/programs/{id}/incrementality */
       updateIncrementality: (id: string, body: T.PutProgramsIdIncrementalityBody, options?: RequestOptions): Promise<T.PutProgramsIdIncrementalityResponse> => t.op("putProgramsIdIncrementality", { path: { id }, body }, options),
       /** Set a program's payout schedule. PUT /v1/programs/{id}/payout-schedule */

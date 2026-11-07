@@ -25,7 +25,7 @@
     "prepack": "node scripts/build.mjs"
   },
   "dependencies": {
-    "referalli": "^0.3.9"
+    "referalli": "^0.3.10"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

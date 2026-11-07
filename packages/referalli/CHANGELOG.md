@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.10 - 2026-11-07
+
+- Generated method for `PUT /v1/programs/{id}/commission-rule`, which publishes a rule only if it changed.
+
 ## 0.3.9 - 2026-11-07
 
 - The payment-limit warning has a rate for every current currency, so a Syrian pound or similar payment no longer warns as if each unit were a dollar.

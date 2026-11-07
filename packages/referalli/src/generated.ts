@@ -3455,6 +3455,15 @@ export type PostCommissionRulesResponse = {
   config: GetOpenapiJsonResponse;
 };
 
+export type PutProgramsIdCommissionRuleResponse = {
+  id: string;
+  programId: string;
+  version: number;
+  config: GetOpenapiJsonResponse;
+  /** False when the latest version already was this rule: nothing was published. */
+  changed: boolean;
+};
+
 export type GetCommissionRulesResponse = {
   object: "list";
   data: Array<CommissionRule>;
@@ -8883,6 +8892,78 @@ export type GetCommissionRulesQuery = {
   "created[lte]"?: string;
 };
 
+/** PUT /v1/programs/{id}/commission-rule: Set a program's commission rule */
+export type PutProgramsIdCommissionRuleBody = {
+  config: {
+    base: {
+      kind: "percent";
+      bps: number;
+    } | {
+      kind: "fixed";
+      amountMinor: number;
+      currency: string;
+    };
+    appliesTo?: "gross" | "net_of_tax" | "net_of_fees";
+    recurring?: {
+      type: "one_time";
+    } | {
+      type: "lifetime";
+    } | {
+      type: "months";
+      months: number;
+    };
+    holdDays?: number;
+    rounding?: "half_even" | "floor";
+    conditions?: {
+      countries?: Array<string>;
+      excludeCountries?: Array<string>;
+      metadata?: Array<{
+        key: string;
+        equals?: string | number | boolean;
+        in?: Array<string | number | boolean>;
+      }>;
+    };
+    overrides?: Array<{
+      match: {
+        partnerId?: string;
+        linkId?: string;
+        productRef?: string;
+        countries?: Array<string>;
+        metadata?: Array<{
+          key: string;
+          equals?: string | number | boolean;
+          in?: Array<string | number | boolean>;
+        }>;
+      };
+      base: {
+        kind: "percent";
+        bps: number;
+      } | {
+        kind: "fixed";
+        amountMinor: number;
+        currency: string;
+      };
+    }>;
+    tiers?: Array<{
+      minCustomers: number;
+      bps: number;
+    }>;
+    bounties?: Array<{
+      event: string;
+      amountMinor: number;
+      currency: string;
+    }>;
+    subAffiliate?: {
+      levels: number;
+      ratesBps: Array<number>;
+    };
+    newVsExpansion?: {
+      newBps: number;
+      expansionBps: number;
+    };
+  };
+};
+
 /** GET /v1/programs/{id}/terms: Get a program's terms */
 export type GetProgramsIdTermsQuery = {
   locale?: string;
@@ -11747,6 +11828,7 @@ export const operations = {
   postV1TrackEvents: { method: 'POST', path: '/v1/track/events' },
   postV1CommissionRules: { method: 'POST', path: '/v1/commission-rules' },
   getV1CommissionRules: { method: 'GET', path: '/v1/commission-rules' },
+  putV1ProgramsIdCommissionRule: { method: 'PUT', path: '/v1/programs/{id}/commission-rule' },
   getV1ProgramsIdTerms: { method: 'GET', path: '/v1/programs/{id}/terms' },
   getV1Commissions: { method: 'GET', path: '/v1/commissions' },
   getV1CommissionsId: { method: 'GET', path: '/v1/commissions/{id}' },
