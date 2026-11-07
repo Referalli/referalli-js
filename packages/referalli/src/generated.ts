@@ -445,7 +445,7 @@ export type BillingConnection = {
   hasCredentials: boolean;
   /** Where cash / credit / discount / cost live in this connection's payload; null uses the built-in extractor. */
   valueMapping: ValueMapping | null;
-  /** A payment above this is held for release. null: the default, 1,000,000,000 minor units. */
+  /** A payment above this, in approximate US cents (other currencies are converted at a rough fixed rate), is held for release. null: the default, 1,000,000,000 ($10M). */
   maxAmountMinor: number | null;
   /** Only matching events earn; the rest are recorded as ignored_by_filter. null takes every event. */
   filter: BillingFilter | null;
@@ -501,12 +501,12 @@ export type BillingEvent = {
   occurredAt: string;
   connectionId: string | null;
   productRef: string;
-  /** held: a payment over the connection limit or dated in the future; it earns nothing until released with POST /v1/billing/events/{id}/release. ignored_by_filter: recorded, never processed (product filter or internal customer). parked: a refund or dispute waiting up to 7 days for its payment. */
+  /** held: a payment over the connection limit (in approximate US cents), dated in the future, or in a currency outside ISO 4217; it earns nothing until released with POST /v1/billing/events/{id}/release. ignored_by_filter: recorded, never processed (product filter or internal customer). parked: a refund or dispute waiting up to 7 days for its payment. */
   status: "processed" | "ignored_by_filter" | "parked" | "held";
   /** When a parked event is dropped if its payment has not arrived. Null unless status is parked. */
   parkedUntil: string | null;
   /** Why it earned nothing. no_referral_in_scope (status processed): the customer is referred only in programs outside the connection's programIds. identity_unresolved / identity_ambiguous (status processed): the customer had no customerRef and an auth connection with resolveBillingCustomers matched no user, or several. */
-  ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope" | "identity_unresolved" | "identity_ambiguous" | "amount_over_limit" | "occurred_in_future") | null;
+  ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope" | "identity_unresolved" | "identity_ambiguous" | "amount_over_limit" | "occurred_in_future" | "unknown_currency") | null;
   /** The productIds, priceIds and skus the event named. */
   catalog: Record<string, Array<string>> | null;
 };
@@ -2088,11 +2088,11 @@ export type BillingEventRecordedEvent = {
   data: BillingEventRecordedEventData;
 };
 
-/** `data` of a `billing_event.held` event: A payment over its connection's `maxAmountMinor`, or dated more than a day ahead, earned nothing and waits for POST /v1/billing/events/{id}/release. */
+/** `data` of a `billing_event.held` event: A payment over its connection's `maxAmountMinor` (approximate US cents), dated more than a day ahead, or in a currency that isn't ISO 4217, earned nothing and waits for POST /v1/billing/events/{id}/release. */
 export type BillingEventHeldEventData = {
   /** The payment. */
   billingEventId: string;
-  reason: "amount_over_limit" | "occurred_in_future";
+  reason: "amount_over_limit" | "occurred_in_future" | "unknown_currency";
   customerRef: string;
   invoiceRef: string;
   /** Lowercase ISO 4217 code. */
@@ -3610,7 +3610,7 @@ export type PostBillingEventsIdReleaseResponse = {
   /** Recorded as ignored_by_filter: earned nothing. */
   ignored?: "filter" | "internal_customer";
   /** Recorded as held: earns nothing until released. */
-  held?: "amount_over_limit" | "occurred_in_future";
+  held?: "amount_over_limit" | "occurred_in_future" | "unknown_currency";
 };
 
 export type PostBillingInternalCustomersResponse = {

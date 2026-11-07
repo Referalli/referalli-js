@@ -1,6 +1,8 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { createOutbox, memoryOutboxStore, Referalli, type GenericBillingEvent } from '../src/index.js';
+import { APPROX_USD_PER_UNIT } from '../src/outbox.js';
+import { APPROX_USD_PER_UNIT as SERVER_RATES } from '../../shared/src/currency.js';
 
 const event = (id: string): GenericBillingEvent => ({
   providerEventId: id,
@@ -64,6 +66,10 @@ describe('createOutbox', () => {
     const outbox = createOutbox({ store, connectionId: 'bcon_1', client: new Referalli({ apiKey: 'rk_test', fetch: server([200]).fetch }) });
     await outbox.enqueue({ ...event('big'), amountGross: 1_000_000_001 });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('hold it for release'));
+    warn.mockClear();
+    await outbox.enqueue({ ...event('idr'), amountGross: 1_000_000_001, currency: 'idr' });
+    await outbox.enqueue({ ...event('refund'), type: 'refund', amountGross: 2_000_000_000 });
+    expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 
@@ -144,5 +150,11 @@ describe('createOutbox', () => {
     expect(a).toBe(b);
     expect(seen).toHaveLength(1);
     await expect(outbox.enqueue({ ...event(''), providerEventId: '' })).rejects.toThrow(/providerEventId/);
+  });
+});
+
+describe('the SDK limit rates', () => {
+  it('match the server table', () => {
+    expect(APPROX_USD_PER_UNIT).toEqual(SERVER_RATES);
   });
 });

@@ -1,6 +1,15 @@
 import { DEFAULT_BASE_URL, Referalli } from './client.js';
 import { hmacSha256 } from './sha256.js';
 
+// The server's rough rates for its payment limit, kept in step with the server's table by test/outbox.test.ts.
+export const APPROX_USD_PER_UNIT: Record<string, number> = { idr: 0.000063, vnd: 0.00004, krw: 0.00072, huf: 0.0027, cop: 0.00025, clp: 0.00105, jpy: 0.0066, irr: 0.000024, lak: 0.000046, uzs: 0.00008, pyg: 0.000125, ugx: 0.00027, tzs: 0.00037, mnt: 0.00029, khr: 0.00025, mmk: 0.00048, ngn: 0.00065, lbp: 0.000011, sll: 0.000044, sle: 0.044, gnf: 0.000116, mga: 0.00022, iqd: 0.00076, isk: 0.0072, kzt: 0.002, lkr: 0.0033, pkr: 0.0036, inr: 0.012, rub: 0.012, ars: 0.001, try: 0.029, egp: 0.02, php: 0.017, thb: 0.029, twd: 0.031, czk: 0.044, mxn: 0.054, zar: 0.055, uah: 0.024, rsd: 0.0093, kes: 0.0077, xof: 0.0017, xaf: 0.0017, bdt: 0.0082, npr: 0.0074, dop: 0.016, crc: 0.002, jmd: 0.0063, mwk: 0.00058, rwf: 0.00072, bif: 0.00034, kmf: 0.0023, djf: 0.0056, vuv: 0.0083, xpf: 0.0094, hkd: 0.13, cny: 0.14, sek: 0.1, nok: 0.095, dkk: 0.15, pln: 0.26, brl: 0.18, aed: 0.27, sar: 0.27, ils: 0.28, myr: 0.23, cad: 0.72, aud: 0.65, nzd: 0.6, sgd: 0.77, eur: 1.1, gbp: 1.3, chf: 1.15, jod: 1.41, omr: 2.6, bhd: 2.65, kwd: 3.26 };
+const ZERO = new Set(['bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf']);
+const THREE = new Set(['bhd', 'iqd', 'jod', 'kwd', 'lyd', 'omr', 'tnd']);
+const approxUsdMinor = (minor: number, currency: string) => {
+  const c = currency.toLowerCase();
+  return Math.round((minor / 10 ** (ZERO.has(c) ? 0 : THREE.has(c) ? 3 : 2)) * (APPROX_USD_PER_UNIT[c] ?? 1) * 100);
+};
+
 /** One event for a `generic` billing connection (amounts in integer minor units). */
 export interface GenericBillingEvent {
   /** Your id for this event: Referalli records it once, so resending is safe. */
@@ -40,7 +49,7 @@ function assertSendable(e: GenericBillingEvent): void {
     throw refuse('currency must be an ISO 4217 code such as usd');
   }
   // shortcut: the server's default limit, since a connection's own isn't known here; it warns rather than refuses because the server holds these for release.
-  if ((e.amountGross ?? 0) > 1_000_000_000) console.warn(`createOutbox: event ${e.providerEventId}: amountGross ${e.amountGross} is over the default limit, so Referalli will hold it for release`);
+  if ((e.type ?? 'invoice_paid') === 'invoice_paid' && approxUsdMinor(e.amountGross ?? 0, e.currency ?? 'usd') > 1_000_000_000) console.warn(`createOutbox: event ${e.providerEventId}: amountGross ${e.amountGross} is over the default limit ($10M), so Referalli will hold it for release`);
   const chargeRef = e.metadata?.chargeRef;
   if (!e.customerRef && !((e.type === 'refund' || e.type === 'dispute') && (e.invoiceRef || chargeRef))) {
     throw refuse('customerRef is required (a refund or dispute may send only invoiceRef or metadata.chargeRef)');

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.8 - 2026-11-07
+
+- The `enqueue` warning over the payment limit now converts the amount to approximate US dollars first, as the server does, so an ordinary rupiah or yen payment no longer warns. Refunds and other events never warn: only payments are held.
+
 ## 0.3.7 - 2026-11-05
 
 - `createOutbox.enqueue` warns when `amountGross` is over 1,000,000,000 minor units, the server's default limit. The event is still sent: the server holds it for release instead of refusing it.
