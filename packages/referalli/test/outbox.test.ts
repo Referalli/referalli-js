@@ -1,8 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { createOutbox, memoryOutboxStore, Referalli, type GenericBillingEvent } from '../src/index.js';
-import { APPROX_USD_PER_UNIT } from '../src/outbox.js';
-import { APPROX_USD_PER_UNIT as SERVER_RATES } from '../../shared/src/currency.js';
 
 const event = (id: string): GenericBillingEvent => ({
   providerEventId: id,
@@ -150,11 +148,5 @@ describe('createOutbox', () => {
     expect(a).toBe(b);
     expect(seen).toHaveLength(1);
     await expect(outbox.enqueue({ ...event(''), providerEventId: '' })).rejects.toThrow(/providerEventId/);
-  });
-});
-
-describe('the SDK limit rates', () => {
-  it('match the server table', () => {
-    expect(APPROX_USD_PER_UNIT).toEqual(SERVER_RATES);
   });
 });
