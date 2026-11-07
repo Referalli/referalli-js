@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.9 - 2026-11-07
+
+- The payment-limit warning has a rate for every current currency, so a Syrian pound or similar payment no longer warns as if each unit were a dollar.
+
 ## 0.3.8 - 2026-11-07
 
 - The `enqueue` warning over the payment limit now converts the amount to approximate US dollars first, as the server does, so an ordinary rupiah or yen payment no longer warns. Refunds and other events never warn: only payments are held.
