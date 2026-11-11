@@ -152,6 +152,16 @@ export class StripeKeyPermissionError extends ApiError {
   override readonly name: string = "StripeKeyPermissionError";
 }
 
+/** `unknown_topic` (HTTP 422). */
+export class UnknownTopicError extends ApiError {
+  override readonly name: string = "UnknownTopicError";
+}
+
+/** `billing_connection_no_key` (HTTP 409). */
+export class BillingConnectionNoKeyError extends ApiError {
+  override readonly name: string = "BillingConnectionNoKeyError";
+}
+
 /** `provider_credentials_invalid` (HTTP 422). */
 export class ProviderCredentialsInvalidError extends ApiError {
   override readonly name: string = "ProviderCredentialsInvalidError";
@@ -244,6 +254,8 @@ export const errorClasses: Record<string, typeof ApiError> = {
   stripe_key_invalid: StripeKeyInvalidError,
   stripe_key_wrong_mode: StripeKeyWrongModeError,
   stripe_key_permission: StripeKeyPermissionError,
+  unknown_topic: UnknownTopicError,
+  billing_connection_no_key: BillingConnectionNoKeyError,
   provider_credentials_invalid: ProviderCredentialsInvalidError,
   provider_credentials_wrong_mode: ProviderCredentialsWrongModeError,
   provider_permission: ProviderPermissionError,

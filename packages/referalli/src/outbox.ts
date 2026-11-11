@@ -69,7 +69,9 @@ export interface OutboxEntry {
 
 /**
  * Where the outbox keeps events. Back it with a table in your own database so
- * a queued payment survives restarts (see the docs for a Postgres example).
+ * a queued payment survives restarts: `pgOutboxStore` (Postgres) and
+ * `sqliteOutboxStore` (SQLite, libSQL/Turso) implement it; any other store
+ * needs these four methods (and `claim` for several workers).
  */
 export interface OutboxStore {
   /** Save an entry. An entry with the same id already queued is kept as it is. */
@@ -354,6 +356,82 @@ RETURNING ${t}.id, ${t}.event, ${t}.attempts, ${t}.next_attempt_at, ${t}.last_er
     async dead() {
       const { rows } = await query(`SELECT ${columns} FROM ${t} WHERE next_attempt_at IS NULL ORDER BY id`, []);
       return rows.map(fromRow);
+    },
+  };
+}
+
+/**
+ * Runs one SQL statement with `?` placeholders and answers its rows (none for a
+ * statement that returns none). Shaped so libSQL's `client.execute` fits as it is.
+ */
+export type SqlExecute = (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }>;
+
+const fromSqliteRow = (r: any): OutboxEntry => ({
+  id: String(r.id),
+  event: typeof r.event === 'string' ? JSON.parse(r.event) : r.event,
+  attempts: Number(r.attempts),
+  nextAttemptAt: r.next_attempt_at === null || r.next_attempt_at === undefined ? null : Number(r.next_attempt_at),
+  lastError: r.last_error ?? null,
+});
+
+/**
+ * An `OutboxStore` on a SQLite or libSQL (Turso) table, through your own
+ * `execute` function, so the SDK adds no driver:
+ *
+ *   // libSQL / Turso
+ *   const store = sqliteOutboxStore({ execute: (sql, args) => client.execute({ sql, args: args as InArgs }), table: 'referalli_outbox' });
+ *   // better-sqlite3 (synchronous)
+ *   const store = sqliteOutboxStore({ execute: async (sql, p) => { const st = db.prepare(sql); return { rows: st.reader ? st.all(p) : (st.run(p), []) }; }, table: 'referalli_outbox' });
+ *   await store.migrate();
+ *
+ * Columns: `id` TEXT primary key (the providerEventId), `event` TEXT (JSON),
+ * `attempts` INTEGER, `next_attempt_at` INTEGER (epoch ms; NULL = dead),
+ * `last_error` TEXT. A sent row is deleted. `claim` is one `UPDATE … RETURNING`
+ * statement (SQLite 3.35+), atomic because SQLite runs one writer at a time, so
+ * several processes on the same database each get a different row.
+ */
+export function sqliteOutboxStore(options: { execute: SqlExecute; table: string }): OutboxStore & {
+  claim(now: number, leaseMs: number): Promise<OutboxEntry | null>;
+  /** Create the table and its index if missing. */
+  migrate(): Promise<void>;
+  /** Entries that hit the attempt cap. */
+  dead(): Promise<OutboxEntry[]>;
+} {
+  const { execute, table: t } = options;
+  // It goes into the SQL text, so nothing but a plain identifier gets through.
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(t)) throw new TypeError(`sqliteOutboxStore: table must be a plain identifier, got ${JSON.stringify(t)}`);
+  const columns = 'id, event, attempts, next_attempt_at, last_error';
+  const rows = async (sql: string, params: unknown[]) => (await execute(sql, params)).rows.map(fromSqliteRow);
+  return {
+    async migrate() {
+      await execute(
+        `CREATE TABLE IF NOT EXISTS ${t} (id TEXT PRIMARY KEY, event TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, last_error TEXT)`,
+        [],
+      );
+      await execute(`CREATE INDEX IF NOT EXISTS ${t}_due_idx ON ${t} (next_attempt_at) WHERE next_attempt_at IS NOT NULL`, []);
+    },
+    async add(e) {
+      await execute(`INSERT OR IGNORE INTO ${t} (${columns}) VALUES (?, ?, ?, ?, ?)`, [e.id, JSON.stringify(e.event), e.attempts, e.nextAttemptAt, e.lastError]);
+    },
+    async due(now, limit) {
+      return rows(`SELECT ${columns} FROM ${t} WHERE next_attempt_at <= ? ORDER BY next_attempt_at, id LIMIT ?`, [now, limit]);
+    },
+    async claim(now, leaseMs) {
+      // The lease is next_attempt_at itself: set in the future, it hides the row from other workers and brings it back if this one dies.
+      const [entry] = await rows(
+        `UPDATE ${t} SET next_attempt_at = ? WHERE id = (SELECT id FROM ${t} WHERE next_attempt_at <= ? ORDER BY next_attempt_at, id LIMIT 1) RETURNING ${columns}`,
+        [now + leaseMs, now],
+      );
+      return entry ?? null;
+    },
+    async markSent(id) {
+      await execute(`DELETE FROM ${t} WHERE id = ?`, [id]);
+    },
+    async markFailed(id, u) {
+      await execute(`UPDATE ${t} SET attempts = ?, next_attempt_at = ?, last_error = ? WHERE id = ?`, [u.attempts, u.nextAttemptAt, u.lastError, id]);
+    },
+    async dead() {
+      return rows(`SELECT ${columns} FROM ${t} WHERE next_attempt_at IS NULL ORDER BY id`, []);
     },
   };
 }

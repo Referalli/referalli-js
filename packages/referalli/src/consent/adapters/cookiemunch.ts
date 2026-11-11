@@ -10,7 +10,7 @@ export const cookiemunch: ConsentSource = {
   id: 'cookiemunch',
   name: 'Cookie Munch',
   defaultCategory: 'referrals',
-  status: 'beta',
+  status: 'ga',
   docsUrl: 'https://referalli.com/docs/tracking-consent#cookie-munch',
   vendorDocsUrl: 'https://cookiemunch.net/docs',
   check: (cfg) => browserCheck(cookiemunch, cfg),

@@ -63,6 +63,28 @@ export type ProgramSettings = {
       sha256CertFingerprints: Array<string>;
     } | null;
   }) | null;
+  /** Referral and commission notification emails (referral_signed_up, referral_converted, commission_earned, commission_approved to the partner; referral_held to the team). On for programs created from 2026-11-11, off for older ones until enabled. */
+  notificationEmails: {
+    enabled: boolean;
+  };
+  /** How referring works, in Markdown (at most 10,000 characters), shown by the referral widget. Empty when unset. */
+  howItWorksMd?: string;
+};
+
+export type ProgramBrand = {
+  name?: string;
+  logoUrl?: string;
+  theme?: Record<string, string>;
+  supportUrl?: string;
+  linkDomain?: string;
+  portalDomain?: string;
+  emailFrom?: {
+    fromName?: string;
+    fromAddress?: string;
+    replyTo?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+  };
 };
 
 export type Program = {
@@ -79,7 +101,16 @@ export type Program = {
   publicPage: {
     pitch: string;
     autoApprove: boolean;
+    /** The hosted join page asks search engines not to index it. */
+    noindex?: boolean;
   };
+  /** The program's brand over the org's; null: the org's. */
+  brand?: ProgramBrand | null;
+  termsUrl?: string | null;
+  faqUrl?: string | null;
+  supportUrl?: string | null;
+  /** aff.js consent mode for this program; null: the org's (PUT /v1/org/tracking-consent). */
+  trackingConsent?: string | null;
   createdAt: string;
 };
 
@@ -511,6 +542,40 @@ export type BillingEvent = {
   catalog: Record<string, Array<string>> | null;
 };
 
+export type BillingDryRun = {
+  dryRun: true;
+  /** `ok` when the signature verified (`ok (API key)` on the API-key route). */
+  signature: string;
+  received: number;
+  wouldRecord: boolean;
+  wouldEarn: Array<{
+    partnerId: string;
+    referralId: string | null;
+    amountMinor: number;
+    currency: string;
+  }>;
+  ignoredReason: string | null;
+  events: Array<{
+    providerEventId: string;
+    type: string;
+    customerRef: string;
+    wouldRecord: boolean;
+    referralIds: Array<string>;
+    wouldEarn: Array<{
+      partnerId: string;
+      referralId: string | null;
+      amountMinor: number;
+      currency: string;
+    }>;
+    wouldReverse: Array<{
+      partnerId: string;
+      amountMinor: number;
+      currency: string;
+    }>;
+    ignoredReason: string | null;
+  }>;
+};
+
 export type InternalCustomer = {
   customerRef: string;
   note: string;
@@ -568,6 +633,8 @@ export type WebhookEndpoint = {
   consecutiveFailures: number;
   /** Emailed (with the org owner) when the endpoint starts failing. */
   alertContacts: Array<string>;
+  /** `atlas`: registered by the Atlas install, which owns its topics (`referalli plan` leaves them alone). null: yours. */
+  managedBy: string | null;
   createdAt: string;
 };
 
@@ -579,6 +646,8 @@ export type HealthCheck = {
   docs?: string;
   /** The hop that failed on a multi-system path, such as `stripe→referalli`. */
   hop?: string;
+  /** A failed check that may be fine (it does not make the top-level `ok` false). Absent: an error. */
+  severity?: "warning";
 };
 
 export type WebhookDelivery = {
@@ -886,6 +955,8 @@ export type AuthConnection = {
   createdAt: string;
   /** When the connection last filed a new sign-up (its signedUpAt); null when never. Webhook connections count only sign-ups that carried referral context; test sign-ups never count. */
   lastSignupAt?: string | null;
+  /** When the connection last received a sign-up (receipt time, any sign-up); null when none since 2026-11-11. Use this for health checks: lastSignupAt follows the sign-up's own time, which a late call backdates. */
+  lastSignupReceivedAt?: string | null;
   /** The last inbound call (sign-up, partner, account…) this connection refused after its signature checked out, such as a body with fields the endpoint does not take. Compare `at` with `lastSignupAt`: a newer error means sign-ups are failing. Null when none. */
   lastError?: {
     at: string;
@@ -1032,7 +1103,7 @@ export type CreatorProfile = {
 };
 
 export type EmailSettings = {
-  provider: ("resend" | "brevo" | "postmark") | null;
+  provider: ("resend" | "brevo" | "postmark" | "hermetica" | "webhook") | null;
   /** The key itself is write-only and never returned. */
   hasApiKey: boolean;
   fromAddress: string | null;
@@ -1043,6 +1114,25 @@ export type EmailSettings = {
   primaryColor: string | null;
   domainStatus: "unknown" | "pending" | "verified" | "failed";
   domainCheckedAt: string | null;
+  /** `webhook`: where each email is POSTed; `hermetica`: a self-hosted API base, else null. */
+  endpointUrl: string | null;
+  /** Only in the response that switched the provider to `webhook`: the `whsec_` secret deliveries are signed with. Shown once. */
+  signingSecret?: string;
+};
+
+export type AlertDestination = {
+  id: string;
+  type: "webhook" | "slack" | "watchtower";
+  name: string | null;
+  /** The host only; the URL and any key are write-only. */
+  urlHost: string;
+  minSeverity: "info" | "warning" | "critical";
+  topics: Array<string> | null;
+  enabled: boolean;
+  lastAttemptAt: string | null;
+  lastSentAt: string | null;
+  lastError: string | null;
+  createdAt: string;
 };
 
 export type EmailRendered = {
@@ -1158,7 +1248,7 @@ export type Promotion = {
 
 export type IntegrationConnection = {
   id: string;
-  kind: "hubspot" | "segment";
+  kind: "hubspot" | "segment" | "lucida";
   status: "active" | "paused" | "error";
   config: GetOpenapiJsonResponse;
   hasCredential: boolean;
@@ -1171,7 +1261,7 @@ export type IntegrationConnection = {
 
 export type IntegrationDelivery = {
   id: string;
-  kind: "zapier" | "hubspot" | "segment";
+  kind: "zapier" | "hubspot" | "segment" | "lucida";
   targetId: string;
   eventId: string;
   topic: string;
@@ -1777,6 +1867,42 @@ export type CommissionReversedEvent = {
   data: CommissionReversedEventData;
 };
 
+/** `data` of a `commission.approved` event: The line's hold period ended and it is now payable in the next payout run. `amountMinor` is its net at approval (after any reversal or adjustment); `approvalId` is the new `approved` ledger event. Lines settled by the merchant (`commission.settled`) don't send this. */
+export type CommissionApprovedEventData = {
+  commissionId: string;
+  approvalId: string;
+  partnerId: string;
+  programId: string;
+  /** The net amount approved. */
+  amountMinor: number;
+  /** Lowercase ISO 4217 code. */
+  currency: string;
+  referralId: string | null;
+  customerRef: string | null;
+  billingEventId: string | null;
+  /** The billing provider's own event id. */
+  providerEventId: string | null;
+  invoiceRef: string | null;
+  /** Your own id for the customer when known (an auth-connection user id), or null. */
+  customerExternalRef: string | null;
+  partnerExternalRef: string | null;
+  /** 0 for the direct partner, 1 to 5 for sub-affiliate levels. */
+  level: number;
+  memo: string;
+};
+
+/** A commission line was approved: the `commission.approved` delivery body. */
+export type CommissionApprovedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "commission.approved";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: CommissionApprovedEventData;
+};
+
 /** `data` of a `commission.settled` event: The merchant paid the line itself (`store_credit`, or `merchant_credit` for programs that settle as they earn), outside payout runs. */
 export type CommissionSettledEventData = {
   commissionId: string;
@@ -2041,6 +2167,28 @@ export type RefereeRewardEarnedEvent = {
   livemode: boolean;
   createdAt: string;
   data: RefereeRewardEarnedEventData;
+};
+
+/** `data` of a `coupon.created` event: With a `stripe_promotion` referee reward, Referalli made a promotion code for this partner code on your Stripe account (the program's coupon). Pass `stripePromotionCodeId` as `discounts[0].promotion_code` to a Checkout Session, or let customers type `code`. */
+export type CouponCreatedEventData = {
+  couponCodeId: string;
+  programId: string;
+  partnerId: string;
+  code: string;
+  stripeCouponId: string;
+  stripePromotionCodeId: string;
+};
+
+/** A partner code became a Stripe promotion code: the `coupon.created` delivery body. */
+export type CouponCreatedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "coupon.created";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: CouponCreatedEventData;
 };
 
 /** `data` of a `credit.redeemed` event: From `POST /v1/rewards/{id}/redeem` or `POST /v1/rewards/redeem-by-code`. `amountMinor` is what this redemption used (capped at the balance); a repeated `externalId` does not fire again. */
@@ -2600,6 +2748,8 @@ export type WebhookEndpointRecoveredEvent = {
 export type GetTOrgTokenConfigJsonResponse = {
   /** How long aff.js keeps the context, in days (1 to 400): the default it is served with. */
   cookieWindowDays: number;
+  /** The consent mode aff.js is served with: the `?program=`'s own, else the org's. */
+  consentMode?: string;
   cookieName: string;
   /** The pre-rename cookie name, written alongside until 2027-01-31. */
   legacyCookieName: string;
@@ -2632,11 +2782,16 @@ export type GetTOrgTokenWidgetMeResponse = {
   program: {
     id: string;
     name: string;
+    /** The program's settings.howItWorksMd; empty when unset. */
+    howItWorksMd: string;
   };
   partner: {
     displayName: string;
   };
+  /** The code as issued (one spelling for code, coupon and link when they are the same code). Matching is case-insensitive everywhere. */
   code: string | null;
+  /** The code lowercased, for comparing or storing. */
+  canonicalCode: string | null;
   coupon: string | null;
   link: string | null;
   share: {
@@ -2670,6 +2825,53 @@ export type GetTOrgTokenWidgetMeResponse = {
     currency: string;
     on: string;
   } | null;
+  /** Newest first, 20 at a time; the next page with ?referralsAfter=nextCursors.referralsAfter. */
+  referrals: Array<{
+    id: string;
+    /** A masked label (the last characters of your customerRef); never a name or email. */
+    label: string;
+    status: string;
+    createdAt: string;
+  }>;
+  /** Newest first, 20 at a time; the next page with ?commissionsAfter=nextCursors.commissionsAfter. */
+  commissions: Array<{
+    id: string;
+    /** Net of reversals and adjustments. */
+    amountMinor: number;
+    currency: string;
+    status: "pending" | "approved" | "paid" | "reversed";
+    /** When a pending commission is approved (its hold ends); null otherwise. */
+    releasesAt: string | null;
+    createdAt: string;
+  }>;
+  nextCursors: {
+    referralsAfter: string | null;
+    commissionsAfter: string | null;
+  };
+  payout: {
+    /** none: no payout method; pending: one is chosen but its details are incomplete; ready: it can be paid. */
+    methodStatus: "none" | "pending" | "ready";
+    method: string | null;
+    /** The next scheduled payout day (YYYY-MM-DD), or null when payouts are not scheduled. */
+    nextRunDate: string | null;
+    /** The balance needed before a payout, in `currency`. */
+    minThresholdMinor: number;
+    currency: string;
+  };
+  terms: {
+    /** The program's termsUrl, else its public join page, else null. */
+    url: string | null;
+    /** The commission rule in one sentence (English), else the program's termsMd. */
+    summary: string | null;
+  };
+  /** POST it with the same widget token for a single-use partner-portal sign-in link. */
+  portalLink: string;
+};
+
+export type PostTOrgTokenWidgetPortalLinkResponse = {
+  /** Single-use; opens the portal signed in, read-only, for this partner and program. */
+  url: string;
+  expiresAt: string;
 };
 
 export type GetTOrgTokenMobileResolveResponse = {
@@ -2979,6 +3181,24 @@ export type PutOrgPayoutScheduleResponse = {
   nextRunDate?: string | null;
 };
 
+export type GetOrgAlertsResponse = {
+  topics: Array<{
+    topic: string;
+    severity: "info" | "warning" | "critical";
+  }>;
+  destinations: Array<AlertDestination>;
+};
+
+export type PostOrgAlertsResponse = AlertDestination & {
+  /** `webhook` only, shown once. */
+  signingSecret?: string;
+};
+
+export type PostOrgAlertsIdTestResponse = {
+  ok: boolean;
+  error: string | null;
+};
+
 export type GetOrgPayoutScheduleResponse = {
   schedule: PayoutSchedule | null;
   nextRunDate: string | null;
@@ -3123,6 +3343,16 @@ export type GetProgramsResponse = {
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type GetProgramsIdResponse = Program & ({
+  /** The program's effective default link destination: the widget's, else a sign-in connection's; null when it has none. */
+  destinationUrl: string | null;
+});
+
+export type PatchProgramsIdResponse = Program & {
+  /** With `destinationUrl` or `widget.destinationUrl`: how many links followed the moved default. */
+  repointedLinks?: number;
 };
 
 export type PostProgramsIdReferrersResponse = {
@@ -3372,6 +3602,13 @@ export type GetLinksResponse = {
   next_cursor: string | null;
 };
 
+export type PostProgramsIdLinksRepointResponse = {
+  programId: string;
+  from: string;
+  to: string;
+  repointedLinks: number;
+};
+
 export type PostCouponsResponse = {
   id: string;
   code: string;
@@ -3389,6 +3626,8 @@ export type PostWidgetTokensResponse = {
   token: string;
   partnerId: string;
   expiresAt: string;
+  /** GET it with `Authorization: Widget <token>`: the customer's referral data. */
+  meUrl: string;
 };
 
 export type GetReferralsResponse = {
@@ -3559,7 +3798,8 @@ export type GetBillingConnectionsResponse = {
 export type PostBillingConnectionsIdEventsResponse = {
   received: number;
   results: Array<PostBillingEventsIdReleaseResponse>;
-};
+  ignoredReason?: string;
+} | BillingDryRun;
 
 export type PutBillingAccountsAccountRefOwnerResponse = {
   accountRef: string;
@@ -3729,6 +3969,7 @@ export type PutPayoutConnectionsProviderResponse = {
   provider: string;
   env: string;
   status: "active";
+  fromBillingConnectionId?: string;
 };
 
 export type DeletePayoutConnectionsProviderResponse = {
@@ -4311,6 +4552,7 @@ export type PostWebhookEndpointsResponse = {
   legacySignature: boolean;
   alertContacts: Array<string>;
   status: "active" | "paused";
+  managedBy: string | null;
   /** Returned only here. whsec_ + base64 key (Standard Webhooks). */
   secret: string;
 };
@@ -4808,6 +5050,12 @@ export type GetProgramsIdRefereeRewardResponse = {
 export type PutProgramsIdRefereeRewardResponse = {
   ok: true;
   refereeReward: GetOpenapiJsonResponse | null;
+  /** stripe_promotion only: promotion codes made (or switched off) on Stripe in this call; the rest follow hourly. */
+  promotionCodes?: {
+    created: number;
+    failed: number;
+    deactivated: number;
+  };
 };
 
 export type GetRewardsResponse = {
@@ -5574,6 +5822,7 @@ export type GetIntegrationsResponse = {
   };
   hubspot: IntegrationConnection | null;
   segment: IntegrationConnection | null;
+  lucida: IntegrationConnection | null;
 };
 
 export type PostIntegrationsHubspotTestResponse = {
@@ -5584,6 +5833,11 @@ export type PostIntegrationsHubspotTestResponse = {
 };
 
 export type PostIntegrationsSegmentTestResponse = {
+  ok: boolean;
+  error: string | null;
+};
+
+export type PostIntegrationsLucidaTestResponse = {
   ok: boolean;
   error: string | null;
 };
@@ -5673,6 +5927,8 @@ export type PatchAuthConnectionsIdResponse = {
   resolveBillingCustomers?: boolean;
   signatureVersion?: "v1+v2" | "v2";
   requiresV2?: boolean;
+  /** With `destinationUrl`: how many of the program's links followed it from the old one. */
+  repointedLinks?: number;
   tokenVerification?: TokenVerification;
   /** Browser origins allowed to call POST /v1/widget/session. */
   allowedOrigins?: Array<string>;
@@ -6021,7 +6277,10 @@ export type GetPublicProgramsHandleResponse = {
   handle: string;
   programId: string;
   programName: string;
+  /** The program's brand name when it has one, else the org name. */
   merchant: string;
+  /** The program's own brand name; null when it uses the org's. */
+  brandName?: string | null;
   trackingToken: string;
   cookieWindowDays: number;
   termsMd: string;
@@ -6034,6 +6293,14 @@ export type GetPublicProgramsHandleResponse = {
     logoUrl: string | null;
     theme: GetOpenapiJsonResponse | null;
   };
+  termsUrl?: string | null;
+  faqUrl?: string | null;
+  supportUrl?: string | null;
+  /** The hosted terms page, generated from the live commission rule. */
+  hostedTermsUrl?: string;
+  /** The join page's canonical URL: on the org's portal domain when it has one. */
+  canonicalUrl?: string;
+  noindex?: boolean;
 };
 
 export type PostPublicProgramsHandleJoinResponse = {
@@ -6285,9 +6552,82 @@ export type GetOrgTrackingConsentResponse = {
     status: "ga" | "beta";
     docsUrl: string;
   }>;
+  /** Programs with their own `trackingConsent` mode; every other program uses the org's. */
+  programOverrides: Array<{
+    programId: string;
+    programName: string;
+    mode: string;
+  }>;
+};
+
+export type PutOrgTrackingConsentResponse = {
+  /** `auto`, `none`, `pending` or a consent adapter id. */
+  mode: string;
+  noCmp?: "persist" | "memory";
+  category?: string;
+  tcfVendorId?: number;
+  gcmSignal?: "ad_storage" | "analytics_storage";
+  /** False for an org that never chose (its tag behaves as before: `none`). */
+  configured: boolean;
+  adapters: Array<{
+    id: string;
+    name: string;
+    defaultCategory: string | null;
+    status: "ga" | "beta";
+    docsUrl: string;
+  }>;
 };
 
 export type GetOrgConsentPartnersCookiemunchResponse = {
+  provider: "cookiemunch";
+  /** Your org id: the externalId of the `referalli` partner link in Cookie Munch. */
+  externalId: string;
+  receiverUrl: string;
+  sites: Array<string>;
+  stampCheck: {
+    /** `live`: stamps are checked with Cookie Munch; `not_configured`: no partner token, stamps are kept as received. */
+    status: "live" | "not_configured";
+    detail: string;
+  };
+  /** Per registered site: whether its owner granted Referalli that site in Cookie Munch (GET /v1/partner/links). */
+  grants: Array<{
+    cbid: string;
+    state: "granted" | "waiting_on_partner" | "revoked" | "expired" | "none" | "unknown";
+    linkId: string | null;
+    label: string | null;
+  }>;
+  grantCheck: {
+    status: "live" | "not_configured" | "error";
+    detail: string | null;
+  };
+  /** The programs each site was registered for; null: the whole org. */
+  sitePrograms: Array<{
+    cbid: string;
+    programIds: Array<string> | null;
+  }>;
+};
+
+export type PostOrgConsentPartnersCookiemunchLinkResponse = {
+  provider: "cookiemunch";
+  cbid: string;
+  programIds: Array<string> | null;
+  externalId: string;
+  receiverUrl: string;
+  /** The documented steps in order, and where each stands. */
+  steps: Array<{
+    id: "register_site" | "partner_link" | "executor_key";
+    status: "done" | "action_required" | "unknown" | "waiting_on_cookiemunch";
+    /** partner_link: the site's grant as Cookie Munch reports it. */
+    state: ("granted" | "waiting_on_partner" | "revoked" | "expired" | "none" | "unknown") | null;
+    linkId: string | null;
+  }>;
+  /** The executor slot holding the key Cookie Munch minted for these programs; null until it has. */
+  executorKeyId: string | null;
+  /** What is left that Referalli can't do server-side, and why. Empty when everything is done. */
+  nextSteps: Array<string>;
+};
+
+export type PutOrgConsentPartnersCookiemunchResponse = {
   provider: "cookiemunch";
   /** Your org id: the externalId of the `referalli` partner link in Cookie Munch. */
   externalId: string;
@@ -7464,7 +7804,7 @@ export type GetStripeCreditsConnectionResponse = {
 export type GetProgramsIdStripeCreditsResponse = {
   programId: string;
   enabled: boolean;
-  referrerMatch: "billing_link" | "metadata" | "email";
+  referrerMatch: "billing_link" | "metadata" | "email" | "billing_account";
   metadataKey: string | null;
   refereeRewards: boolean;
   /** Currency every credit is sent in; null = the Stripe customer's balance currency, else the commission's. */
@@ -7521,7 +7861,7 @@ export type GetProgramsIdCreditRailResponse = {
   provider: string;
   connectionId: string | null;
   enabled: boolean;
-  referrerMatch: "billing_link" | "metadata" | "email";
+  referrerMatch: "billing_link" | "metadata" | "email" | "billing_account";
   metadataKey: string | null;
   refereeRewards: boolean;
   balanceCurrency: string | null;
@@ -7579,11 +7919,6 @@ export type GetProgramsIdCreditRailLogResponse = {
   }>;
   has_more: boolean;
   next_cursor: string | null;
-};
-
-export type PostWebhooksBillingConnectionIdResponse = {
-  received: number;
-  results: Array<PostBillingEventsIdReleaseResponse>;
 };
 
 export type PostWebhooksAuthConnectionIdResponse = {
@@ -7712,10 +8047,14 @@ export type PostGraphqlResponse = {
 /** GET /t/{orgToken}/aff.js: Get the tracking script */
 export type GetTOrgTokenAffJsQuery = {
   consent?: string;
+  program?: string;
 };
 export type GetTOrgTokenAffJsResponse = string;
 
 /** GET /t/{orgToken}/config.json: Get the tracking script config */
+export type GetTOrgTokenConfigJsonQuery = {
+  program?: string;
+};
 
 /** GET /go/{orgToken}/{code}: Follow a tracked link */
 export type GetGoOrgTokenCodeQuery = {
@@ -7768,6 +8107,12 @@ export type PostTOrgTokenIdentifyResponse = Ok;
 export type GetTOrgTokenWidgetJsResponse = string;
 
 /** GET /t/{orgToken}/widget/me: Read the widget customer's referral data */
+export type GetTOrgTokenWidgetMeQuery = {
+  referralsAfter?: string;
+  commissionsAfter?: string;
+};
+
+/** POST /t/{orgToken}/widget/portal-link: Open the widget customer's partner portal */
 
 /** GET /t/{orgToken}/mobile/resolve: Resolve a deferred deep link */
 export type GetTOrgTokenMobileResolveQuery = {
@@ -8091,6 +8436,32 @@ export type PutOrgPayoutScheduleBody = {
 
 /** GET /v1/org/payout-schedule: Get payout schedules */
 
+/** GET /v1/org/alerts: List alert destinations */
+
+/** POST /v1/org/alerts: Add an alert destination */
+export type PostOrgAlertsBody = {
+  type: "webhook" | "slack" | "watchtower";
+  url: string;
+  routingKey?: string;
+  name?: string | null;
+  minSeverity?: "info" | "warning" | "critical";
+  topics?: (Array<"webhook_endpoint.failing" | "webhook_endpoint.disabled" | "billing_event.held" | "payout.failed" | "stripe_credit.failed" | "api_key.expiring">) | null;
+};
+
+/** PATCH /v1/org/alerts/{id}: Update an alert destination */
+export type PatchOrgAlertsIdBody = {
+  name?: string | null;
+  minSeverity?: "info" | "warning" | "critical";
+  topics?: (Array<"webhook_endpoint.failing" | "webhook_endpoint.disabled" | "billing_event.held" | "payout.failed" | "stripe_credit.failed" | "api_key.expiring">) | null;
+  enabled?: boolean;
+};
+export type PatchOrgAlertsIdResponse = AlertDestination;
+
+/** DELETE /v1/org/alerts/{id}: Remove an alert destination */
+export type DeleteOrgAlertsIdResponse = Ok;
+
+/** POST /v1/org/alerts/{id}/test: Send a test alert */
+
 /** PUT /v1/programs/{id}/payout-schedule: Set a program's payout schedule */
 export type PutProgramsIdPayoutScheduleBody = {
   schedule: (({
@@ -8283,6 +8654,7 @@ export type PostProgramsBody = {
   publicPage?: {
     pitch?: string;
     autoApprove?: boolean;
+    noindex?: boolean;
   };
   probabilisticPolicy?: "auto" | "review" | "off";
   selfReferralPolicy?: "review" | "reject";
@@ -8315,6 +8687,34 @@ export type PostProgramsBody = {
       sha256CertFingerprints: Array<string>;
     } | null;
   }) | null;
+  howItWorksMd?: string;
+  brand?: {
+    /** Shown instead of the org name: `merchant` on the public page, the join page title, partner emails. */
+    name?: string;
+    logoUrl?: string;
+    /** Design tokens (`--r-accent`, …) laid over the org theme. */
+    theme?: Record<string, string>;
+    supportUrl?: string;
+    /** Host for this program's links: one of the org's verified domains (link or portal). */
+    linkDomain?: string;
+    /** The org's verified portal domain, used as the join page's canonical host. */
+    portalDomain?: string;
+    emailFrom?: {
+      fromName?: string;
+      /** Must be on the org's verified sending domain. */
+      fromAddress?: string;
+      replyTo?: string;
+      logoUrl?: string;
+      primaryColor?: string;
+    };
+  } | null;
+  termsUrl?: string | null;
+  faqUrl?: string | null;
+  supportUrl?: string | null;
+  trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
+  notificationEmails?: {
+    enabled: boolean;
+  };
 };
 export type PostProgramsResponse = Program;
 
@@ -8334,7 +8734,6 @@ export type GetProgramsHandleAvailabilityQuery = {
 };
 
 /** GET /v1/programs/{id}: Get a program */
-export type GetProgramsIdResponse = Program;
 
 /** PATCH /v1/programs/{id}: Update a program */
 export type PatchProgramsIdBody = {
@@ -8349,6 +8748,7 @@ export type PatchProgramsIdBody = {
   publicPage?: {
     pitch?: string;
     autoApprove?: boolean;
+    noindex?: boolean;
   };
   probabilisticPolicy?: "auto" | "review" | "off";
   selfReferralPolicy?: "review" | "reject";
@@ -8381,11 +8781,40 @@ export type PatchProgramsIdBody = {
       sha256CertFingerprints: Array<string>;
     } | null;
   }) | null;
+  howItWorksMd?: string;
+  brand?: {
+    /** Shown instead of the org name: `merchant` on the public page, the join page title, partner emails. */
+    name?: string;
+    logoUrl?: string;
+    /** Design tokens (`--r-accent`, …) laid over the org theme. */
+    theme?: Record<string, string>;
+    supportUrl?: string;
+    /** Host for this program's links: one of the org's verified domains (link or portal). */
+    linkDomain?: string;
+    /** The org's verified portal domain, used as the join page's canonical host. */
+    portalDomain?: string;
+    emailFrom?: {
+      fromName?: string;
+      /** Must be on the org's verified sending domain. */
+      fromAddress?: string;
+      replyTo?: string;
+      logoUrl?: string;
+      primaryColor?: string;
+    };
+  } | null;
+  termsUrl?: string | null;
+  faqUrl?: string | null;
+  supportUrl?: string | null;
+  trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
+  notificationEmails?: {
+    enabled: boolean;
+  };
   settings?: {
     publicHandle?: string | null;
     publicPage?: {
       pitch?: string;
       autoApprove?: boolean;
+      noindex?: boolean;
     };
     probabilisticPolicy?: "auto" | "review" | "off";
     selfReferralPolicy?: "review" | "reject";
@@ -8418,10 +8847,37 @@ export type PatchProgramsIdBody = {
         sha256CertFingerprints: Array<string>;
       } | null;
     }) | null;
+    howItWorksMd?: string;
+    brand?: {
+      /** Shown instead of the org name: `merchant` on the public page, the join page title, partner emails. */
+      name?: string;
+      logoUrl?: string;
+      /** Design tokens (`--r-accent`, …) laid over the org theme. */
+      theme?: Record<string, string>;
+      supportUrl?: string;
+      /** Host for this program's links: one of the org's verified domains (link or portal). */
+      linkDomain?: string;
+      /** The org's verified portal domain, used as the join page's canonical host. */
+      portalDomain?: string;
+      emailFrom?: {
+        fromName?: string;
+        /** Must be on the org's verified sending domain. */
+        fromAddress?: string;
+        replyTo?: string;
+        logoUrl?: string;
+        primaryColor?: string;
+      };
+    } | null;
+    termsUrl?: string | null;
+    faqUrl?: string | null;
+    supportUrl?: string | null;
+    trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
+    notificationEmails?: {
+      enabled: boolean;
+    };
   };
   destinationUrl?: string;
 };
-export type PatchProgramsIdResponse = Program;
 
 /** POST /v1/programs/{id}/referrers: Make a user a referrer */
 export type PostProgramsIdReferrersBody = {
@@ -8663,6 +9119,20 @@ export type GetLinksQuery = {
   ending_before?: string;
   "created[gte]"?: string;
   "created[lte]"?: string;
+};
+
+/** PATCH /v1/links/{id}: Update a link */
+export type PatchLinksIdBody = {
+  destinationUrl?: string;
+  code?: string;
+};
+export type PatchLinksIdResponse = Link;
+
+/** POST /v1/programs/{id}/links/repoint: Repoint a program's links */
+export type PostProgramsIdLinksRepointBody = {
+  /** The destination to move links off (exact match). */
+  from: string;
+  to: string;
 };
 
 /** GET /v1/links/{id}/qr: Get a link's QR code */
@@ -9039,7 +9509,7 @@ export type PostBillingConnectionsBody = {
   stripeKey?: string;
   creditRail?: {
     enabled?: boolean;
-    referrerMatch?: "billing_link" | "metadata" | "email";
+    referrerMatch?: "billing_link" | "metadata" | "email" | "billing_account";
     metadataKey?: string;
     refereeRewards?: boolean;
     balanceCurrency?: string | null;
@@ -9056,6 +9526,8 @@ export type PostBillingConnectionsResponse = CreatedBillingConnection;
 
 /** GET /v1/billing/connections: List billing connections */
 export type GetBillingConnectionsQuery = {
+  programId?: string;
+  provider?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -9102,6 +9574,25 @@ export type PatchBillingConnectionsIdResponse = BillingConnection;
 export type PostBillingConnectionsIdEventsBody = {
   events: Array<Record<string, unknown>>;
 };
+export type PostBillingConnectionsIdEventsQuery = {
+  dryRun?: "0" | "1" | "true" | "false";
+};
+
+/** POST /v1/billing/connections/{id}/stripe-forward: Forward a Stripe event to a generic connection */
+export type PostBillingConnectionsIdStripeForwardBody = {
+  id: string;
+  type: string;
+  created: number;
+  data: {
+    object: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+export type PostBillingConnectionsIdStripeForwardQuery = {
+  dryRun?: "0" | "1" | "true" | "false";
+};
+export type PostBillingConnectionsIdStripeForwardResponse = PostBillingConnectionsIdEventsResponse;
 
 /** PUT /v1/billing/accounts/{accountRef}/owner: Set a billing account's owner */
 export type PutBillingAccountsAccountRefOwnerBody = {
@@ -9273,6 +9764,9 @@ export type GetPayoutConnectionsQuery = {
 
 /** PUT /v1/payout-connections/{provider}: Connect a payout provider */
 export type PutPayoutConnectionsProviderBody = ({
+  fromBillingConnectionId: string;
+  env?: "sandbox" | "live";
+}) | ({
   clientId: string;
   secret: string;
   env?: "sandbox" | "live";
@@ -9725,6 +10219,7 @@ export type PostWebhookEndpointsBody = {
   programIds?: Array<string> | null;
   alertContacts?: Array<string>;
   status?: "active" | "paused";
+  managedBy?: string | null;
 };
 
 /** GET /v1/webhook-endpoints: List webhook endpoints */
@@ -9745,6 +10240,7 @@ export type PatchWebhookEndpointsIdBody = {
   legacySignature?: boolean;
   programIds?: Array<string> | null;
   alertContacts?: Array<string>;
+  managedBy?: string | null;
 };
 
 /** DELETE /v1/webhook-endpoints/{id}: Delete a webhook endpoint */
@@ -10107,13 +10603,17 @@ export type PostBillingActivateBody = {
 /** PUT /v1/programs/{id}/referee-reward: Set the referee reward */
 export type PutProgramsIdRefereeRewardBody = {
   enabled?: boolean;
-  kind?: "store_credit" | "coupon" | "gift_card";
+  kind?: "store_credit" | "coupon" | "gift_card" | "stripe_promotion";
   amountMinor?: number;
   bps?: number;
   capMinor?: number;
   on?: "first_commission" | "first_payment";
   rounding?: "half_even" | "floor";
   currency?: string;
+  percentOff?: number;
+  amountOff?: number;
+  duration?: "once" | "forever" | "repeating";
+  durationInMonths?: number;
 };
 
 /** GET /v1/rewards: List issued referee rewards */
@@ -10675,8 +11175,9 @@ export type GetEmailSettingsResponse = EmailSettings;
 
 /** PUT /v1/email/settings: Update email settings */
 export type PutEmailSettingsBody = {
-  provider?: ("resend" | "brevo" | "postmark") | null;
+  provider?: ("resend" | "brevo" | "postmark" | "hermetica" | "webhook") | null;
   apiKey?: string | null;
+  endpointUrl?: string | null;
   fromAddress?: string | null;
   fromName?: string | null;
   replyTo?: string | null;
@@ -10708,7 +11209,7 @@ export type PutEmailTemplatesEventLocaleBody = {
 
 /** POST /v1/email/preview: Preview an email */
 export type PostEmailPreviewBody = {
-  event: "payout_sent" | "payout_failed" | "invitation_received" | "partner_approved" | "contract_sent" | "webhook_endpoint_disabled" | "webhook_endpoint_failing" | "tax_document_ready";
+  event: "payout_sent" | "payout_failed" | "invitation_received" | "partner_approved" | "contract_sent" | "webhook_endpoint_disabled" | "webhook_endpoint_failing" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved" | "referral_held";
   locale: "en" | "es" | "de" | "fr" | "pt" | "it" | "nl" | "sv" | "ja" | "zh";
   draft?: {
     subject: string;
@@ -10720,7 +11221,7 @@ export type PostEmailPreviewResponse = EmailRendered;
 
 /** POST /v1/email/test: Send a test email */
 export type PostEmailTestBody = {
-  event: "payout_sent" | "payout_failed" | "invitation_received" | "partner_approved" | "contract_sent" | "webhook_endpoint_disabled" | "webhook_endpoint_failing" | "tax_document_ready";
+  event: "payout_sent" | "payout_failed" | "invitation_received" | "partner_approved" | "contract_sent" | "webhook_endpoint_disabled" | "webhook_endpoint_failing" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved" | "referral_held";
   locale: "en" | "es" | "de" | "fr" | "pt" | "it" | "nl" | "sv" | "ja" | "zh";
   to: string;
 };
@@ -10734,6 +11235,18 @@ export type PutMeLocaleBody = {
 export type PutMeRoiDigestBody = {
   enabled: boolean;
 };
+
+/** GET /v1/email/unsubscribe: Unsubscribe page for notification emails */
+export type GetEmailUnsubscribeQuery = {
+  t: string;
+};
+export type GetEmailUnsubscribeResponse = string;
+
+/** POST /v1/email/unsubscribe: Unsubscribe from notification emails */
+export type PostEmailUnsubscribeQuery = {
+  t: string;
+};
+export type PostEmailUnsubscribeResponse = string;
 
 /** PUT /v1/partner/locale: Set my email language (partner) */
 export type PutPartnerLocaleBody = {
@@ -10760,6 +11273,14 @@ export type PutIntegrationsSegmentBody = {
 };
 export type PutIntegrationsSegmentResponse = IntegrationConnection;
 
+/** PUT /v1/integrations/lucida: Connect Lucida */
+export type PutIntegrationsLucidaBody = {
+  apiKey?: string;
+  host?: string;
+  status?: "active" | "paused";
+};
+export type PutIntegrationsLucidaResponse = IntegrationConnection;
+
 /** DELETE /v1/integrations/{kind}: Disconnect an integration */
 export type DeleteIntegrationsKindResponse = Ok;
 
@@ -10770,9 +11291,11 @@ export type PostIntegrationsHubspotTestBody = {
 
 /** POST /v1/integrations/segment/test: Test the Segment connection */
 
+/** POST /v1/integrations/lucida/test: Test the Lucida connection */
+
 /** GET /v1/integrations/deliveries: List integration deliveries */
 export type GetIntegrationsDeliveriesQuery = {
-  kind?: "zapier" | "hubspot" | "segment";
+  kind?: "zapier" | "hubspot" | "segment" | "lucida";
   status?: "pending" | "sent" | "failed" | "skipped";
   limit?: number;
   starting_after?: string;
@@ -10875,6 +11398,9 @@ export type PostAuthConnectionsResponse = CreatedAuthConnection;
 
 /** GET /v1/auth/connections: List auth connections */
 export type GetAuthConnectionsQuery = {
+  programId?: string;
+  provider?: string;
+  instanceId?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -11304,7 +11830,6 @@ export type PutOrgTrackingConsentBody = {
   /** `auto` with no CMP on the page: `persist` stores, `memory` never does. */
   noCmp?: "persist" | "memory";
 };
-export type PutOrgTrackingConsentResponse = GetOrgTrackingConsentResponse;
 
 /** GET /v1/org/consent-partners/cookiemunch: Get the Cookie Munch consent-event link */
 
@@ -11313,7 +11838,14 @@ export type PutOrgConsentPartnersCookiemunchBody = {
   /** Every Cookie Munch site (cbid) whose consent events this org accepts. Replaces the list. */
   sites: Array<string>;
 };
-export type PutOrgConsentPartnersCookiemunchResponse = GetOrgConsentPartnersCookiemunchResponse;
+
+/** POST /v1/org/consent-partners/cookiemunch/link: Link a Cookie Munch site in one call */
+export type PostOrgConsentPartnersCookiemunchLinkBody = {
+  /** A Cookie Munch site id (cbid). */
+  cbid: string;
+  /** The programs this site serves; its consent events and its executor key stay inside them. Default: the calling key's programs, else the whole org. */
+  programIds?: Array<string>;
+};
 
 /** GET /v1/org/consent-partners/cookiemunch/events: List received Cookie Munch consent events */
 export type GetOrgConsentPartnersCookiemunchEventsQuery = {
@@ -11424,7 +11956,7 @@ export type DeleteStripeCreditsConnectionResponse = GetStripeCreditsConnectionRe
 /** PUT /v1/programs/{id}/stripe-credits: Set a program's Stripe balance credit settings */
 export type PutProgramsIdStripeCreditsBody = {
   enabled: boolean;
-  referrerMatch?: "billing_link" | "metadata" | "email";
+  referrerMatch?: "billing_link" | "metadata" | "email" | "billing_account";
   metadataKey?: string;
   refereeRewards?: boolean;
   balanceCurrency?: string | null;
@@ -11455,7 +11987,7 @@ export type GetProgramsIdStripeCreditsLogQuery = {
 /** PUT /v1/programs/{id}/credit-rail: Set a program's account-credit rail settings */
 export type PutProgramsIdCreditRailBody = {
   enabled: boolean;
-  referrerMatch?: "billing_link" | "metadata" | "email";
+  referrerMatch?: "billing_link" | "metadata" | "email" | "billing_account";
   metadataKey?: string;
   refereeRewards?: boolean;
   balanceCurrency?: string | null;
@@ -11496,6 +12028,7 @@ export type PostWebhooksBillingConnectionIdBody = {
     metadata?: Record<string, unknown>;
   }>;
 };
+export type PostWebhooksBillingConnectionIdResponse = PostBillingConnectionsIdEventsResponse;
 
 /** POST /webhooks/auth/{connectionId}: Receive an auth platform webhook */
 
@@ -11619,6 +12152,8 @@ export type WebhookPayloads = {
   "commission.earned": CommissionEarnedEvent;
   /** A commission line was reversed */
   "commission.reversed": CommissionReversedEvent;
+  /** A commission line was approved */
+  "commission.approved": CommissionApprovedEvent;
   /** A commission line was settled by the merchant */
   "commission.settled": CommissionSettledEvent;
   /** A partner applied to a program */
@@ -11643,6 +12178,8 @@ export type WebhookPayloads = {
   "tax.form_delivered": TaxFormDeliveredEvent;
   /** A referred customer earned their reward */
   "referee_reward.earned": RefereeRewardEarnedEvent;
+  /** A partner code became a Stripe promotion code */
+  "coupon.created": CouponCreatedEvent;
   /** A referee reward was redeemed */
   "credit.redeemed": CreditRedeemedEvent;
   /** A billing event was recorded */
@@ -11696,6 +12233,7 @@ export const operations = {
   postTOrgTokenIdentify: { method: 'POST', path: '/t/{orgToken}/identify' },
   getTOrgTokenWidgetJs: { method: 'GET', path: '/t/{orgToken}/widget.js' },
   getTOrgTokenWidgetMe: { method: 'GET', path: '/t/{orgToken}/widget/me' },
+  postTOrgTokenWidgetPortalLink: { method: 'POST', path: '/t/{orgToken}/widget/portal-link' },
   getTOrgTokenMobileResolve: { method: 'GET', path: '/t/{orgToken}/mobile/resolve' },
   postTOrgTokenMobileInstall: { method: 'POST', path: '/t/{orgToken}/mobile/install' },
   postTOrgTokenMobileEvent: { method: 'POST', path: '/t/{orgToken}/mobile/event' },
@@ -11742,6 +12280,11 @@ export const operations = {
   deleteV1OrgMembersUserId: { method: 'DELETE', path: '/v1/org/members/{userId}' },
   putV1OrgPayoutSchedule: { method: 'PUT', path: '/v1/org/payout-schedule' },
   getV1OrgPayoutSchedule: { method: 'GET', path: '/v1/org/payout-schedule' },
+  getV1OrgAlerts: { method: 'GET', path: '/v1/org/alerts' },
+  postV1OrgAlerts: { method: 'POST', path: '/v1/org/alerts' },
+  patchV1OrgAlertsId: { method: 'PATCH', path: '/v1/org/alerts/{id}' },
+  deleteV1OrgAlertsId: { method: 'DELETE', path: '/v1/org/alerts/{id}' },
+  postV1OrgAlertsIdTest: { method: 'POST', path: '/v1/org/alerts/{id}/test' },
   putV1ProgramsIdPayoutSchedule: { method: 'PUT', path: '/v1/programs/{id}/payout-schedule' },
   getV1OrgTaxProfile: { method: 'GET', path: '/v1/org/tax-profile' },
   putV1OrgTaxProfile: { method: 'PUT', path: '/v1/org/tax-profile' },
@@ -11810,6 +12353,8 @@ export const operations = {
   getV1CliLogs: { method: 'GET', path: '/v1/cli/logs' },
   postV1Links: { method: 'POST', path: '/v1/links' },
   getV1Links: { method: 'GET', path: '/v1/links' },
+  patchV1LinksId: { method: 'PATCH', path: '/v1/links/{id}' },
+  postV1ProgramsIdLinksRepoint: { method: 'POST', path: '/v1/programs/{id}/links/repoint' },
   getV1LinksIdQr: { method: 'GET', path: '/v1/links/{id}/qr' },
   postV1Coupons: { method: 'POST', path: '/v1/coupons' },
   getV1Coupons: { method: 'GET', path: '/v1/coupons' },
@@ -11846,6 +12391,7 @@ export const operations = {
   patchV1BillingConnectionsId: { method: 'PATCH', path: '/v1/billing/connections/{id}' },
   deleteV1BillingConnectionsId: { method: 'DELETE', path: '/v1/billing/connections/{id}' },
   postV1BillingConnectionsIdEvents: { method: 'POST', path: '/v1/billing/connections/{id}/events' },
+  postV1BillingConnectionsIdStripeForward: { method: 'POST', path: '/v1/billing/connections/{id}/stripe-forward' },
   putV1BillingAccountsAccountRefOwner: { method: 'PUT', path: '/v1/billing/accounts/{accountRef}/owner' },
   deleteV1BillingAccountsAccountRef: { method: 'DELETE', path: '/v1/billing/accounts/{accountRef}' },
   getV1BillingAccountsAccountRef: { method: 'GET', path: '/v1/billing/accounts/{accountRef}' },
@@ -12087,13 +12633,17 @@ export const operations = {
   postV1EmailTest: { method: 'POST', path: '/v1/email/test' },
   putV1MeLocale: { method: 'PUT', path: '/v1/me/locale' },
   putV1MeRoiDigest: { method: 'PUT', path: '/v1/me/roi-digest' },
+  getV1EmailUnsubscribe: { method: 'GET', path: '/v1/email/unsubscribe' },
+  postV1EmailUnsubscribe: { method: 'POST', path: '/v1/email/unsubscribe' },
   putV1PartnerLocale: { method: 'PUT', path: '/v1/partner/locale' },
   getV1Integrations: { method: 'GET', path: '/v1/integrations' },
   putV1IntegrationsHubspot: { method: 'PUT', path: '/v1/integrations/hubspot' },
   putV1IntegrationsSegment: { method: 'PUT', path: '/v1/integrations/segment' },
+  putV1IntegrationsLucida: { method: 'PUT', path: '/v1/integrations/lucida' },
   deleteV1IntegrationsKind: { method: 'DELETE', path: '/v1/integrations/{kind}' },
   postV1IntegrationsHubspotTest: { method: 'POST', path: '/v1/integrations/hubspot/test' },
   postV1IntegrationsSegmentTest: { method: 'POST', path: '/v1/integrations/segment/test' },
+  postV1IntegrationsLucidaTest: { method: 'POST', path: '/v1/integrations/lucida/test' },
   getV1IntegrationsDeliveries: { method: 'GET', path: '/v1/integrations/deliveries' },
   postV1IntegrationsDeliveriesIdRetry: { method: 'POST', path: '/v1/integrations/deliveries/{id}/retry' },
   getV1ZapierEvents: { method: 'GET', path: '/v1/zapier/events' },
@@ -12173,6 +12723,7 @@ export const operations = {
   putV1OrgTrackingConsent: { method: 'PUT', path: '/v1/org/tracking-consent' },
   getV1OrgConsentPartnersCookiemunch: { method: 'GET', path: '/v1/org/consent-partners/cookiemunch' },
   putV1OrgConsentPartnersCookiemunch: { method: 'PUT', path: '/v1/org/consent-partners/cookiemunch' },
+  postV1OrgConsentPartnersCookiemunchLink: { method: 'POST', path: '/v1/org/consent-partners/cookiemunch/link' },
   getV1OrgConsentPartnersCookiemunchEvents: { method: 'GET', path: '/v1/org/consent-partners/cookiemunch/events' },
   postV1OrgConsentPartnersCookiemunchStampsCheck: { method: 'POST', path: '/v1/org/consent-partners/cookiemunch/stamps/check' },
   postV1OrgsOrgIdPrivacyExecutorKey: { method: 'POST', path: '/v1/orgs/{orgId}/privacy/executor-key' },

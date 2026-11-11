@@ -66,10 +66,17 @@ export type WebhookHandlers = { [K in WebhookTopic]?: (event: WebhookEventOf<K>)
  *
  *   export const POST = createWebhookHandler({
  *     secret: process.env.REFERALLI_WEBHOOK_SECRET!,
+ *     dedupe: async (id) => (await seen.add(id)) === 'exists', // your store: a unique key, Redis SET NX, …
  *     on: { 'referral.created': async (event) => { ... } },
  *   });
+ *
+ * `dedupe(id)` gets the delivery's `webhook-id` (the same on every retry and
+ * replay) after the signature checks out: return true when you have already
+ * handled it, and the route answers 200 without calling any handler.
  */
-export function createWebhookHandler(opts: WebhookOptions & { on?: WebhookHandlers; onEvent?: (event: WebhookEvent) => unknown }): (req: Request) => Promise<Response> {
+export function createWebhookHandler(
+  opts: WebhookOptions & { on?: WebhookHandlers; onEvent?: (event: WebhookEvent) => unknown; dedupe?: (id: string) => boolean | Promise<boolean> },
+): (req: Request) => Promise<Response> {
   return async (req) => {
     let event: WebhookEvent;
     try {
@@ -78,6 +85,8 @@ export function createWebhookHandler(opts: WebhookOptions & { on?: WebhookHandle
       if (err instanceof WebhookVerificationError) return Response.json({ error: err.message, reason: err.reason }, { status: 400 });
       return Response.json({ error: 'invalid webhook body' }, { status: 400 });
     }
+    // Verified, so the header is present (verification needs it).
+    if (opts.dedupe && (await opts.dedupe(req.headers.get('webhook-id')!))) return Response.json({ received: true, duplicate: true });
     const handler = (opts.on as Record<string, ((e: WebhookEvent) => unknown) | undefined> | undefined)?.[event.topic];
     await handler?.(event);
     await opts.onEvent?.(event);

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.3 - 2026-11-11
+
+- **Added:** `getReferrerSummary({ customerRef })` in `@referalli/next/server`: link, code, friends, commissions with release dates and payout status in one call, for your own referral page.
+- **Added:** `createWebhookHandler({ dedupe })`: return `true` for a `webhook-id` you've already handled and the delivery is acknowledged without calling your handlers.
+
 ## 0.4.2 - 2026-11-04
 
 - **Changed:** with `consent`, the middleware sets and sends nothing until the visitor has decided. Before, the Cookie Munch reader recorded an undecided landing (`unknown`). Paired with the browser kit, that counted the landing twice once the visitor accepted. A visitor who accepts after landing is captured by `<ReferalliProvider consent="cookiemunch" persist="referral-only">` (docs: Next.js, "Visitors who accept after landing").

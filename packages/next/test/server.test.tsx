@@ -2,7 +2,7 @@
 import { renderToString } from 'react-dom/server';
 import { Referalli } from 'referalli';
 import { describe, expect, it } from 'vitest';
-import { getReferralPanel, ReferralPanel } from '../src/server.js';
+import { getReferralPanel, getReferrerSummary, ReferralPanel } from '../src/server.js';
 
 const me = {
   program: { id: 'prg_1', name: 'Acme' },
@@ -25,7 +25,7 @@ function api(tokenStatus = 200) {
     const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
     if (url.endsWith('/v1/widget/tokens')) {
       return tokenStatus === 200
-        ? json(200, { token: 'wt_1', partnerId: 'par_1', expiresAt: '2026-11-03T10:15:00.000Z' })
+        ? json(200, { token: 'wt_1', partnerId: 'par_1', expiresAt: '2026-11-03T10:15:00.000Z', meUrl: 'https://api.example/t/tk_1/widget/me' })
         : json(tokenStatus, { error: { code: 'not_found', message: 'no partner' } });
     }
     return json(200, me);
@@ -69,5 +69,19 @@ describe('@referalli/next/server ReferralPanel', () => {
     const { client } = api();
     const html = renderToString(await ReferralPanel({ client, programId: 'prg_1', trackingToken: 'tk_1', customerRef: 'user_1', live: true }));
     expect(html).toContain('<strong>dana</strong>');
+  });
+});
+
+describe('@referalli/next/server getReferrerSummary', () => {
+  it('reads the summary at the minted meUrl path through the client, with paging cursors', async () => {
+    const { client, seen } = api();
+    expect(await getReferrerSummary({ client, programId: 'prg_1', customerRef: 'user_1', commissionsAfter: 'com_9' })).toEqual(me);
+    expect(seen[1]!.url).toBe('https://referalli.com/t/tk_1/widget/me?commissionsAfter=com_9');
+    expect(seen[1]!.headers.authorization).toBe('Widget wt_1');
+  });
+
+  it('is null when the user is not a partner', async () => {
+    const { client } = api(404);
+    expect(await getReferrerSummary({ client, programId: 'prg_1', customerRef: 'user_1' })).toBeNull();
   });
 });

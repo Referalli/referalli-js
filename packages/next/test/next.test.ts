@@ -125,6 +125,26 @@ describe('webhooks', () => {
     expect(bad.status).toBe(400);
     expect(await bad.json()).toMatchObject({ reason: 'signature' });
   });
+
+  it('createWebhookHandler skips a delivery dedupe has seen, keyed by webhook-id', async () => {
+    const onEvent = vi.fn();
+    const seen = new Set<string>();
+    const dedupe = vi.fn(async (id: string) => {
+      if (seen.has(id)) return true;
+      seen.add(id);
+      return false;
+    });
+    const POST = createWebhookHandler({ secret, dedupe, onEvent });
+    expect((await POST(new Request('https://x', { method: 'POST', body, headers: sign(body) }))).status).toBe(200);
+    const again = await POST(new Request('https://x', { method: 'POST', body, headers: sign(body) }));
+    expect(again.status).toBe(200);
+    expect(await again.json()).toEqual({ received: true, duplicate: true });
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(dedupe).toHaveBeenCalledWith('whd_1');
+    // A bad signature never reaches dedupe.
+    await POST(new Request('https://x', { method: 'POST', body: body + ' ', headers: sign(body) }));
+    expect(dedupe).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('middleware: legacy twin and consent (REF-H18, REF-P01)', () => {

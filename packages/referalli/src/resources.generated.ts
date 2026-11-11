@@ -19,6 +19,7 @@ export const operations = {
   deleteCliListenersId: { method: "DELETE", path: "/v1/cli/listeners/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteEmailTemplatesEventLocale: { method: "DELETE", path: "/v1/email/templates/{event}/{locale}", pathParams: ["event","locale"], query: [], body: false, kind: "json" },
   deleteIntegrationsKind: { method: "DELETE", path: "/v1/integrations/{kind}", pathParams: ["kind"], query: [], body: false, kind: "json" },
+  deleteOrgAlertsId: { method: "DELETE", path: "/v1/org/alerts/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteOrgMembersUserId: { method: "DELETE", path: "/v1/org/members/{userId}", pathParams: ["userId"], query: [], body: false, kind: "json" },
   deleteOrgSsoDirect: { method: "DELETE", path: "/v1/org/sso/direct", pathParams: [], query: [], body: false, kind: "json" },
   deletePartnerApiTokensId: { method: "DELETE", path: "/v1/partner/api-tokens/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -49,14 +50,14 @@ export const operations = {
   getAssets: { method: "GET", path: "/v1/assets", pathParams: [], query: ["programId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getAssistantSuggestions: { method: "GET", path: "/v1/assistant/suggestions", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getAuditLogs: { method: "GET", path: "/v1/audit-logs", pathParams: [], query: ["actor","actorType","action","subjectType","subjectId","created[gte]","created[lte]","limit","starting_after","ending_before"], body: false, kind: "list" },
-  getAuthConnections: { method: "GET", path: "/v1/auth/connections", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getAuthConnections: { method: "GET", path: "/v1/auth/connections", pathParams: [], query: ["programId","provider","instanceId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getAuthConnectionsId: { method: "GET", path: "/v1/auth/connections/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getAuthConnectionsIdExport: { method: "GET", path: "/v1/auth/connections/{id}/export", pathParams: ["id"], query: ["customerRef"], body: false, kind: "json", public: true },
   getAuthConnectionsIdUsersCustomerRefReferral: { method: "GET", path: "/v1/auth/connections/{id}/users/{customerRef}/referral", pathParams: ["id","customerRef"], query: [], body: false, kind: "json", public: true },
   getAuthConnectionsProviders: { method: "GET", path: "/v1/auth/connections/providers", pathParams: [], query: [], body: false, kind: "json" },
   getAuthProviders: { method: "GET", path: "/v1/auth/providers", pathParams: [], query: [], body: false, kind: "json", public: true },
   getBillingAccountsAccountRef: { method: "GET", path: "/v1/billing/accounts/{accountRef}", pathParams: ["accountRef"], query: [], body: false, kind: "json" },
-  getBillingConnections: { method: "GET", path: "/v1/billing/connections", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getBillingConnections: { method: "GET", path: "/v1/billing/connections", pathParams: [], query: ["programId","provider","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getBillingConnectionsId: { method: "GET", path: "/v1/billing/connections/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getBillingEvents: { method: "GET", path: "/v1/billing/events", pathParams: [], query: ["customerRef","status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getBillingInternalCustomers: { method: "GET", path: "/v1/billing/internal-customers", pathParams: [], query: [], body: false, kind: "json" },
@@ -82,6 +83,7 @@ export const operations = {
   getDisputes: { method: "GET", path: "/v1/disputes", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getEmailSettings: { method: "GET", path: "/v1/email/settings", pathParams: [], query: [], body: false, kind: "json" },
   getEmailTemplates: { method: "GET", path: "/v1/email/templates", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getEmailUnsubscribe: { method: "GET", path: "/v1/email/unsubscribe", pathParams: [], query: ["t"], body: false, kind: "text", public: true },
   getEmbedSummary: { method: "GET", path: "/v1/embed/summary", pathParams: [], query: [], body: false, kind: "json", public: true },
   getEvents: { method: "GET", path: "/v1/events", pathParams: [], query: ["since","topics","after","limit"], body: false, kind: "json" },
   getExportAccounting: { method: "GET", path: "/v1/export/accounting", pathParams: [], query: ["format","year"], body: false, kind: "text" },
@@ -110,6 +112,7 @@ export const operations = {
   getOpenapiJson: { method: "GET", path: "/v1/openapi.json", pathParams: [], query: [], body: false, kind: "json", public: true },
   getOpenapiYaml: { method: "GET", path: "/v1/openapi.yaml", pathParams: [], query: [], body: false, kind: "text", public: true },
   getOrg: { method: "GET", path: "/v1/org", pathParams: [], query: [], body: false, kind: "json" },
+  getOrgAlerts: { method: "GET", path: "/v1/org/alerts", pathParams: [], query: [], body: false, kind: "json" },
   getOrgConsentPartnersCookiemunch: { method: "GET", path: "/v1/org/consent-partners/cookiemunch", pathParams: [], query: [], body: false, kind: "json" },
   getOrgConsentPartnersCookiemunchEvents: { method: "GET", path: "/v1/org/consent-partners/cookiemunch/events", pathParams: [], query: ["stamp","limit"], body: false, kind: "json" },
   getOrgFxFeed: { method: "GET", path: "/v1/org/fx-feed", pathParams: [], query: [], body: false, kind: "json" },
@@ -254,7 +257,9 @@ export const operations = {
   patchAuthConnectionsId: { method: "PATCH", path: "/v1/auth/connections/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchAuthConnectionsIdOrigins: { method: "PATCH", path: "/v1/auth/connections/{id}/origins", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   patchBillingConnectionsId: { method: "PATCH", path: "/v1/billing/connections/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
+  patchLinksId: { method: "PATCH", path: "/v1/links/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchOrg: { method: "PATCH", path: "/v1/org", pathParams: [], query: [], body: true, kind: "json" },
+  patchOrgAlertsId: { method: "PATCH", path: "/v1/org/alerts/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchOrgMembersUserId: { method: "PATCH", path: "/v1/org/members/{userId}", pathParams: ["userId"], query: [], body: true, kind: "json" },
   patchOrgSso: { method: "PATCH", path: "/v1/org/sso", pathParams: [], query: [], body: true, kind: "json" },
   patchPartnerGroupsId: { method: "PATCH", path: "/v1/partner-groups/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -296,8 +301,9 @@ export const operations = {
   postBillingActivate: { method: "POST", path: "/v1/billing/activate", pathParams: [], query: [], body: true, kind: "json" },
   postBillingCheckout: { method: "POST", path: "/v1/billing/checkout", pathParams: [], query: [], body: true, kind: "json" },
   postBillingConnections: { method: "POST", path: "/v1/billing/connections", pathParams: [], query: [], body: true, kind: "json" },
-  postBillingConnectionsIdEvents: { method: "POST", path: "/v1/billing/connections/{id}/events", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postBillingConnectionsIdEvents: { method: "POST", path: "/v1/billing/connections/{id}/events", pathParams: ["id"], query: ["dryRun"], body: true, kind: "json" },
   postBillingConnectionsIdRotateSecret: { method: "POST", path: "/v1/billing/connections/{id}/rotate-secret", pathParams: ["id"], query: [], body: false, kind: "json" },
+  postBillingConnectionsIdStripeForward: { method: "POST", path: "/v1/billing/connections/{id}/stripe-forward", pathParams: ["id"], query: ["dryRun"], body: true, kind: "json", public: true },
   postBillingConnectionsIdValueMappingPreview: { method: "POST", path: "/v1/billing/connections/{id}/value-mapping/preview", pathParams: ["id"], query: [], body: true, kind: "json" },
   postBillingEventsIdRelease: { method: "POST", path: "/v1/billing/events/{id}/release", pathParams: ["id"], query: [], body: false, kind: "json" },
   postBillingInternalCustomers: { method: "POST", path: "/v1/billing/internal-customers", pathParams: [], query: [], body: true, kind: "json" },
@@ -329,6 +335,7 @@ export const operations = {
   postEmailPreview: { method: "POST", path: "/v1/email/preview", pathParams: [], query: [], body: true, kind: "json" },
   postEmailSettingsVerifyDomain: { method: "POST", path: "/v1/email/settings/verify-domain", pathParams: [], query: [], body: false, kind: "json" },
   postEmailTest: { method: "POST", path: "/v1/email/test", pathParams: [], query: [], body: true, kind: "json" },
+  postEmailUnsubscribe: { method: "POST", path: "/v1/email/unsubscribe", pathParams: [], query: ["t"], body: false, kind: "text", public: true },
   postEmbedTokens: { method: "POST", path: "/v1/embed/tokens", pathParams: [], query: [], body: true, kind: "json" },
   postFraudCasesIdResolve: { method: "POST", path: "/v1/fraud/cases/{id}/resolve", pathParams: ["id"], query: [], body: true, kind: "json" },
   postFraudDetectRings: { method: "POST", path: "/v1/fraud/detect-rings", pathParams: [], query: [], body: false, kind: "json" },
@@ -340,6 +347,7 @@ export const operations = {
   postImportProvider: { method: "POST", path: "/v1/import/{provider}", pathParams: ["provider"], query: ["programId","dryRun","destinationUrl"], body: true, kind: "json" },
   postIntegrationsDeliveriesIdRetry: { method: "POST", path: "/v1/integrations/deliveries/{id}/retry", pathParams: ["id"], query: [], body: false, kind: "json" },
   postIntegrationsHubspotTest: { method: "POST", path: "/v1/integrations/hubspot/test", pathParams: [], query: [], body: true, kind: "json" },
+  postIntegrationsLucidaTest: { method: "POST", path: "/v1/integrations/lucida/test", pathParams: [], query: [], body: false, kind: "json" },
   postIntegrationsSegmentTest: { method: "POST", path: "/v1/integrations/segment/test", pathParams: [], query: [], body: false, kind: "json" },
   postInvitationsIdWithdraw: { method: "POST", path: "/v1/invitations/{id}/withdraw", pathParams: ["id"], query: [], body: false, kind: "json" },
   postLinks: { method: "POST", path: "/v1/links", pathParams: [], query: [], body: true, kind: "json" },
@@ -347,6 +355,9 @@ export const operations = {
   postNotificationsIdRead: { method: "POST", path: "/v1/notifications/{id}/read", pathParams: ["id"], query: [], body: false, kind: "json" },
   postOauthToken: { method: "POST", path: "/v1/oauth/token", pathParams: [], query: [], body: true, kind: "json", public: true },
   postOnchainConnections: { method: "POST", path: "/v1/onchain/connections", pathParams: [], query: [], body: true, kind: "json" },
+  postOrgAlerts: { method: "POST", path: "/v1/org/alerts", pathParams: [], query: [], body: true, kind: "json" },
+  postOrgAlertsIdTest: { method: "POST", path: "/v1/org/alerts/{id}/test", pathParams: ["id"], query: [], body: false, kind: "json" },
+  postOrgConsentPartnersCookiemunchLink: { method: "POST", path: "/v1/org/consent-partners/cookiemunch/link", pathParams: [], query: [], body: true, kind: "json" },
   postOrgConsentPartnersCookiemunchStampsCheck: { method: "POST", path: "/v1/org/consent-partners/cookiemunch/stamps/check", pathParams: [], query: [], body: true, kind: "json" },
   postOrgHostedPagesCheck: { method: "POST", path: "/v1/org/hosted-pages/check", pathParams: [], query: [], body: false, kind: "json" },
   postOrgMembers: { method: "POST", path: "/v1/org/members", pathParams: [], query: [], body: true, kind: "json" },
@@ -407,6 +418,7 @@ export const operations = {
   postProgramsIdEnrollmentsEnrollmentIdApprove: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/approve", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdEnrollmentsEnrollmentIdReject: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/reject", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdGroups: { method: "POST", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postProgramsIdLinksRepoint: { method: "POST", path: "/v1/programs/{id}/links/repoint", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdPromotions: { method: "POST", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdReferrers: { method: "POST", path: "/v1/programs/{id}/referrers", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdStripeCreditsRequeue: { method: "POST", path: "/v1/programs/{id}/stripe-credits/requeue", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -454,6 +466,7 @@ export const operations = {
   putEmailSettings: { method: "PUT", path: "/v1/email/settings", pathParams: [], query: [], body: true, kind: "json" },
   putEmailTemplatesEventLocale: { method: "PUT", path: "/v1/email/templates/{event}/{locale}", pathParams: ["event","locale"], query: [], body: true, kind: "json" },
   putIntegrationsHubspot: { method: "PUT", path: "/v1/integrations/hubspot", pathParams: [], query: [], body: true, kind: "json" },
+  putIntegrationsLucida: { method: "PUT", path: "/v1/integrations/lucida", pathParams: [], query: [], body: true, kind: "json" },
   putIntegrationsSegment: { method: "PUT", path: "/v1/integrations/segment", pathParams: [], query: [], body: true, kind: "json" },
   putMarketplaceListing: { method: "PUT", path: "/v1/marketplace/listing", pathParams: [], query: [], body: true, kind: "json" },
   putMeLocale: { method: "PUT", path: "/v1/me/locale", pathParams: [], query: [], body: true, kind: "json" },
@@ -685,9 +698,11 @@ export function buildResources(t: Transport) {
         /** Create a billing connection. POST /v1/billing/connections */
         create: (body: T.PostBillingConnectionsBody, options?: RequestOptions): Promise<T.PostBillingConnectionsResponse> => t.op("postBillingConnections", { body }, options),
         /** Send events to a generic connection. POST /v1/billing/connections/{id}/events */
-        events: (id: string, body: T.PostBillingConnectionsIdEventsBody, options?: RequestOptions): Promise<T.PostBillingConnectionsIdEventsResponse> => t.op("postBillingConnectionsIdEvents", { path: { id }, body }, options),
+        events: (id: string, body: T.PostBillingConnectionsIdEventsBody, query?: (T.PostBillingConnectionsIdEventsQuery) | RequestOptions, options?: RequestOptions): Promise<T.PostBillingConnectionsIdEventsResponse> => t.op("postBillingConnectionsIdEvents", { path: { id }, body, query }, options),
         /** Rotate the webhook signing secret. POST /v1/billing/connections/{id}/rotate-secret */
         rotateSecret: (id: string, options?: RequestOptions): Promise<T.PostBillingConnectionsIdRotateSecretResponse> => t.op("postBillingConnectionsIdRotateSecret", { path: { id } }, options),
+        /** Forward a Stripe event to a generic connection. POST /v1/billing/connections/{id}/stripe-forward */
+        stripeForward: (id: string, body: T.PostBillingConnectionsIdStripeForwardBody, query?: (T.PostBillingConnectionsIdStripeForwardQuery) | RequestOptions, options?: RequestOptions): Promise<T.PostBillingConnectionsIdStripeForwardResponse> => t.op("postBillingConnectionsIdStripeForward", { path: { id }, body, query }, options),
         /** Set provider API credentials. PUT /v1/billing/connections/{id}/credentials */
         updateCredentials: (id: string, body: T.PutBillingConnectionsIdCredentialsBody, options?: RequestOptions): Promise<T.PutBillingConnectionsIdCredentialsResponse> => t.op("putBillingConnectionsIdCredentials", { path: { id }, body }, options),
         /** Set the webhook signing secret. PUT /v1/billing/connections/{id}/secret */
@@ -863,6 +878,12 @@ export function buildResources(t: Transport) {
         /** Override an email template. PUT /v1/email/templates/{event}/{locale} */
         update: (event: string, locale: string, body: T.PutEmailTemplatesEventLocaleBody, options?: RequestOptions): Promise<T.PutEmailTemplatesEventLocaleResponse> => t.op("putEmailTemplatesEventLocale", { path: { event, locale }, body }, options),
       },
+      unsubscribe: {
+        /** Unsubscribe page for notification emails. GET /v1/email/unsubscribe */
+        retrieve: (query: T.GetEmailUnsubscribeQuery, options?: RequestOptions): Promise<string> => t.op("getEmailUnsubscribe", { query }, options),
+        /** Unsubscribe from notification emails. POST /v1/email/unsubscribe */
+        create: (query: T.PostEmailUnsubscribeQuery, options?: RequestOptions): Promise<string> => t.op("postEmailUnsubscribe", { query }, options),
+      },
     },
     embed: {
       /** Read embedded partner stats. GET /v1/embed/summary */
@@ -953,6 +974,12 @@ export function buildResources(t: Transport) {
         /** Connect HubSpot. PUT /v1/integrations/hubspot */
         update: (body: T.PutIntegrationsHubspotBody, options?: RequestOptions): Promise<T.PutIntegrationsHubspotResponse> => t.op("putIntegrationsHubspot", { body }, options),
       },
+      lucida: {
+        /** Test the Lucida connection. POST /v1/integrations/lucida/test */
+        test: (options?: RequestOptions): Promise<T.PostIntegrationsLucidaTestResponse> => t.op("postIntegrationsLucidaTest", {  }, options),
+        /** Connect Lucida. PUT /v1/integrations/lucida */
+        update: (body: T.PutIntegrationsLucidaBody, options?: RequestOptions): Promise<T.PutIntegrationsLucidaResponse> => t.op("putIntegrationsLucida", { body }, options),
+      },
       segment: {
         /** Test the Segment connection. POST /v1/integrations/segment/test */
         test: (options?: RequestOptions): Promise<T.PostIntegrationsSegmentTestResponse> => t.op("postIntegrationsSegmentTest", {  }, options),
@@ -971,6 +998,8 @@ export function buildResources(t: Transport) {
       list: (query?: (T.GetLinksQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetLinksResponse['data'][number], T.GetLinksResponse> => t.list("getLinks", { query }, options),
       /** Get a link's QR code. GET /v1/links/{id}/qr */
       qr: (id: string, options?: RequestOptions): Promise<string> => t.op("getLinksIdQr", { path: { id } }, options),
+      /** Update a link. PATCH /v1/links/{id} */
+      update: (id: string, body: T.PatchLinksIdBody, options?: RequestOptions): Promise<T.PatchLinksIdResponse> => t.op("patchLinksId", { path: { id }, body }, options),
       /** Create a tracked link. POST /v1/links */
       create: (body: T.PostLinksBody, options?: RequestOptions): Promise<T.PostLinksResponse> => t.op("postLinks", { body }, options),
     },
@@ -1043,12 +1072,26 @@ export function buildResources(t: Transport) {
       update: (body: T.PatchOrgBody, options?: RequestOptions): Promise<T.PatchOrgResponse> => t.op("patchOrg", { body }, options),
       /** Connect a 1099 filing provider. PUT /v1/org/tax-filing */
       updateTaxFiling: (body: T.PutOrgTaxFilingBody, options?: RequestOptions): Promise<T.PutOrgTaxFilingResponse> => t.op("putOrgTaxFiling", { body }, options),
+      alerts: {
+        /** Remove an alert destination. DELETE /v1/org/alerts/{id} */
+        delete: (id: string, options?: RequestOptions): Promise<T.DeleteOrgAlertsIdResponse> => t.op("deleteOrgAlertsId", { path: { id } }, options),
+        /** List alert destinations. GET /v1/org/alerts */
+        retrieve: (options?: RequestOptions): Promise<T.GetOrgAlertsResponse> => t.op("getOrgAlerts", {  }, options),
+        /** Update an alert destination. PATCH /v1/org/alerts/{id} */
+        update: (id: string, body: T.PatchOrgAlertsIdBody, options?: RequestOptions): Promise<T.PatchOrgAlertsIdResponse> => t.op("patchOrgAlertsId", { path: { id }, body }, options),
+        /** Add an alert destination. POST /v1/org/alerts */
+        create: (body: T.PostOrgAlertsBody, options?: RequestOptions): Promise<T.PostOrgAlertsResponse> => t.op("postOrgAlerts", { body }, options),
+        /** Send a test alert. POST /v1/org/alerts/{id}/test */
+        test: (id: string, options?: RequestOptions): Promise<T.PostOrgAlertsIdTestResponse> => t.op("postOrgAlertsIdTest", { path: { id } }, options),
+      },
       consentPartners: {
         cookiemunch: {
           /** Get the Cookie Munch consent-event link. GET /v1/org/consent-partners/cookiemunch */
           retrieve: (options?: RequestOptions): Promise<T.GetOrgConsentPartnersCookiemunchResponse> => t.op("getOrgConsentPartnersCookiemunch", {  }, options),
           /** List received Cookie Munch consent events. GET /v1/org/consent-partners/cookiemunch/events */
           events: (query?: (T.GetOrgConsentPartnersCookiemunchEventsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetOrgConsentPartnersCookiemunchEventsResponse> => t.op("getOrgConsentPartnersCookiemunchEvents", { query }, options),
+          /** Link a Cookie Munch site in one call. POST /v1/org/consent-partners/cookiemunch/link */
+          link: (body: T.PostOrgConsentPartnersCookiemunchLinkBody, options?: RequestOptions): Promise<T.PostOrgConsentPartnersCookiemunchLinkResponse> => t.op("postOrgConsentPartnersCookiemunchLink", { body }, options),
           /** Set the Cookie Munch sites to accept consent events for. PUT /v1/org/consent-partners/cookiemunch */
           update: (body: T.PutOrgConsentPartnersCookiemunchBody, options?: RequestOptions): Promise<T.PutOrgConsentPartnersCookiemunchResponse> => t.op("putOrgConsentPartnersCookiemunch", { body }, options),
           stamps: {
@@ -1558,6 +1601,10 @@ export function buildResources(t: Transport) {
         list: (id: string, query?: (T.GetProgramsIdGroupsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdGroupsResponse['data'][number], T.GetProgramsIdGroupsResponse> => t.list("getProgramsIdGroups", { path: { id }, query }, options),
         /** Create a partner group. POST /v1/programs/{id}/groups */
         create: (id: string, body: T.PostProgramsIdGroupsBody, options?: RequestOptions): Promise<T.PostProgramsIdGroupsResponse> => t.op("postProgramsIdGroups", { path: { id }, body }, options),
+      },
+      links: {
+        /** Repoint a program's links. POST /v1/programs/{id}/links/repoint */
+        repoint: (id: string, body: T.PostProgramsIdLinksRepointBody, options?: RequestOptions): Promise<T.PostProgramsIdLinksRepointResponse> => t.op("postProgramsIdLinksRepoint", { path: { id }, body }, options),
       },
       negotiationPolicy: {
         /** Get the agent negotiation policy. GET /v1/programs/{id}/negotiation-policy */

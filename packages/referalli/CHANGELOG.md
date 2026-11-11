@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.11 - 2026-11-11
+
+- `sqliteOutboxStore({ execute })`: a durable outbox for SQLite and libSQL apps, next to `pgOutboxStore`.
+- Generated methods for the new routes: link update and repoint, Stripe event forwarding, billing dry-run, org alerts, and the new program fields (`brand`, `termsUrl`, `faqUrl`, `supportUrl`, `trackingConsent`, `notificationEmails`, `howItWorksMd`).
+
 ## 0.3.10 - 2026-11-07
 
 - Generated method for `PUT /v1/programs/{id}/commission-rule`, which publishes a rule only if it changed.

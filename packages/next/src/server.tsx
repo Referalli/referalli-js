@@ -59,6 +59,52 @@ export async function getReferralPanel(input: GetReferralPanelInput): Promise<Re
   }
 }
 
+export interface GetReferrerSummaryInput extends Omit<GetReferralPanelInput, 'trackingToken' | 'ttlSeconds'> {
+  /** Your public tracking token (`tk_…`); optional, the token mint names where to read. */
+  trackingToken?: string;
+  /** The next page of referrals or commissions: `nextCursors` from the previous answer. */
+  referralsAfter?: string;
+  commissionsAfter?: string;
+}
+
+/**
+ * Everything the referral widget shows, as JSON, for your own UI: code and
+ * link, progress, balances, referrals (masked labels) and commissions with
+ * `releasesAt`, payout status, terms, `program.howItWorksMd` and `portalLink`.
+ * `null` when the user is not a partner in the program (or no longer active).
+ * Server only (uses your `rk_` key).
+ *
+ *   const summary = await getReferrerSummary({ programId: 'prg_…', customerRef: user.id });
+ */
+export async function getReferrerSummary(input: GetReferrerSummaryInput): Promise<GetTOrgTokenWidgetMeResponse | null> {
+  const client = input.client ?? new Referalli();
+  try {
+    const minted = await client.widget.tokens({
+      programId: input.programId,
+      customerRef: input.customerRef,
+      ...(input.email ? { email: input.email } : {}),
+      ...(input.displayName ? { displayName: input.displayName } : {}),
+      ttlSeconds: 60,
+    });
+    // The mint answers `meUrl`; read it through the client's own base URL.
+    const meUrl = (minted as { meUrl?: string }).meUrl;
+    const path = input.trackingToken ? `/t/${encodeURIComponent(input.trackingToken)}/widget/me` : meUrl ? new URL(meUrl).pathname : null;
+    if (!path) throw new Error('getReferrerSummary: pass trackingToken (this API answered no meUrl)');
+    return await client.request<GetTOrgTokenWidgetMeResponse>({
+      method: 'GET',
+      path,
+      query: {
+        ...(input.referralsAfter ? { referralsAfter: input.referralsAfter } : {}),
+        ...(input.commissionsAfter ? { commissionsAfter: input.commissionsAfter } : {}),
+      },
+      headers: { authorization: `Widget ${minted.token}` },
+    });
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 401)) return null;
+    throw err;
+  }
+}
+
 export interface ReferralPanelProps extends Omit<GetReferralPanelInput, 'customerRef'> {
   /** The signed-in user's id. Or pass `getCustomerRef`. Neither, or an empty value, renders nothing. */
   customerRef?: string | null;

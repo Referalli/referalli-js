@@ -86,6 +86,7 @@ export {
   createOutbox,
   memoryOutboxStore,
   pgOutboxStore,
+  sqliteOutboxStore,
   type FlushResult,
   type GenericBillingEvent,
   type Outbox,
@@ -93,6 +94,7 @@ export {
   type OutboxOptions,
   type OutboxStore,
   type PgQuery,
+  type SqlExecute,
 } from './outbox.js';
 export { stripeEventToBillingEvents, type StripeEventLike, type StripeEventMapOptions } from './stripe-events.js';
 export { createMobileClient, MobileApiError, type MobileClientOptions } from './mobile.js';

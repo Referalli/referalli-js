@@ -132,7 +132,7 @@ await outbox.enqueue({ providerEventId: invoice.id, type: 'invoice_paid', custom
 setInterval(() => void outbox.flush(), 60_000);
 ```
 
-`store` is `pgOutboxStore({ query, table })` for Postgres, safe across replicas, or an `OutboxStore` (`add`, `due`, `markSent`, `markFailed`, optional `claim`) of your own; `memoryOutboxStore()` is for tests. Already receiving Stripe webhooks? `stripeEventToBillingEvents` maps them, refunds and disputes included: see [Billing providers](https://referalli.com/docs/billing-providers). Events are keyed by `providerEventId`, so a resend is recorded once. See [SDKs](https://referalli.com/docs/sdks#queue-billing-events-outbox) for a store of your own.
+`store` is `pgOutboxStore({ query, table })` for Postgres, safe across replicas, `sqliteOutboxStore({ execute, table })` for SQLite or libSQL (Turso), or an `OutboxStore` (`add`, `due`, `markSent`, `markFailed`, optional `claim`) of your own; `memoryOutboxStore()` is for tests. Already receiving Stripe webhooks? `stripeEventToBillingEvents` maps them, refunds and disputes included: see [Billing providers](https://referalli.com/docs/billing-providers). Events are keyed by `providerEventId`, so a resend is recorded once. See [SDKs](https://referalli.com/docs/sdks#queue-billing-events-outbox) for a store of your own.
 
 ## Configuration
 
