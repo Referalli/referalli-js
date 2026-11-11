@@ -31,7 +31,8 @@ function fieldsOf(type: string, obj: any): Partial<GenericBillingEvent> | null {
   };
   switch (type) {
     case 'invoice.paid': {
-      const subscription = obj.subscription_details ?? obj.parent?.subscription_details;
+      // basil moved subscription_details under parent; read both (and the first line's subscription metadata).
+      const subscription = obj.parent?.subscription_details ?? obj.subscription_details;
       // The charge behind the invoice, so a later refund or dispute that names only the charge finds it.
       const chargeRef = idOf(obj.charge) ?? idOf(obj.payments?.data?.[0]?.payment?.charge);
       return {
@@ -43,7 +44,9 @@ function fieldsOf(type: string, obj: any): Partial<GenericBillingEvent> | null {
         ...catalog,
         ...(API_EMAIL.test(obj.customer_email ?? '') ? { customerEmail: obj.customer_email } : {}),
         metadata: {
-          ...subscription?.metadata,
+          ...obj.lines?.data?.[0]?.metadata,
+          ...obj.parent?.subscription_details?.metadata,
+          ...obj.subscription_details?.metadata,
           ...obj.metadata,
           expansion: obj.metadata?.expansion === 'true',
           ...(chargeRef ? { chargeRef } : {}),

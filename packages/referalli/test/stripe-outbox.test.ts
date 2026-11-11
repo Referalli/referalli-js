@@ -185,6 +185,23 @@ describe('stripeEventToBillingEvents', () => {
     expect(e!.customerEmail).toBeUndefined();
   });
 
+  it('basil: parent subscription metadata is read even beside an empty top-level one; line metadata fills in; the invoice\'s own wins', async () => {
+    const [e] = await stripeEventToBillingEvents(
+      stripe('invoice.paid', {
+        id: 'in_2',
+        customer: 'cus_1',
+        amount_paid: 1,
+        currency: 'usd',
+        subscription_details: { metadata: {} },
+        parent: { subscription_details: { subscription: 'sub_2', metadata: { organization_id: 'org_1', plan: 'sub' } } },
+        lines: { data: [{ metadata: { organization_id: 'org_line', seat: '3' } }] },
+        metadata: { plan: 'invoice' },
+      }),
+      lookup,
+    );
+    expect(e).toMatchObject({ subscriptionRef: 'sub_2', metadata: { organization_id: 'org_1', seat: '3', plan: 'invoice' } });
+  });
+
   it('maps charge.refunded to a positive running total, flagged cumulative', async () => {
     const refund = (id: string, amount_refunded: number) => stripe('charge.refunded', { id: 'ch_1', invoice: 'in_1', customer: 'cus_1', amount: 4900, amount_refunded, currency: 'usd' }, id);
     const [first] = await stripeEventToBillingEvents(refund('evt_1', 1000), lookup);

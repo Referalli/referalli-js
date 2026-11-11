@@ -29,6 +29,7 @@ export const operations = {
   deletePrivacyExecutorsAdapter: { method: "DELETE", path: "/v1/privacy/executors/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
   deleteProductLinksId: { method: "DELETE", path: "/v1/product-links/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProfitabilityProductsProductRef: { method: "DELETE", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: false, kind: "json" },
+  deleteProgramsIdLinkDomain: { method: "DELETE", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteRewardsRulesKey: { method: "DELETE", path: "/v1/rewards/rules/{key}", pathParams: ["key"], query: [], body: false, kind: "json" },
   deleteStripeCreditsConnection: { method: "DELETE", path: "/v1/stripe-credits/connection", pathParams: [], query: [], body: false, kind: "json" },
   deleteSupportAppsAdapter: { method: "DELETE", path: "/v1/support/apps/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
@@ -199,6 +200,7 @@ export const operations = {
   getProgramsIdEnrollments: { method: "GET", path: "/v1/programs/{id}/enrollments", pathParams: ["id"], query: ["status","partnerId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdGraph: { method: "GET", path: "/v1/programs/{id}/graph", pathParams: ["id"], query: ["root","depth"], body: false, kind: "json" },
   getProgramsIdGroups: { method: "GET", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: ["includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getProgramsIdLinkDomain: { method: "GET", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdNegotiationPolicy: { method: "GET", path: "/v1/programs/{id}/negotiation-policy", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdPromotions: { method: "GET", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdRefereeReward: { method: "GET", path: "/v1/programs/{id}/referee-reward", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -260,6 +262,7 @@ export const operations = {
   patchLinksId: { method: "PATCH", path: "/v1/links/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchOrg: { method: "PATCH", path: "/v1/org", pathParams: [], query: [], body: true, kind: "json" },
   patchOrgAlertsId: { method: "PATCH", path: "/v1/org/alerts/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
+  patchOrgConsentPartnersCookiemunchSitesCbid: { method: "PATCH", path: "/v1/org/consent-partners/cookiemunch/sites/{cbid}", pathParams: ["cbid"], query: [], body: true, kind: "json" },
   patchOrgMembersUserId: { method: "PATCH", path: "/v1/org/members/{userId}", pathParams: ["userId"], query: [], body: true, kind: "json" },
   patchOrgSso: { method: "PATCH", path: "/v1/org/sso", pathParams: [], query: [], body: true, kind: "json" },
   patchPartnerGroupsId: { method: "PATCH", path: "/v1/partner-groups/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -418,6 +421,7 @@ export const operations = {
   postProgramsIdEnrollmentsEnrollmentIdApprove: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/approve", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdEnrollmentsEnrollmentIdReject: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/reject", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdGroups: { method: "POST", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postProgramsIdLinkDomainVerify: { method: "POST", path: "/v1/programs/{id}/link-domain/verify", pathParams: ["id"], query: [], body: false, kind: "json" },
   postProgramsIdLinksRepoint: { method: "POST", path: "/v1/programs/{id}/links/repoint", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdPromotions: { method: "POST", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdReferrers: { method: "POST", path: "/v1/programs/{id}/referrers", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -498,6 +502,7 @@ export const operations = {
   putProgramsIdCommissionRule: { method: "PUT", path: "/v1/programs/{id}/commission-rule", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdCreditRail: { method: "PUT", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdIncrementality: { method: "PUT", path: "/v1/programs/{id}/incrementality", pathParams: ["id"], query: [], body: true, kind: "json" },
+  putProgramsIdLinkDomain: { method: "PUT", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdNegotiationPolicy: { method: "PUT", path: "/v1/programs/{id}/negotiation-policy", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdPartnersPartnerIdGroup: { method: "PUT", path: "/v1/programs/{id}/partners/{partnerId}/group", pathParams: ["id","partnerId"], query: [], body: true, kind: "json" },
   putProgramsIdPayoutSchedule: { method: "PUT", path: "/v1/programs/{id}/payout-schedule", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -1090,6 +1095,8 @@ export function buildResources(t: Transport) {
           retrieve: (options?: RequestOptions): Promise<T.GetOrgConsentPartnersCookiemunchResponse> => t.op("getOrgConsentPartnersCookiemunch", {  }, options),
           /** List received Cookie Munch consent events. GET /v1/org/consent-partners/cookiemunch/events */
           events: (query?: (T.GetOrgConsentPartnersCookiemunchEventsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetOrgConsentPartnersCookiemunchEventsResponse> => t.op("getOrgConsentPartnersCookiemunchEvents", { query }, options),
+          /** Change a Cookie Munch site's programs. PATCH /v1/org/consent-partners/cookiemunch/sites/{cbid} */
+          updateSites: (cbid: string, body: T.PatchOrgConsentPartnersCookiemunchSitesCbidBody, options?: RequestOptions): Promise<T.PatchOrgConsentPartnersCookiemunchSitesCbidResponse> => t.op("patchOrgConsentPartnersCookiemunchSitesCbid", { path: { cbid }, body }, options),
           /** Link a Cookie Munch site in one call. POST /v1/org/consent-partners/cookiemunch/link */
           link: (body: T.PostOrgConsentPartnersCookiemunchLinkBody, options?: RequestOptions): Promise<T.PostOrgConsentPartnersCookiemunchLinkResponse> => t.op("postOrgConsentPartnersCookiemunchLink", { body }, options),
           /** Set the Cookie Munch sites to accept consent events for. PUT /v1/org/consent-partners/cookiemunch */
@@ -1601,6 +1608,16 @@ export function buildResources(t: Transport) {
         list: (id: string, query?: (T.GetProgramsIdGroupsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdGroupsResponse['data'][number], T.GetProgramsIdGroupsResponse> => t.list("getProgramsIdGroups", { path: { id }, query }, options),
         /** Create a partner group. POST /v1/programs/{id}/groups */
         create: (id: string, body: T.PostProgramsIdGroupsBody, options?: RequestOptions): Promise<T.PostProgramsIdGroupsResponse> => t.op("postProgramsIdGroups", { path: { id }, body }, options),
+      },
+      linkDomain: {
+        /** Remove a program's link domain. DELETE /v1/programs/{id}/link-domain */
+        delete: (id: string, options?: RequestOptions): Promise<T.DeleteProgramsIdLinkDomainResponse> => t.op("deleteProgramsIdLinkDomain", { path: { id } }, options),
+        /** Get a program's link domain. GET /v1/programs/{id}/link-domain */
+        retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdLinkDomainResponse> => t.op("getProgramsIdLinkDomain", { path: { id } }, options),
+        /** Verify a program's link domain. POST /v1/programs/{id}/link-domain/verify */
+        verify: (id: string, options?: RequestOptions): Promise<T.PostProgramsIdLinkDomainVerifyResponse> => t.op("postProgramsIdLinkDomainVerify", { path: { id } }, options),
+        /** Set a program's link domain. PUT /v1/programs/{id}/link-domain */
+        update: (id: string, body: T.PutProgramsIdLinkDomainBody, options?: RequestOptions): Promise<T.PutProgramsIdLinkDomainResponse> => t.op("putProgramsIdLinkDomain", { path: { id }, body }, options),
       },
       links: {
         /** Repoint a program's links. POST /v1/programs/{id}/links/repoint */

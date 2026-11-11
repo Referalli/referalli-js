@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.12 - 2026-11-11
+
+- `stripeEventToBillingEvents` reads an invoice's linked id from `parent.subscription_details.metadata` even when the event also has a top-level `subscription_details`; sources merge with the invoice's own metadata winning, then subscription details, then the first line.
+- Generated types for the new fields: dry-run `linkedCustomerRef`/`linkedFrom`/`billingAccount`, auth connection `lastRejectedAt`/`lastRejectedReason`, health check `severity`, and the program link-domain routes.
+
 ## 0.3.11 - 2026-11-11
 
 - `sqliteOutboxStore({ execute })`: a durable outbox for SQLite and libSQL apps, next to `pgOutboxStore`.

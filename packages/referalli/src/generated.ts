@@ -559,6 +559,15 @@ export type BillingDryRun = {
     providerEventId: string;
     type: string;
     customerRef: string;
+    /** Your own id the event was linked to through its metadata (the connection's `customerRefMetadataKey`), or null. */
+    linkedCustomerRef: string | null;
+    /** Forwarded Stripe events: where the link was read, e.g. `parent.subscription_details.metadata.organization_id`. Null otherwise. */
+    linkedFrom: string | null;
+    /** The billing account the event is filed under (the linked id, else the customer) and its recorded owner (`PUT /v1/billing/accounts/{accountRef}/owner`), or null. */
+    billingAccount: ({
+      accountRef: string;
+      ownerCustomerRef: string | null;
+    }) | null;
     wouldRecord: boolean;
     referralIds: Array<string>;
     wouldEarn: Array<{
@@ -646,8 +655,8 @@ export type HealthCheck = {
   docs?: string;
   /** The hop that failed on a multi-system path, such as `stripe→referalli`. */
   hop?: string;
-  /** A failed check that may be fine (it does not make the top-level `ok` false). Absent: an error. */
-  severity?: "warning";
+  /** Set on every failed check. `error` breaks attribution or payment and makes the top-level `ok` false; `warning` is worth a look but may be fine; `info` is expected for now (e.g. a connection that has not received its first event). */
+  severity?: "error" | "warning" | "info";
 };
 
 export type WebhookDelivery = {
@@ -953,10 +962,14 @@ export type AuthConnection = {
   name: string;
   status: string;
   createdAt: string;
-  /** When the connection last filed a new sign-up (its signedUpAt); null when never. Webhook connections count only sign-ups that carried referral context; test sign-ups never count. */
+  /** The newest accepted sign-up's own time (its signedUpAt); null when never. Refused calls and test sign-ups never count. */
   lastSignupAt?: string | null;
-  /** When the connection last received a sign-up (receipt time, any sign-up); null when none since 2026-11-11. Use this for health checks: lastSignupAt follows the sign-up's own time, which a late call backdates. */
+  /** When the connection last accepted a sign-up (receipt time); null when none is known. Use this for health checks: lastSignupAt follows the sign-up's own time, which a late call backdates. Refused calls never count. */
   lastSignupReceivedAt?: string | null;
+  /** When the connection last refused a sign-up call after its signature checked out; null when none. Newer than lastSignupReceivedAt: sign-ups are failing. */
+  lastRejectedAt?: string | null;
+  /** Why that sign-up was refused, as `<code>: <message>` (e.g. `validation_error: unknown field(s): plan`). */
+  lastRejectedReason?: string | null;
   /** The last inbound call (sign-up, partner, account…) this connection refused after its signature checked out, such as a body with fields the endpoint does not take. Compare `at` with `lastSignupAt`: a newer error means sign-ups are failing. Null when none. */
   lastError?: {
     at: string;
@@ -3544,6 +3557,7 @@ export type PostCliDeviceCodesUserCodeApproveResponse = {
   ok: true;
   keyId: string;
   scopes: Array<string>;
+  programIds: Array<string> | null;
 };
 
 export type PostCliListenersResponse = {
@@ -4775,6 +4789,18 @@ export type PostBrandingDomainResponse = {
   txtName: string;
   verified: false;
   instructions: string;
+};
+
+export type GetProgramsIdLinkDomainResponse = {
+  programId: string;
+  domain: string | null;
+  verified: boolean;
+  /** none; pending (waiting for DNS); provisioning (routed here, certificate being issued); active (links/portal served on it). */
+  status: "none" | "pending" | "provisioning" | "active";
+  cnameTarget: string;
+  txtName: string | null;
+  /** The TXT value proving you control the domain; null with no domain set. */
+  txtRecord: string | null;
 };
 
 export type PutBrandingResponse = {
@@ -6623,8 +6649,14 @@ export type PostOrgConsentPartnersCookiemunchLinkResponse = {
   }>;
   /** The executor slot holding the key Cookie Munch minted for these programs; null until it has. */
   executorKeyId: string | null;
-  /** What is left that Referalli can't do server-side, and why. Empty when everything is done. */
+  /** What is left for the merchant (in Cookie Munch) or for Cookie Munch, and why Referalli can't do it server-side: the partner link is the site owner's grant, made with the merchant's own Cookie Munch credentials, and the executor key is fetched by Cookie Munch in a signed call. Empty when everything is done. */
   nextSteps: Array<string>;
+};
+
+export type PatchOrgConsentPartnersCookiemunchSitesCbidResponse = {
+  cbid: string;
+  /** null: the whole org. */
+  programIds: Array<string> | null;
 };
 
 export type PutOrgConsentPartnersCookiemunchResponse = {
@@ -8695,7 +8727,7 @@ export type PostProgramsBody = {
     /** Design tokens (`--r-accent`, …) laid over the org theme. */
     theme?: Record<string, string>;
     supportUrl?: string;
-    /** Host for this program's links: one of the org's verified domains (link or portal). */
+    /** Host for this program's links: one of the org's verified domains (link or portal), or this program's own verified link domain (`PUT /v1/programs/{id}/link-domain`). */
     linkDomain?: string;
     /** The org's verified portal domain, used as the join page's canonical host. */
     portalDomain?: string;
@@ -8789,7 +8821,7 @@ export type PatchProgramsIdBody = {
     /** Design tokens (`--r-accent`, …) laid over the org theme. */
     theme?: Record<string, string>;
     supportUrl?: string;
-    /** Host for this program's links: one of the org's verified domains (link or portal). */
+    /** Host for this program's links: one of the org's verified domains (link or portal), or this program's own verified link domain (`PUT /v1/programs/{id}/link-domain`). */
     linkDomain?: string;
     /** The org's verified portal domain, used as the join page's canonical host. */
     portalDomain?: string;
@@ -8855,7 +8887,7 @@ export type PatchProgramsIdBody = {
       /** Design tokens (`--r-accent`, …) laid over the org theme. */
       theme?: Record<string, string>;
       supportUrl?: string;
-      /** Host for this program's links: one of the org's verified domains (link or portal). */
+      /** Host for this program's links: one of the org's verified domains (link or portal), or this program's own verified link domain (`PUT /v1/programs/{id}/link-domain`). */
       linkDomain?: string;
       /** The org's verified portal domain, used as the join page's canonical host. */
       portalDomain?: string;
@@ -9067,6 +9099,7 @@ export type PostCliDeviceCodesTokenBody = {
 export type PostCliDeviceCodesUserCodeApproveBody = {
   access?: "full" | "read" | "cli";
   name?: string;
+  programIds?: Array<string>;
 };
 
 /** POST /v1/cli/device-codes/{userCode}/deny: Deny a CLI sign-in */
@@ -10382,6 +10415,20 @@ export type DeleteBrandingDomainResponse = Ok;
 
 /** POST /v1/branding/domain/verify: Verify the portal domain */
 export type PostBrandingDomainVerifyResponse = PostBrandingLinkDomainVerifyResponse;
+
+/** GET /v1/programs/{id}/link-domain: Get a program's link domain */
+
+/** PUT /v1/programs/{id}/link-domain: Set a program's link domain */
+export type PutProgramsIdLinkDomainBody = {
+  domain: string;
+};
+export type PutProgramsIdLinkDomainResponse = GetProgramsIdLinkDomainResponse;
+
+/** DELETE /v1/programs/{id}/link-domain: Remove a program's link domain */
+export type DeleteProgramsIdLinkDomainResponse = Ok;
+
+/** POST /v1/programs/{id}/link-domain/verify: Verify a program's link domain */
+export type PostProgramsIdLinkDomainVerifyResponse = PostBrandingLinkDomainVerifyResponse;
 
 /** POST /v1/embed/tokens: Mint a partner embed token */
 export type PostEmbedTokensBody = {
@@ -11843,8 +11890,14 @@ export type PutOrgConsentPartnersCookiemunchBody = {
 export type PostOrgConsentPartnersCookiemunchLinkBody = {
   /** A Cookie Munch site id (cbid). */
   cbid: string;
-  /** The programs this site serves; its consent events and its executor key stay inside them. Default: the calling key's programs, else the whole org. */
+  /** The programs this site serves; its consent events and its executor key stay inside them. Narrows a site already registered for the whole org. Default: the calling key's programs, else the site's current programs, else the whole org. */
   programIds?: Array<string>;
+};
+
+/** PATCH /v1/org/consent-partners/cookiemunch/sites/{cbid}: Change a Cookie Munch site's programs */
+export type PatchOrgConsentPartnersCookiemunchSitesCbidBody = {
+  /** The programs this site serves; null: the whole org. */
+  programIds: Array<string> | null;
 };
 
 /** GET /v1/org/consent-partners/cookiemunch/events: List received Cookie Munch consent events */
@@ -12505,6 +12558,10 @@ export const operations = {
   postV1BrandingDomain: { method: 'POST', path: '/v1/branding/domain' },
   deleteV1BrandingDomain: { method: 'DELETE', path: '/v1/branding/domain' },
   postV1BrandingDomainVerify: { method: 'POST', path: '/v1/branding/domain/verify' },
+  getV1ProgramsIdLinkDomain: { method: 'GET', path: '/v1/programs/{id}/link-domain' },
+  putV1ProgramsIdLinkDomain: { method: 'PUT', path: '/v1/programs/{id}/link-domain' },
+  deleteV1ProgramsIdLinkDomain: { method: 'DELETE', path: '/v1/programs/{id}/link-domain' },
+  postV1ProgramsIdLinkDomainVerify: { method: 'POST', path: '/v1/programs/{id}/link-domain/verify' },
   postV1EmbedTokens: { method: 'POST', path: '/v1/embed/tokens' },
   getV1EmbedSummary: { method: 'GET', path: '/v1/embed/summary' },
   postV1DiscoverySearch: { method: 'POST', path: '/v1/discovery/search' },
@@ -12724,6 +12781,7 @@ export const operations = {
   getV1OrgConsentPartnersCookiemunch: { method: 'GET', path: '/v1/org/consent-partners/cookiemunch' },
   putV1OrgConsentPartnersCookiemunch: { method: 'PUT', path: '/v1/org/consent-partners/cookiemunch' },
   postV1OrgConsentPartnersCookiemunchLink: { method: 'POST', path: '/v1/org/consent-partners/cookiemunch/link' },
+  patchV1OrgConsentPartnersCookiemunchSitesCbid: { method: 'PATCH', path: '/v1/org/consent-partners/cookiemunch/sites/{cbid}' },
   getV1OrgConsentPartnersCookiemunchEvents: { method: 'GET', path: '/v1/org/consent-partners/cookiemunch/events' },
   postV1OrgConsentPartnersCookiemunchStampsCheck: { method: 'POST', path: '/v1/org/consent-partners/cookiemunch/stamps/check' },
   postV1OrgsOrgIdPrivacyExecutorKey: { method: 'POST', path: '/v1/orgs/{orgId}/privacy/executor-key' },
