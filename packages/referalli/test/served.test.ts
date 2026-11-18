@@ -1,6 +1,6 @@
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { renderSnippetJs, type SnippetOptions } from '../src/served.js';
+import { renderCallsJs, renderSnippetJs, type SnippetOptions } from '../src/served.js';
 
 /** Runs the real served aff.js against a minimal fake browser. */
 function browser(href: string, attrs: Record<string, string> = {}, opts: SnippetOptions = {}, jar: { refuseDomain?: boolean } = {}) {
@@ -247,5 +247,37 @@ describe('cart auto-capture regex survives the template literal', () => {
     expect(re.test('/cart/add.js')).toBe(true);
     expect(re.test('/cart/add?x=1')).toBe(true);
     expect(re.test('/cart/added')).toBe(false);
+  });
+});
+
+describe('served calls.js (pay-per-call number swap)', () => {
+  it('aff.js loads it only with data-calls="swap"', () => {
+    expect(renderSnippetJs('tk_1', 'https://x', {})).toContain("attr('data-calls')!=='swap'");
+    expect(renderSnippetJs('tk_1', 'https://x', {}).length).toBeGreaterThan(0);
+  });
+
+  it('rewrites only data-referalli-phone elements, and tel: hrefs on links', async () => {
+    const mk = (tag: string, href?: string) => {
+      const attrs: Record<string, string> = href ? { href } : {};
+      return { tagName: tag, textContent: '555', getAttribute: (n: string) => attrs[n] ?? null, setAttribute: (n: string, v: string) => (attrs[n] = v), attrs };
+    };
+    const span = mk('SPAN');
+    const link = mk('A', 'tel:+15550000');
+    const store = new Map<string, string>();
+    const urls: string[] = [];
+    runInNewContext(renderCallsJs('tk_1', 'https://track.example.com'), {
+      window: { aff: { getReferral: () => ({ anonId: 'a_1' }), consentState: () => 'granted' } },
+      document: { readyState: 'complete', querySelectorAll: (sel: string) => (sel === '[data-referalli-phone]' ? [span, link] : []) },
+      sessionStorage: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) },
+      fetch: (u: string) => {
+        urls.push(u);
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ number: '+14155550123', display: '(415) 555-0123' }) });
+      },
+      encodeURIComponent, JSON, RegExp, setTimeout,
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(urls[0]).toBe('https://track.example.com/t/tk_1/call-number?anonId=a_1');
+    expect(span.textContent).toBe('(415) 555-0123');
+    expect(link.attrs.href).toBe('tel:+14155550123');
   });
 });

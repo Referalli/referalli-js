@@ -144,6 +144,9 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   (function(){if(attr('data-partner-bar')!=='on')return;var has=/(^|[#&])rl_pbar=/.test(location.hash||'');
     if(!has)try{has=!!sessionStorage.getItem('referalli_pbar');}catch(e){}
     if(has){var b=document.createElement('script');b.async=true;b.src=BASE+'/t/${token}/bar.js';(document.head||document.body).appendChild(b);}})();
+  // data-calls="swap": calls.js (pay-per-call number swap) loads only with a live referral context.
+  (function(){if(attr('data-calls')!=='swap'||!(ctx.code||ctx.clickId))return;
+    var c=document.createElement('script');c.async=true;c.src=BASE+'/t/${token}/calls.js';(document.head||document.body).appendChild(c);})();
   // data-cart="auto": Shopify's /cart/add (fetch, XHR; the response names product_id and sku) and WooCommerce's added_to_cart.
   (function(){
     if(attr('data-cart')!=='auto')return;
@@ -197,5 +200,30 @@ export function renderBarJs(token: string, baseUrl: string): string {
       x.onclick=function(){try{sessionStorage.removeItem(SK);}catch(e){}bar.remove();};
       bar.appendChild(btn);bar.appendChild(x);document.body.appendChild(bar);});
   })();
+})();`;
+}
+
+/** Pay-per-call number swap, loaded by aff.js on `data-calls="swap"`: rewrites only elements marked `data-referalli-phone`. */
+export function renderCallsJs(token: string, baseUrl: string): string {
+  return `(function(){
+  'use strict';
+  var BASE=${JSON.stringify(baseUrl)},SK='referalli_call_number',tries=0;
+  function apply(j){
+    var els=document.querySelectorAll('[data-referalli-phone]');
+    for(var i=0;i<els.length;i++){var e=els[i];
+      if(e.tagName==='A'&&/^tel:/i.test(e.getAttribute('href')||''))e.setAttribute('href','tel:'+j.number);
+      e.textContent=j.display;}
+  }
+  function go(){
+    var a=window.aff;if(!a||!a.getReferral)return;
+    var anon=a.getReferral().anonId;
+    if(a.consentState()!=='granted'||!anon){if(++tries<10)setTimeout(go,1000);return;}
+    try{var c=JSON.parse(sessionStorage.getItem(SK)||'null');if(c&&c.a===anon){apply(c.j);return;}}catch(e){}
+    fetch(BASE+'/t/${token}/call-number?anonId='+encodeURIComponent(anon)).then(function(r){return r.ok?r.json():null;},function(){return null;}).then(function(j){
+      if(!j||!j.number)return;
+      try{sessionStorage.setItem(SK,JSON.stringify({a:anon,j:j}));}catch(e){}
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){apply(j);});else apply(j);});
+  }
+  go();
 })();`;
 }

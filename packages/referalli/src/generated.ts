@@ -38,11 +38,37 @@ export type ProgramSettings = {
   settlement: "payout" | "merchant_credit";
   /** Days a cart add (aff.js `cartAdd`, made while the visitor's referral was live) can credit its line when the order arrives with no live referral. 0 turns it off. */
   cartWindowDays: number;
+  /** Conversion caps (UTC day and month); at or over a cap a payment earns no commission (`withheld: cap_reached`). Empty when unset. */
+  caps: {
+    conversionsPerDay?: number;
+    conversionsPerMonth?: number;
+    commissionPerMonthMinor?: number;
+    currency?: string;
+  };
+  /** Click countries (ISO 3166 alpha-2) that may earn. A referral whose click country is known and outside them earns nothing (`withheld: outside_countries`). Unknown country is allowed. */
+  countries: {
+    allow?: Array<string>;
+    block?: Array<string>;
+  };
   /** What one of your credits costs; `commission.settled` then carries `credits`. Null when unset. */
   creditRate: {
     amountMinor: number;
     currency: string;
   } | null;
+  /** Pay per call (needs a call provider: `PUT /v1/call-connections/{provider}`). A call that is answered, lasts at least `minDurationSec` and is not from a caller who already had a paid call in this program within `dedupeHours` pays the partner `amountMinor` once. `forwardTo` is the E.164 line Twilio numbers ring. Off by default. */
+  payPerCall: {
+    enabled: boolean;
+    amountMinor: number;
+    currency: string;
+    minDurationSec: number;
+    dedupeHours: number;
+    forwardTo: string | null;
+  };
+  /** Traffic sources partners may use; every source is allowed until you set a list. Applications declaring others carry `trafficMismatch`. */
+  trafficSources: {
+    allowed: Array<string>;
+    notes: string;
+  };
   /** Whether partners of this program may publish a storefront page (default off). */
   storefronts: {
     enabled: boolean;
@@ -369,6 +395,20 @@ export type ProgramTerms = {
   } | null;
   /** The program's signupToConversionDays when set (null at the 365-day default): a payment more than this many days after sign-up earns nothing. */
   signupWindowDays: number | null;
+  /** The traffic sources the program allows; null when it does not restrict them. */
+  trafficSources: Array<string> | null;
+  /** The program's country targeting; null when none is set. */
+  countries: {
+    allow?: Array<string>;
+    block?: Array<string>;
+  } | null;
+  /** The program's conversion caps; null when none are set. */
+  caps: {
+    conversionsPerDay?: number;
+    conversionsPerMonth?: number;
+    commissionPerMonthMinor?: number;
+    currency?: string;
+  } | null;
   /** Overrides, tiers or new-vs-expansion rates can change the rate a partner earns. */
   ratesVary: boolean;
   /** The same sentence in each partner-portal locale. */
@@ -2820,6 +2860,13 @@ export type WebhookEndpointRecoveredEvent = {
   data: WebhookEndpointRecoveredEventData;
 };
 
+export type GetTOrgTokenCallNumberResponse = {
+  /** The partner's tracking number, E.164. */
+  number: string;
+  /** The number formatted for people. */
+  display: string;
+};
+
 export type GetTOrgTokenConfigJsonResponse = {
   /** How long aff.js keeps the context, in days (1 to 400): the default it is served with. */
   cookieWindowDays: number;
@@ -3474,6 +3521,11 @@ export type GetProgramsIdEnrollmentsResponse = {
     status: string;
     createdAt: string;
     networkWarning: NetworkWarning;
+    /** Traffic sources the partner declared when applying. */
+    trafficSources: Array<string>;
+    promotionUrl: string | null;
+    /** Declared sources the program does not allow (the application still went in). */
+    trafficMismatch: Array<string>;
   }>;
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
@@ -3864,6 +3916,20 @@ export type GetProgramsIdTermsResponse = {
   } | null;
   /** The program's signupToConversionDays when set (null at the 365-day default): a payment more than this many days after sign-up earns nothing. */
   signupWindowDays: number | null;
+  /** The traffic sources the program allows; null when it does not restrict them. */
+  trafficSources: Array<string> | null;
+  /** The program's country targeting; null when none is set. */
+  countries: {
+    allow?: Array<string>;
+    block?: Array<string>;
+  } | null;
+  /** The program's conversion caps; null when none are set. */
+  caps: {
+    conversionsPerDay?: number;
+    conversionsPerMonth?: number;
+    commissionPerMonthMinor?: number;
+    currency?: string;
+  } | null;
   /** Overrides, tiers or new-vs-expansion rates can change the rate a partner earns. */
   ratesVary: boolean;
   /** The same sentence in each partner-portal locale. */
@@ -4037,6 +4103,8 @@ export type PostBillingEventsIdReleaseResponse = {
   ignored?: "filter" | "internal_customer";
   /** Recorded as held: earns nothing until released. */
   held?: "amount_over_limit" | "occurred_in_future" | "unknown_currency";
+  /** Recorded as a conversion but earned no commission: the referral's click country is outside the program's countries, or a program cap is reached. */
+  withheld?: "outside_countries" | "cap_reached";
 };
 
 export type PostBillingInternalCustomersResponse = {
@@ -4433,6 +4501,101 @@ export type PostPartnerStorefrontBarTokenResponse = {
   expiresAt: string;
 };
 
+export type GetPartnerSmartlinksResponse = {
+  object: "list";
+  data: Array<PostPartnerSmartlinksResponse>;
+  has_more: boolean;
+};
+
+export type PostPartnerSmartlinksResponse = {
+  id: string;
+  name: string;
+  code: string;
+  strategy: "epc" | "rotate";
+  programIds: Array<string>;
+  url: string;
+  createdAt: string;
+};
+
+export type DeletePartnerSmartlinksIdResponse = {
+  id: string;
+  deleted: true;
+};
+
+export type PutCallConnectionsProviderResponse = {
+  provider: "twilio" | "webhook";
+  connected: true;
+  /** Twilio account SID; null for the webhook provider. The auth token is never returned. */
+  accountSid: string | null;
+  /** Webhook signing secret, in the response that created or rotated it only; null otherwise. */
+  secret: string | null;
+  /** Where the provider posts: the Twilio voice URL, or the JSON webhook URL. */
+  webhookUrl: string;
+  updatedAt: string;
+};
+
+export type DeleteCallConnectionsProviderResponse = {
+  provider: "twilio" | "webhook";
+  removed: true;
+};
+
+export type PostProgramsIdCallNumbersResponse = {
+  id: string;
+  programId: string;
+  partnerId: string;
+  /** E.164. */
+  number: string;
+  provider: "twilio" | "webhook";
+  createdAt: string;
+  releasedAt: string | null;
+};
+
+export type GetProgramsIdCallNumbersResponse = {
+  object: "list";
+  data: Array<PostProgramsIdCallNumbersResponse>;
+  /** Whether another page follows; pass next_cursor as starting_after to get it. */
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
+export type GetCallsResponse = {
+  object: "list";
+  data: Array<{
+    id: string;
+    programId: string;
+    partnerId: string;
+    numberId: string;
+    provider: "twilio" | "webhook";
+    providerCallId: string;
+    durationSec: number;
+    status: string;
+    /** Whether the call paid the partner. */
+    qualified: boolean;
+    ts: string;
+  }>;
+  /** Whether another page follows; pass next_cursor as starting_after to get it. */
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
+export type GetPartnerCallNumbersResponse = {
+  object: "list";
+  data: Array<{
+    id: string;
+    programId: string;
+    partnerId: string;
+    /** E.164. */
+    number: string;
+    provider: "twilio" | "webhook";
+    createdAt: string;
+    releasedAt: string | null;
+    programName: string;
+  }>;
+  /** Whether another page follows; pass next_cursor as starting_after to get it. */
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
 export type GetProfitabilitySettingsResponse = {
   reportingCurrency: string;
   defaultMarginBps: number | null;
@@ -4806,6 +4969,10 @@ export type PostPartnerLinksProductResponse = {
   catalogItemId: string | null;
 };
 
+export type PostPartnerLinksDeepResponse = {
+  url: string;
+};
+
 export type GetPartnerReferralsResponse = {
   object: "list";
   data: Array<{
@@ -4876,6 +5043,39 @@ export type GetPartnerProgramsProgramIdLeaderboardResponse = {
 export type PostPartnerProgramsProgramIdApplyResponse = {
   enrollmentId: string;
   status: "applied";
+  /** Declared sources the program does not allow; the application still goes in. */
+  trafficMismatch: Array<string>;
+};
+
+export type GetPartnerFeedsProductsResponse = {
+  programId: string;
+  items: Array<{
+    id: string;
+    sku: string | null;
+    title: string;
+    link: string;
+    imageUrl: string | null;
+    priceMinor: number | null;
+    currency: string | null;
+    category: string | null;
+    inStock: boolean;
+    earn: string | null;
+  }>;
+};
+
+export type GetPartnerFeedsCouponsResponse = {
+  programId: string;
+  coupons: Array<{
+    code: string;
+    discount: ({
+      percentOff: number | null;
+      amountOffMinor: number | null;
+      currency: string | null;
+      duration: string;
+    }) | null;
+    expiresAt: string | null;
+    trackingUrl: string | null;
+  }>;
 };
 
 export type GetPartnerApiTokensResponse = {
@@ -5306,6 +5506,20 @@ export type GetPartnerMarketplaceResponse = {
     headline: string;
     sponsored: boolean;
     cookieWindowDays: number;
+    /** Traffic sources the program allows; null when unrestricted. */
+    trafficSources: Array<string> | null;
+    /** Country targeting; null when none is set. */
+    countries: {
+      allow?: Array<string>;
+      block?: Array<string>;
+    } | null;
+    /** Conversion caps; null when none are set. */
+    caps: {
+      conversionsPerDay?: number;
+      conversionsPerMonth?: number;
+      commissionPerMonthMinor?: number;
+      currency?: string;
+    } | null;
     commissionSummary: GetOpenapiJsonResponse | null;
     stats: {
       clicks: number;
@@ -8427,6 +8641,15 @@ export type PostWebhooksCookiemunchConsentResponse = {
   reason?: "event_not_handled" | "site_not_registered";
 };
 
+export type PostWebhooksCallsWebhookOrgTokenResponse = {
+  callId: string | null;
+  duplicate: boolean;
+  qualified: boolean;
+  /** `unknown_number`, `program_disabled`, `status`, `too_short`, `repeat_caller`, or a withhold reason (`cap_reached`, `outside_countries`, `draft_rule`, `partner_blocked`); null when it paid. */
+  reason: string | null;
+  commissionId: string | null;
+};
+
 export type PostApiPrivacyLookupResponse = {
   subjectId: string | null;
   status: "found" | "no_match";
@@ -8507,6 +8730,14 @@ export type GetTOrgTokenAffJsResponse = string;
 /** GET /t/{orgToken}/bar.js: Get the partner get-link bar script */
 export type GetTOrgTokenBarJsResponse = string;
 
+/** GET /t/{orgToken}/calls.js: Get the call-number swap script */
+export type GetTOrgTokenCallsJsResponse = string;
+
+/** GET /t/{orgToken}/call-number: Look up the referring partner's call number */
+export type GetTOrgTokenCallNumberQuery = {
+  anonId: string;
+};
+
 /** GET /t/{orgToken}/config.json: Get the tracking script config */
 export type GetTOrgTokenConfigJsonQuery = {
   program?: string;
@@ -8516,6 +8747,7 @@ export type GetTOrgTokenConfigJsonQuery = {
 export type GetGoOrgTokenCodeQuery = {
   sub?: string;
   cx?: string;
+  url?: string;
 };
 export type GetGoOrgTokenCodeResponse = void;
 
@@ -8578,6 +8810,12 @@ export type PostTOrgTokenBarBody = {
   /** Only report what the partner earns; create no link. */
   preview?: boolean;
 };
+
+/** GET /sl/{code}: Follow a smartlink */
+export type GetSlCodeQuery = {
+  sub?: string;
+};
+export type GetSlCodeResponse = void;
 
 /** GET /t/cards.js: Get the product card script */
 export type GetTCardsJsResponse = string;
@@ -9149,6 +9387,24 @@ export type PostProgramsBody = {
     amountMinor: number;
     currency: string;
   } | null;
+  payPerCall?: {
+    enabled?: boolean;
+    amountMinor?: number;
+    currency?: string;
+    minDurationSec?: number;
+    dedupeHours?: number;
+    forwardTo?: string | null;
+  };
+  caps?: {
+    conversionsPerDay?: number;
+    conversionsPerMonth?: number;
+    commissionPerMonthMinor?: number;
+    currency?: string;
+  };
+  countries?: {
+    allow?: Array<string>;
+    block?: Array<string>;
+  };
   cartWindowDays?: number;
   storefronts?: {
     enabled: boolean;
@@ -9204,6 +9460,10 @@ export type PostProgramsBody = {
   trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
   notificationEmails?: {
     enabled: boolean;
+  };
+  trafficSources?: {
+    allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
+    notes?: string;
   };
 };
 export type PostProgramsResponse = Program;
@@ -9251,6 +9511,24 @@ export type PatchProgramsIdBody = {
     amountMinor: number;
     currency: string;
   } | null;
+  payPerCall?: {
+    enabled?: boolean;
+    amountMinor?: number;
+    currency?: string;
+    minDurationSec?: number;
+    dedupeHours?: number;
+    forwardTo?: string | null;
+  };
+  caps?: {
+    conversionsPerDay?: number;
+    conversionsPerMonth?: number;
+    commissionPerMonthMinor?: number;
+    currency?: string;
+  };
+  countries?: {
+    allow?: Array<string>;
+    block?: Array<string>;
+  };
   cartWindowDays?: number;
   storefronts?: {
     enabled: boolean;
@@ -9307,6 +9585,10 @@ export type PatchProgramsIdBody = {
   notificationEmails?: {
     enabled: boolean;
   };
+  trafficSources?: {
+    allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
+    notes?: string;
+  };
   settings?: {
     publicHandle?: string | null;
     publicPage?: {
@@ -9325,6 +9607,24 @@ export type PatchProgramsIdBody = {
       amountMinor: number;
       currency: string;
     } | null;
+    payPerCall?: {
+      enabled?: boolean;
+      amountMinor?: number;
+      currency?: string;
+      minDurationSec?: number;
+      dedupeHours?: number;
+      forwardTo?: string | null;
+    };
+    caps?: {
+      conversionsPerDay?: number;
+      conversionsPerMonth?: number;
+      commissionPerMonthMinor?: number;
+      currency?: string;
+    };
+    countries?: {
+      allow?: Array<string>;
+      block?: Array<string>;
+    };
     cartWindowDays?: number;
     storefronts?: {
       enabled: boolean;
@@ -9380,6 +9680,10 @@ export type PatchProgramsIdBody = {
     trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
     notificationEmails?: {
       enabled: boolean;
+    };
+    trafficSources?: {
+      allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
+      notes?: string;
     };
   };
   destinationUrl?: string;
@@ -10557,6 +10861,67 @@ export type PostPartnerStorefrontBarTokenBody = {
   storeUrl: string;
 };
 
+/** GET /v1/partner/smartlinks: List my smartlinks */
+
+/** POST /v1/partner/smartlinks: Create a smartlink */
+export type PostPartnerSmartlinksBody = {
+  name: string;
+  programIds: Array<string>;
+  strategy: "epc" | "rotate";
+};
+
+/** DELETE /v1/partner/smartlinks/{id}: Delete a smartlink */
+
+/** PUT /v1/call-connections/{provider}: Connect a call provider */
+export type PutCallConnectionsProviderBody = {
+  accountSid?: string;
+  authToken?: string;
+};
+
+/** GET /v1/call-connections/{provider}: Get a call provider connection */
+export type GetCallConnectionsProviderResponse = PutCallConnectionsProviderResponse;
+
+/** DELETE /v1/call-connections/{provider}: Disconnect a call provider */
+
+/** POST /v1/programs/{id}/call-numbers: Assign a call number to a partner */
+export type PostProgramsIdCallNumbersBody = {
+  partnerId: string;
+  areaCode?: string;
+  number?: string;
+};
+
+/** GET /v1/programs/{id}/call-numbers: List a program's call numbers */
+export type GetProgramsIdCallNumbersQuery = {
+  limit?: number;
+  starting_after?: string;
+  ending_before?: string;
+  "created[gte]"?: string;
+  "created[lte]"?: string;
+};
+
+/** DELETE /v1/programs/{id}/call-numbers/{numberId}: Release a call number */
+export type DeleteProgramsIdCallNumbersNumberIdResponse = PostProgramsIdCallNumbersResponse;
+
+/** GET /v1/calls: List calls */
+export type GetCallsQuery = {
+  programId?: string;
+  partnerId?: string;
+  limit?: number;
+  starting_after?: string;
+  ending_before?: string;
+  "created[gte]"?: string;
+  "created[lte]"?: string;
+};
+
+/** GET /v1/partner/call-numbers: My call numbers */
+export type GetPartnerCallNumbersQuery = {
+  limit?: number;
+  starting_after?: string;
+  ending_before?: string;
+  "created[gte]"?: string;
+  "created[lte]"?: string;
+};
+
 /** GET /v1/profitability/settings: Get profitability settings */
 export type GetProfitabilitySettingsQuery = {
   programId?: string;
@@ -10851,6 +11216,12 @@ export type PostPartnerLinksProductBody = {
   url?: string;
 };
 
+/** POST /v1/partner/links/deep: Build a deep link */
+export type PostPartnerLinksDeepBody = {
+  linkId: string;
+  url: string;
+};
+
 /** GET /v1/partner/links/{id}/qr: Get my link's QR code */
 export type GetPartnerLinksIdQrResponse = string;
 
@@ -10891,6 +11262,22 @@ export type PostPartnerOrgsOrgIdTaxFormResponse = Ok;
 /** GET /v1/partner/programs/{programId}/leaderboard: Get a program leaderboard */
 
 /** POST /v1/partner/programs/{programId}/apply: Apply to a program */
+export type PostPartnerProgramsProgramIdApplyBody = {
+  trafficSources?: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
+  promotionUrl?: string;
+};
+
+/** GET /v1/partner/feeds/products: Download a product feed */
+export type GetPartnerFeedsProductsQuery = {
+  programId: string;
+  format?: "csv" | "json";
+};
+
+/** GET /v1/partner/feeds/coupons: Download a coupon feed */
+export type GetPartnerFeedsCouponsQuery = {
+  programId: string;
+  format?: "csv" | "json";
+};
 
 /** GET /v1/partner/api-tokens: List your partner API tokens */
 
@@ -12817,6 +13204,22 @@ export type PostWebhooksAtlasResponse = PostWebhooksSsoProviderResponse;
 
 /** POST /webhooks/cookiemunch/consent: Receive Cookie Munch consent events */
 
+/** POST /webhooks/calls/twilio/{orgToken}: Receive a Twilio voice call */
+export type PostWebhooksCallsTwilioOrgTokenResponse = string;
+
+/** POST /webhooks/calls/twilio/{orgToken}/status: Receive a Twilio call result */
+export type PostWebhooksCallsTwilioOrgTokenStatusResponse = string;
+
+/** POST /webhooks/calls/webhook/{orgToken}: Receive a finished call */
+export type PostWebhooksCallsWebhookOrgTokenBody = {
+  callId: string;
+  to: string;
+  from?: string | null;
+  durationSec: number;
+  status: string;
+  startedAt?: string;
+};
+
 /** GET /t/{orgToken}/theme.css: Get the white-label theme stylesheet */
 export type GetTOrgTokenThemeCssResponse = string;
 
@@ -12998,6 +13401,8 @@ export type WebhookPayloads = {
 export const operations = {
   getTOrgTokenAffJs: { method: 'GET', path: '/t/{orgToken}/aff.js' },
   getTOrgTokenBarJs: { method: 'GET', path: '/t/{orgToken}/bar.js' },
+  getTOrgTokenCallsJs: { method: 'GET', path: '/t/{orgToken}/calls.js' },
+  getTOrgTokenCallNumber: { method: 'GET', path: '/t/{orgToken}/call-number' },
   getTOrgTokenConfigJson: { method: 'GET', path: '/t/{orgToken}/config.json' },
   getGoOrgTokenCode: { method: 'GET', path: '/go/{orgToken}/{code}' },
   postTOrgTokenVisit: { method: 'POST', path: '/t/{orgToken}/visit' },
@@ -13006,6 +13411,7 @@ export const operations = {
   postTOrgTokenCart: { method: 'POST', path: '/t/{orgToken}/cart' },
   postTOrgTokenIdentify: { method: 'POST', path: '/t/{orgToken}/identify' },
   postTOrgTokenBar: { method: 'POST', path: '/t/{orgToken}/bar' },
+  getSlCode: { method: 'GET', path: '/sl/{code}' },
   getTCardsJs: { method: 'GET', path: '/t/cards.js' },
   getTOrgTokenCardFile: { method: 'GET', path: '/t/{orgToken}/card/{file}' },
   getTOrgTokenWidgetJs: { method: 'GET', path: '/t/{orgToken}/widget.js' },
@@ -13229,6 +13635,17 @@ export const operations = {
   putV1PartnerStorefrontsIdItems: { method: 'PUT', path: '/v1/partner/storefronts/{id}/items' },
   getV1PublicStorefrontsOrgSlugOrDomainSlug: { method: 'GET', path: '/v1/public/storefronts/{orgSlugOrDomain}/{slug}' },
   postV1PartnerStorefrontBarToken: { method: 'POST', path: '/v1/partner/storefront-bar/token' },
+  getV1PartnerSmartlinks: { method: 'GET', path: '/v1/partner/smartlinks' },
+  postV1PartnerSmartlinks: { method: 'POST', path: '/v1/partner/smartlinks' },
+  deleteV1PartnerSmartlinksId: { method: 'DELETE', path: '/v1/partner/smartlinks/{id}' },
+  putV1CallConnectionsProvider: { method: 'PUT', path: '/v1/call-connections/{provider}' },
+  getV1CallConnectionsProvider: { method: 'GET', path: '/v1/call-connections/{provider}' },
+  deleteV1CallConnectionsProvider: { method: 'DELETE', path: '/v1/call-connections/{provider}' },
+  postV1ProgramsIdCallNumbers: { method: 'POST', path: '/v1/programs/{id}/call-numbers' },
+  getV1ProgramsIdCallNumbers: { method: 'GET', path: '/v1/programs/{id}/call-numbers' },
+  deleteV1ProgramsIdCallNumbersNumberId: { method: 'DELETE', path: '/v1/programs/{id}/call-numbers/{numberId}' },
+  getV1Calls: { method: 'GET', path: '/v1/calls' },
+  getV1PartnerCallNumbers: { method: 'GET', path: '/v1/partner/call-numbers' },
   getV1ProfitabilitySettings: { method: 'GET', path: '/v1/profitability/settings' },
   putV1ProfitabilitySettings: { method: 'PUT', path: '/v1/profitability/settings' },
   getV1ProfitabilityProducts: { method: 'GET', path: '/v1/profitability/products' },
@@ -13262,6 +13679,7 @@ export const operations = {
   getV1PartnerCatalog: { method: 'GET', path: '/v1/partner/catalog' },
   getV1PartnerLinksMatch: { method: 'GET', path: '/v1/partner/links/match' },
   postV1PartnerLinksProduct: { method: 'POST', path: '/v1/partner/links/product' },
+  postV1PartnerLinksDeep: { method: 'POST', path: '/v1/partner/links/deep' },
   getV1PartnerLinksIdQr: { method: 'GET', path: '/v1/partner/links/{id}/qr' },
   getV1PartnerReferrals: { method: 'GET', path: '/v1/partner/referrals' },
   getV1PartnerReferralsIdTransparency: { method: 'GET', path: '/v1/partner/referrals/{id}/transparency' },
@@ -13270,6 +13688,8 @@ export const operations = {
   postV1PartnerOrgsOrgIdTaxForm: { method: 'POST', path: '/v1/partner/orgs/{orgId}/tax-form' },
   getV1PartnerProgramsProgramIdLeaderboard: { method: 'GET', path: '/v1/partner/programs/{programId}/leaderboard' },
   postV1PartnerProgramsProgramIdApply: { method: 'POST', path: '/v1/partner/programs/{programId}/apply' },
+  getV1PartnerFeedsProducts: { method: 'GET', path: '/v1/partner/feeds/products' },
+  getV1PartnerFeedsCoupons: { method: 'GET', path: '/v1/partner/feeds/coupons' },
   getV1PartnerApiTokens: { method: 'GET', path: '/v1/partner/api-tokens' },
   postV1PartnerApiTokens: { method: 'POST', path: '/v1/partner/api-tokens' },
   deleteV1PartnerApiTokensId: { method: 'DELETE', path: '/v1/partner/api-tokens/{id}' },
@@ -13569,6 +13989,9 @@ export const operations = {
   postWebhooksPayoutsProvider: { method: 'POST', path: '/webhooks/payouts/{provider}' },
   postWebhooksStripeBilling: { method: 'POST', path: '/webhooks/stripe-billing' },
   postWebhooksCookiemunchConsent: { method: 'POST', path: '/webhooks/cookiemunch/consent' },
+  postWebhooksCallsTwilioOrgToken: { method: 'POST', path: '/webhooks/calls/twilio/{orgToken}' },
+  postWebhooksCallsTwilioOrgTokenStatus: { method: 'POST', path: '/webhooks/calls/twilio/{orgToken}/status' },
+  postWebhooksCallsWebhookOrgToken: { method: 'POST', path: '/webhooks/calls/webhook/{orgToken}' },
   getTOrgTokenThemeCss: { method: 'GET', path: '/t/{orgToken}/theme.css' },
   getEmbedJs: { method: 'GET', path: '/embed.js' },
   getEmbedSignupJs: { method: 'GET', path: '/embed-signup.js' },

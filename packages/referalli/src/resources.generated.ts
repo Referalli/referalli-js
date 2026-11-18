@@ -16,6 +16,7 @@ export const operations = {
   deleteBillingInternalCustomersCustomerRef: { method: "DELETE", path: "/v1/billing/internal-customers/{customerRef}", pathParams: ["customerRef"], query: [], body: false, kind: "json" },
   deleteBrandingDomain: { method: "DELETE", path: "/v1/branding/domain", pathParams: [], query: [], body: false, kind: "json" },
   deleteBrandingLinkDomain: { method: "DELETE", path: "/v1/branding/link-domain", pathParams: [], query: [], body: false, kind: "json" },
+  deleteCallConnectionsProvider: { method: "DELETE", path: "/v1/call-connections/{provider}", pathParams: ["provider"], query: [], body: false, kind: "json" },
   deleteCatalogFeedsId: { method: "DELETE", path: "/v1/catalog/feeds/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteCatalogItemsId: { method: "DELETE", path: "/v1/catalog/items/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteCliListenersId: { method: "DELETE", path: "/v1/cli/listeners/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -26,11 +27,13 @@ export const operations = {
   deleteOrgSsoDirect: { method: "DELETE", path: "/v1/org/sso/direct", pathParams: [], query: [], body: false, kind: "json" },
   deletePartnerApiTokensId: { method: "DELETE", path: "/v1/partner/api-tokens/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deletePartnersId: { method: "DELETE", path: "/v1/partners/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
+  deletePartnerSmartlinksId: { method: "DELETE", path: "/v1/partner/smartlinks/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deletePayoutConnectionsProvider: { method: "DELETE", path: "/v1/payout-connections/{provider}", pathParams: ["provider"], query: [], body: false, kind: "json" },
   deletePortalThemeDraft: { method: "DELETE", path: "/v1/portal/theme/draft", pathParams: [], query: [], body: false, kind: "json" },
   deletePrivacyExecutorsAdapter: { method: "DELETE", path: "/v1/privacy/executors/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
   deleteProductLinksId: { method: "DELETE", path: "/v1/product-links/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProfitabilityProductsProductRef: { method: "DELETE", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: false, kind: "json" },
+  deleteProgramsIdCallNumbersNumberId: { method: "DELETE", path: "/v1/programs/{id}/call-numbers/{numberId}", pathParams: ["id","numberId"], query: [], body: false, kind: "json" },
   deleteProgramsIdEmailSettings: { method: "DELETE", path: "/v1/programs/{id}/email-settings", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProgramsIdLinkDomain: { method: "DELETE", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteRewardsRulesKey: { method: "DELETE", path: "/v1/rewards/rules/{key}", pathParams: ["key"], query: [], body: false, kind: "json" },
@@ -67,6 +70,8 @@ export const operations = {
   getBillingInternalCustomers: { method: "GET", path: "/v1/billing/internal-customers", pathParams: [], query: [], body: false, kind: "json" },
   getBillingPlan: { method: "GET", path: "/v1/billing/plan", pathParams: [], query: [], body: false, kind: "json" },
   getBranding: { method: "GET", path: "/v1/branding", pathParams: [], query: [], body: false, kind: "json" },
+  getCallConnectionsProvider: { method: "GET", path: "/v1/call-connections/{provider}", pathParams: ["provider"], query: [], body: false, kind: "json" },
+  getCalls: { method: "GET", path: "/v1/calls", pathParams: [], query: ["programId","partnerId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getCatalogFeeds: { method: "GET", path: "/v1/catalog/feeds", pathParams: [], query: [], body: false, kind: "json" },
   getCatalogItems: { method: "GET", path: "/v1/catalog/items", pathParams: [], query: ["programId","q","category","limit","cursor"], body: false, kind: "json" },
   getChatlyIdentity: { method: "GET", path: "/v1/chatly/identity", pathParams: [], query: [], body: false, kind: "json", public: true },
@@ -139,10 +144,13 @@ export const operations = {
   getPartnerAdvanceOffer: { method: "GET", path: "/v1/partner/advance/offer", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerApiTokens: { method: "GET", path: "/v1/partner/api-tokens", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerAssets: { method: "GET", path: "/v1/partner/assets", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getPartnerCallNumbers: { method: "GET", path: "/v1/partner/call-numbers", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerCatalog: { method: "GET", path: "/v1/partner/catalog", pathParams: [], query: ["orgId","programId","q","category","limit","cursor"], body: false, kind: "json" },
   getPartnerContracts: { method: "GET", path: "/v1/partner/contracts", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerDeals: { method: "GET", path: "/v1/partner/deals", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerDisputes: { method: "GET", path: "/v1/partner/disputes", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getPartnerFeedsCoupons: { method: "GET", path: "/v1/partner/feeds/coupons", pathParams: [], query: ["programId","format"], body: false, kind: "json" },
+  getPartnerFeedsProducts: { method: "GET", path: "/v1/partner/feeds/products", pathParams: [], query: ["programId","format"], body: false, kind: "json" },
   getPartnerGroups: { method: "GET", path: "/v1/partner/groups", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerInvitations: { method: "GET", path: "/v1/partner/invitations", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerKycStatus: { method: "GET", path: "/v1/partner/kyc/status", pathParams: [], query: [], body: false, kind: "json" },
@@ -173,6 +181,7 @@ export const operations = {
   getPartnersIdQuality: { method: "GET", path: "/v1/partners/{id}/quality", pathParams: ["id"], query: [], body: false, kind: "json" },
   getPartnersIdStats: { method: "GET", path: "/v1/partners/{id}/stats", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
   getPartnersIdSummary: { method: "GET", path: "/v1/partners/{id}/summary", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
+  getPartnerSmartlinks: { method: "GET", path: "/v1/partner/smartlinks", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerStats: { method: "GET", path: "/v1/partner/stats", pathParams: [], query: ["subId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerStorefronts: { method: "GET", path: "/v1/partner/storefronts", pathParams: [], query: ["orgId","programId"], body: false, kind: "json" },
   getPartnerTaxDocuments: { method: "GET", path: "/v1/partner/tax-documents", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -204,6 +213,7 @@ export const operations = {
   getProgramsHandleAvailability: { method: "GET", path: "/v1/programs/handle-availability", pathParams: [], query: ["handle"], body: false, kind: "json" },
   getProgramsId: { method: "GET", path: "/v1/programs/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdAutopricing: { method: "GET", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProgramsIdCallNumbers: { method: "GET", path: "/v1/programs/{id}/call-numbers", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdCreditRail: { method: "GET", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdCreditRailLog: { method: "GET", path: "/v1/programs/{id}/credit-rail/log", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdEmailSettings: { method: "GET", path: "/v1/programs/{id}/email-settings", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -403,17 +413,19 @@ export const operations = {
   postPartnerInvitationsIdDecline: { method: "POST", path: "/v1/partner/invitations/{id}/decline", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPartnerKycSubmit: { method: "POST", path: "/v1/partner/kyc/submit", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerLinks: { method: "POST", path: "/v1/partner/links", pathParams: [], query: [], body: true, kind: "json" },
+  postPartnerLinksDeep: { method: "POST", path: "/v1/partner/links/deep", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerLinksProduct: { method: "POST", path: "/v1/partner/links/product", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerNotificationsIdRead: { method: "POST", path: "/v1/partner/notifications/{id}/read", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPartnerOrgsOrgIdSelfBilling: { method: "POST", path: "/v1/partner/orgs/{orgId}/self-billing", pathParams: ["orgId"], query: [], body: true, kind: "json" },
   postPartnerOrgsOrgIdTaxForm: { method: "POST", path: "/v1/partner/orgs/{orgId}/tax-form", pathParams: ["orgId"], query: [], body: true, kind: "json" },
-  postPartnerProgramsProgramIdApply: { method: "POST", path: "/v1/partner/programs/{programId}/apply", pathParams: ["programId"], query: [], body: false, kind: "json" },
+  postPartnerProgramsProgramIdApply: { method: "POST", path: "/v1/partner/programs/{programId}/apply", pathParams: ["programId"], query: [], body: true, kind: "json" },
   postPartners: { method: "POST", path: "/v1/partners", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerSecurityTotpDisable: { method: "POST", path: "/v1/partner/security/totp/disable", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerSecurityTotpEnable: { method: "POST", path: "/v1/partner/security/totp/enable", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerSecurityTotpSetup: { method: "POST", path: "/v1/partner/security/totp/setup", pathParams: [], query: [], body: false, kind: "json" },
   postPartnersIdPortalLink: { method: "POST", path: "/v1/partners/{id}/portal-link", pathParams: ["id"], query: [], body: true, kind: "json" },
   postPartnersIdTaxForm: { method: "POST", path: "/v1/partners/{id}/tax-form", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postPartnerSmartlinks: { method: "POST", path: "/v1/partner/smartlinks", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerStorefrontBarToken: { method: "POST", path: "/v1/partner/storefront-bar/token", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerTermsVersionIdAccept: { method: "POST", path: "/v1/partner/terms/{versionId}/accept", pathParams: ["versionId"], query: [], body: false, kind: "json" },
   postPassportVerify: { method: "POST", path: "/v1/passport/verify", pathParams: [], query: [], body: true, kind: "json", public: true },
@@ -435,6 +447,7 @@ export const operations = {
   postPrograms: { method: "POST", path: "/v1/programs", pathParams: [], query: [], body: true, kind: "json" },
   postProgramsIdApplyLeveling: { method: "POST", path: "/v1/programs/{id}/apply-leveling", pathParams: ["id"], query: [], body: false, kind: "json" },
   postProgramsIdAutopriceRun: { method: "POST", path: "/v1/programs/{id}/autoprice/run", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postProgramsIdCallNumbers: { method: "POST", path: "/v1/programs/{id}/call-numbers", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdCreditRailRequeue: { method: "POST", path: "/v1/programs/{id}/credit-rail/requeue", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdEmailSettingsTest: { method: "POST", path: "/v1/programs/{id}/email-settings/test", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdEmailSettingsVerifyDomain: { method: "POST", path: "/v1/programs/{id}/email-settings/verify-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -489,6 +502,7 @@ export const operations = {
   putBillingConnectionsIdSecret: { method: "PUT", path: "/v1/billing/connections/{id}/secret", pathParams: ["id"], query: [], body: true, kind: "json" },
   putBillingConnectionsIdValueMapping: { method: "PUT", path: "/v1/billing/connections/{id}/value-mapping", pathParams: ["id"], query: [], body: true, kind: "json" },
   putBranding: { method: "PUT", path: "/v1/branding", pathParams: [], query: [], body: true, kind: "json" },
+  putCallConnectionsProvider: { method: "PUT", path: "/v1/call-connections/{provider}", pathParams: ["provider"], query: [], body: true, kind: "json" },
   putCatalogItems: { method: "PUT", path: "/v1/catalog/items", pathParams: [], query: [], body: true, kind: "json" },
   putEmailSettings: { method: "PUT", path: "/v1/email/settings", pathParams: [], query: [], body: true, kind: "json" },
   putEmailTemplatesEventLocale: { method: "PUT", path: "/v1/email/templates/{event}/{locale}", pathParams: ["event","locale"], query: [], body: true, kind: "json" },
@@ -781,6 +795,18 @@ export function buildResources(t: Transport) {
         /** Verify the link domain. POST /v1/branding/link-domain/verify */
         verify: (options?: RequestOptions): Promise<T.PostBrandingLinkDomainVerifyResponse> => t.op("postBrandingLinkDomainVerify", {  }, options),
       },
+    },
+    callConnections: {
+      /** Disconnect a call provider. DELETE /v1/call-connections/{provider} */
+      delete: (provider: string, options?: RequestOptions): Promise<T.DeleteCallConnectionsProviderResponse> => t.op("deleteCallConnectionsProvider", { path: { provider } }, options),
+      /** Get a call provider connection. GET /v1/call-connections/{provider} */
+      retrieve: (provider: string, options?: RequestOptions): Promise<T.GetCallConnectionsProviderResponse> => t.op("getCallConnectionsProvider", { path: { provider } }, options),
+      /** Connect a call provider. PUT /v1/call-connections/{provider} */
+      update: (provider: string, body: T.PutCallConnectionsProviderBody, options?: RequestOptions): Promise<T.PutCallConnectionsProviderResponse> => t.op("putCallConnectionsProvider", { path: { provider }, body }, options),
+    },
+    calls: {
+      /** List calls. GET /v1/calls */
+      list: (query?: (T.GetCallsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetCallsResponse['data'][number], T.GetCallsResponse> => t.list("getCalls", { query }, options),
     },
     catalog: {
       /** Sync the catalog from a store. POST /v1/catalog/sync */
@@ -1269,6 +1295,8 @@ export function buildResources(t: Transport) {
       achievements: (query?: (T.GetPartnerAchievementsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerAchievementsResponse['data'][number], T.GetPartnerAchievementsResponse> => t.list("getPartnerAchievements", { query }, options),
       /** List marketing assets. GET /v1/partner/assets */
       assets: (query?: (T.GetPartnerAssetsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerAssetsResponse['data'][number], T.GetPartnerAssetsResponse> => t.list("getPartnerAssets", { query }, options),
+      /** My call numbers. GET /v1/partner/call-numbers */
+      callNumbers: (query?: (T.GetPartnerCallNumbersQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerCallNumbersResponse['data'][number], T.GetPartnerCallNumbersResponse> => t.list("getPartnerCallNumbers", { query }, options),
       /** Search products to promote. GET /v1/partner/catalog */
       catalog: (query?: (T.GetPartnerCatalogQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPartnerCatalogResponse> => t.op("getPartnerCatalog", { query }, options),
       /** List my groups. GET /v1/partner/groups */
@@ -1331,6 +1359,12 @@ export function buildResources(t: Transport) {
         /** File a dispute. POST /v1/partner/disputes */
         create: (body: T.PostPartnerDisputesBody, options?: RequestOptions): Promise<T.PostPartnerDisputesResponse> => t.op("postPartnerDisputes", { body }, options),
       },
+      feeds: {
+        /** Download a coupon feed. GET /v1/partner/feeds/coupons */
+        coupons: (query: T.GetPartnerFeedsCouponsQuery, options?: RequestOptions): Promise<T.GetPartnerFeedsCouponsResponse> => t.op("getPartnerFeedsCoupons", { query }, options),
+        /** Download a product feed. GET /v1/partner/feeds/products */
+        products: (query: T.GetPartnerFeedsProductsQuery, options?: RequestOptions): Promise<T.GetPartnerFeedsProductsResponse> => t.op("getPartnerFeedsProducts", { query }, options),
+      },
       invitations: {
         /** List my invitations. GET /v1/partner/invitations */
         list: (query?: (T.GetPartnerInvitationsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerInvitationsResponse['data'][number], T.GetPartnerInvitationsResponse> => t.list("getPartnerInvitations", { query }, options),
@@ -1354,6 +1388,8 @@ export function buildResources(t: Transport) {
         match: (query: T.GetPartnerLinksMatchQuery, options?: RequestOptions): Promise<T.GetPartnerLinksMatchResponse> => t.op("getPartnerLinksMatch", { query }, options),
         /** Create a link. POST /v1/partner/links */
         create: (body: T.PostPartnerLinksBody, options?: RequestOptions): Promise<T.PostPartnerLinksResponse> => t.op("postPartnerLinks", { body }, options),
+        /** Build a deep link. POST /v1/partner/links/deep */
+        deep: (body: T.PostPartnerLinksDeepBody, options?: RequestOptions): Promise<T.PostPartnerLinksDeepResponse> => t.op("postPartnerLinksDeep", { body }, options),
         /** Get my link for a product. POST /v1/partner/links/product */
         product: (body: T.PostPartnerLinksProductBody, options?: RequestOptions): Promise<T.PostPartnerLinksProductResponse> => t.op("postPartnerLinksProduct", { body }, options),
       },
@@ -1397,7 +1433,7 @@ export function buildResources(t: Transport) {
         /** Get a program leaderboard. GET /v1/partner/programs/{programId}/leaderboard */
         leaderboard: (programId: string, options?: RequestOptions): Promise<T.GetPartnerProgramsProgramIdLeaderboardResponse> => t.op("getPartnerProgramsProgramIdLeaderboard", { path: { programId } }, options),
         /** Apply to a program. POST /v1/partner/programs/{programId}/apply */
-        apply: (programId: string, options?: RequestOptions): Promise<T.PostPartnerProgramsProgramIdApplyResponse> => t.op("postPartnerProgramsProgramIdApply", { path: { programId } }, options),
+        apply: (programId: string, body: T.PostPartnerProgramsProgramIdApplyBody, options?: RequestOptions): Promise<T.PostPartnerProgramsProgramIdApplyResponse> => t.op("postPartnerProgramsProgramIdApply", { path: { programId }, body }, options),
       },
       referrals: {
         /** List my referrals. GET /v1/partner/referrals */
@@ -1420,6 +1456,14 @@ export function buildResources(t: Transport) {
           /** Start two-factor setup. POST /v1/partner/security/totp/setup */
           setup: (options?: RequestOptions): Promise<T.PostPartnerSecurityTotpSetupResponse> => t.op("postPartnerSecurityTotpSetup", {  }, options),
         },
+      },
+      smartlinks: {
+        /** Delete a smartlink. DELETE /v1/partner/smartlinks/{id} */
+        delete: (id: string, options?: RequestOptions): Promise<T.DeletePartnerSmartlinksIdResponse> => t.op("deletePartnerSmartlinksId", { path: { id } }, options),
+        /** List my smartlinks. GET /v1/partner/smartlinks */
+        retrieve: (options?: RequestOptions): Promise<T.GetPartnerSmartlinksResponse> => t.op("getPartnerSmartlinks", {  }, options),
+        /** Create a smartlink. POST /v1/partner/smartlinks */
+        create: (body: T.PostPartnerSmartlinksBody, options?: RequestOptions): Promise<T.PostPartnerSmartlinksResponse> => t.op("postPartnerSmartlinks", { body }, options),
       },
       storefrontBar: {
         /** Turn on the get-link bar for a shop. POST /v1/partner/storefront-bar/token */
@@ -1654,6 +1698,14 @@ export function buildResources(t: Transport) {
         retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdAutopricingResponse> => t.op("getProgramsIdAutopricing", { path: { id } }, options),
         /** Configure autopricing. PUT /v1/programs/{id}/autopricing */
         update: (id: string, body: T.PutProgramsIdAutopricingBody, options?: RequestOptions): Promise<T.PutProgramsIdAutopricingResponse> => t.op("putProgramsIdAutopricing", { path: { id }, body }, options),
+      },
+      callNumbers: {
+        /** Release a call number. DELETE /v1/programs/{id}/call-numbers/{numberId} */
+        delete: (id: string, numberId: string, options?: RequestOptions): Promise<T.DeleteProgramsIdCallNumbersNumberIdResponse> => t.op("deleteProgramsIdCallNumbersNumberId", { path: { id, numberId } }, options),
+        /** List a program's call numbers. GET /v1/programs/{id}/call-numbers */
+        list: (id: string, query?: (T.GetProgramsIdCallNumbersQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdCallNumbersResponse['data'][number], T.GetProgramsIdCallNumbersResponse> => t.list("getProgramsIdCallNumbers", { path: { id }, query }, options),
+        /** Assign a call number to a partner. POST /v1/programs/{id}/call-numbers */
+        create: (id: string, body: T.PostProgramsIdCallNumbersBody, options?: RequestOptions): Promise<T.PostProgramsIdCallNumbersResponse> => t.op("postProgramsIdCallNumbers", { path: { id }, body }, options),
       },
       creditRail: {
         /** Get a program's account-credit rail settings. GET /v1/programs/{id}/credit-rail */

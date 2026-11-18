@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.18 - 2026-11-18
+
+- Generated types and methods for deep links (`POST /v1/partner/links/deep`), smartlinks (`/v1/partner/smartlinks`), partner product and coupon feeds (`/v1/partner/feeds/products`, `/v1/partner/feeds/coupons`), the program `caps`, `countries`, `trafficSources` and `payPerCall` settings, pay-per-call connections, numbers and calls, and `trafficSources` / `promotionUrl` on partner applications. The served `aff.js` loads `calls.js` with `data-calls="swap"` to show a referred visitor the partner's phone number. 0.3.17 was never published to npm; this release includes its changes.
+
 ## 0.3.17 - 2026-11-18
 
 - Generated types and methods for product-scoped promotions (`scope`), earnings `bonuses` on commission rules, the program `cartWindowDays` setting, and `GET /v1/partner/links/match`.
