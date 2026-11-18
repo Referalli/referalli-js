@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.16 - 2026-11-18
+
+- Generated types and methods for the product catalog (`/v1/catalog/items`, feeds and sync), one-step store setup (`/v1/programs/{id}/store-setup`), partner product search and one-click product links (`/v1/partner/catalog`, `/v1/partner/links/product`), partner storefronts and the public storefront, sub-ID filters on stats and product reports, and the program `storefronts` setting.
+- The served `aff.js` records `sub` (a sub-ID) on referral visits and can show the opt-in partner "get link" bar (`data-partner-bar="on"`).
+
 ## 0.3.15 - 2026-11-18
 
 - Generated types and methods for store affiliate programs: `rateCard` on commission rules (per-category rates, excluded categories, `productCategories`, `indirectBps`), `lines` on generic billing events, `productRef` on links, `lineItems` on `commission.earned`, and the product reports (`GET /v1/reports/products`, `GET /v1/partner/reports/products`).

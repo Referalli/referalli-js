@@ -15,6 +15,8 @@
  *  - `data-attribution="first" | "last"`: which referral a new one replaces.
  *  - `data-cookie-domain=".app.com"`: share the cookie with subdomains (an
  *    auth page on auth.app.com can then read the referral).
+ *  - `data-partner-bar="on"`: show the get-link bar to a partner the portal sent here with a bar token
+ *    (sessionStorage only, no cookie; see routes/storefronts.ts).
  * `aff.consent(true|false)` is the push path for pages without a supported
  * CMP; `aff.forget()` deletes the stored context (consent withdrawn). Calls
  * queued before the script loads (`window.aff = window.aff || {q: []};
@@ -88,6 +90,7 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   var PARAMS=${JSON.stringify(['via', 'ref', 'aff', ...(opts.params ?? []).filter((p) => /^[a-z][a-z0-9_]{0,39}$/.test(p))])};
   var code=null;for(var pi=0;pi<PARAMS.length&&!code;pi++)code=u.searchParams.get(PARAMS[pi]);
   var clickId=u.searchParams.get('ref_click_id');
+  var sub=u.searchParams.get('sub');if(!/^[A-Za-z0-9_.-]{1,64}$/.test(sub||''))sub=null;
   var st=read()||{};
   var keep=first&&(st.code||st.clickId);
   var ctx={anonId:st.anonId||rid(),
@@ -108,7 +111,7 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   function onConsent(state,ev){cstate=state;
     if(state==='granted'){dropped=false;
       if(active){write(ctx);
-        if(!sent){sent=true;post('/t/${token}/visit',{anonId:ctx.anonId,code:(keep?null:code)||ctx.code||undefined,clickId:(keep?null:clickId)||ctx.clickId||undefined,url:window.location.href,consent:ev||undefined});}}
+        if(!sent){sent=true;post('/t/${token}/visit',{anonId:ctx.anonId,code:(keep?null:code)||ctx.code||undefined,clickId:(keep?null:clickId)||ctx.clickId||undefined,url:window.location.href,sub:sub||undefined,consent:ev||undefined});}}
       if(pendingId){var o=pendingId;pendingId=null;identify(o);}}
     else if(state==='denied'){clear();dropped=true;pendingId=null;}}
   var gate=${src.gate}(window,CFG,${src.adapters},${src.order},onConsent);
@@ -130,6 +133,34 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   var prev=window.aff;var queued=prev&&prev.q&&typeof prev.q.length==='number'?prev.q:[];
   api.q={push:run};
   window.aff=api;
+  // Get-link bar for signed-in partners (data-partner-bar="on"). The portal opens the shop with #rl_pbar=<token>&rl_prg=<program>;
+  // the token goes to sessionStorage (no cookie) and the hash is removed. Fixed position: no layout shift. Never shown without a token.
+  (function(){
+    if(attr('data-partner-bar')!=='on')return;
+    var SK='referalli_pbar',tok=null,prg=null;
+    try{var hp=new URLSearchParams(String(location.hash||'').replace(/^#/,''));var nt=hp.get('rl_pbar');
+      if(nt){sessionStorage.setItem(SK,JSON.stringify({t:nt,p:hp.get('rl_prg')}));hp.delete('rl_pbar');hp.delete('rl_prg');var rest=hp.toString();
+        history.replaceState(null,'',location.pathname+location.search+(rest?'#'+rest:''));}
+      var sv=JSON.parse(sessionStorage.getItem(SK)||'null');if(sv){tok=sv.t;prg=sv.p;}}catch(e){}
+    if(!tok||!prg)return;
+    function call(preview){return fetch(BASE+'/t/${token}/bar',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({token:tok,programId:prg,url:location.origin+location.pathname+location.search,preview:preview})})
+      .then(function(r){return r.ok?r.json():null;},function(){return null;});}
+    call(true).then(function(j){
+      if(!j){try{sessionStorage.removeItem(SK);}catch(e){}return;}
+      var bar=document.createElement('div'),btn=document.createElement('button'),x=document.createElement('button');
+      bar.setAttribute('role','region');bar.setAttribute('aria-label','Partner link');
+      bar.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147483000;display:flex;gap:4px;align-items:center;background:#111;color:#fff;border-radius:999px;padding:4px 6px 4px 4px;font:14px/1.2 system-ui,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.3)';
+      var css='border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:8px 12px;border-radius:999px';
+      btn.style.cssText=css;x.style.cssText=css;
+      btn.textContent='Get your link'+(j.earns?' · earns '+j.earns:'');x.textContent='×';x.setAttribute('aria-label','Close');
+      btn.onclick=function(){btn.textContent='Working…';call(false).then(function(r){
+        if(!r||!r.shortUrl){btn.textContent='No link for this page';return;}
+        var done=function(){btn.textContent='Link copied';};
+        try{navigator.clipboard.writeText(r.shortUrl).then(done,function(){window.prompt('Your link',r.shortUrl);});}catch(e){window.prompt('Your link',r.shortUrl);}});};
+      x.onclick=function(){try{sessionStorage.removeItem(SK);}catch(e){}bar.remove();};
+      bar.appendChild(btn);bar.appendChild(x);document.body.appendChild(bar);});
+  })();
   gate.start();
   for(var qi=0;qi<queued.length;qi++)run(queued[qi]);
 })();`;

@@ -149,6 +149,14 @@ export async function initSnippet(env: SnippetEnv, config: SnippetConfig): Promi
   const days = clampDays(config.cookieDays);
   const { code, clickId: clickIdParam } = referralFromUrl(env.win.location.href, config.params ?? REFERRAL_PARAMS);
   const referred = Boolean(code || clickIdParam);
+  const subParam = (() => {
+    try {
+      const v = new URL(env.win.location.href).searchParams.get('sub');
+      return v && /^[A-Za-z0-9_.-]{1,64}$/.test(v) ? v : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
 
   const stored = loadContext(env, now, config.legacyKeys);
   // First touch keeps a stored referral until it expires.
@@ -208,6 +216,7 @@ export async function initSnippet(env: SnippetEnv, config: SnippetConfig): Promi
           code: ctx.code ?? undefined,
           clickId: ctx.clickId ?? undefined,
           url: env.win.location.href,
+          sub: subParam,
           ...(evidence ? { consent: evidence } : {}),
         }).catch(() => {});
       }

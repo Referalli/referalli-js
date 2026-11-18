@@ -16,6 +16,8 @@ export const operations = {
   deleteBillingInternalCustomersCustomerRef: { method: "DELETE", path: "/v1/billing/internal-customers/{customerRef}", pathParams: ["customerRef"], query: [], body: false, kind: "json" },
   deleteBrandingDomain: { method: "DELETE", path: "/v1/branding/domain", pathParams: [], query: [], body: false, kind: "json" },
   deleteBrandingLinkDomain: { method: "DELETE", path: "/v1/branding/link-domain", pathParams: [], query: [], body: false, kind: "json" },
+  deleteCatalogFeedsId: { method: "DELETE", path: "/v1/catalog/feeds/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
+  deleteCatalogItemsId: { method: "DELETE", path: "/v1/catalog/items/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteCliListenersId: { method: "DELETE", path: "/v1/cli/listeners/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteEmailTemplatesEventLocale: { method: "DELETE", path: "/v1/email/templates/{event}/{locale}", pathParams: ["event","locale"], query: [], body: false, kind: "json" },
   deleteIntegrationsKind: { method: "DELETE", path: "/v1/integrations/{kind}", pathParams: ["kind"], query: [], body: false, kind: "json" },
@@ -65,6 +67,8 @@ export const operations = {
   getBillingInternalCustomers: { method: "GET", path: "/v1/billing/internal-customers", pathParams: [], query: [], body: false, kind: "json" },
   getBillingPlan: { method: "GET", path: "/v1/billing/plan", pathParams: [], query: [], body: false, kind: "json" },
   getBranding: { method: "GET", path: "/v1/branding", pathParams: [], query: [], body: false, kind: "json" },
+  getCatalogFeeds: { method: "GET", path: "/v1/catalog/feeds", pathParams: [], query: [], body: false, kind: "json" },
+  getCatalogItems: { method: "GET", path: "/v1/catalog/items", pathParams: [], query: ["programId","q","category","limit","cursor"], body: false, kind: "json" },
   getChatlyIdentity: { method: "GET", path: "/v1/chatly/identity", pathParams: [], query: [], body: false, kind: "json", public: true },
   getCleanroomConsent: { method: "GET", path: "/v1/cleanroom/consent", pathParams: [], query: ["customerRef"], body: false, kind: "json" },
   getCleanroomQuery: { method: "GET", path: "/v1/cleanroom/query", pathParams: [], query: ["dimension"], body: false, kind: "json" },
@@ -135,6 +139,7 @@ export const operations = {
   getPartnerAdvanceOffer: { method: "GET", path: "/v1/partner/advance/offer", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerApiTokens: { method: "GET", path: "/v1/partner/api-tokens", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerAssets: { method: "GET", path: "/v1/partner/assets", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getPartnerCatalog: { method: "GET", path: "/v1/partner/catalog", pathParams: [], query: ["orgId","programId","q","category","limit","cursor"], body: false, kind: "json" },
   getPartnerContracts: { method: "GET", path: "/v1/partner/contracts", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerDeals: { method: "GET", path: "/v1/partner/deals", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerDisputes: { method: "GET", path: "/v1/partner/disputes", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -157,7 +162,7 @@ export const operations = {
   getPartnerRecruit: { method: "GET", path: "/v1/partner/recruit", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerReferrals: { method: "GET", path: "/v1/partner/referrals", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerReferralsIdTransparency: { method: "GET", path: "/v1/partner/referrals/{id}/transparency", pathParams: ["id"], query: [], body: false, kind: "json" },
-  getPartnerReportsProducts: { method: "GET", path: "/v1/partner/reports/products", pathParams: [], query: ["orgId","programId","from","to","currency","limit"], body: false, kind: "json" },
+  getPartnerReportsProducts: { method: "GET", path: "/v1/partner/reports/products", pathParams: [], query: ["orgId","programId","from","to","currency","limit","subId","groupBy"], body: false, kind: "json" },
   getPartners: { method: "GET", path: "/v1/partners", pathParams: [], query: ["email","externalRef","programId","status","includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerSecurity: { method: "GET", path: "/v1/partner/security", pathParams: [], query: [], body: false, kind: "json" },
   getPartnersId: { method: "GET", path: "/v1/partners/{id}", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
@@ -167,7 +172,8 @@ export const operations = {
   getPartnersIdQuality: { method: "GET", path: "/v1/partners/{id}/quality", pathParams: ["id"], query: [], body: false, kind: "json" },
   getPartnersIdStats: { method: "GET", path: "/v1/partners/{id}/stats", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
   getPartnersIdSummary: { method: "GET", path: "/v1/partners/{id}/summary", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
-  getPartnerStats: { method: "GET", path: "/v1/partner/stats", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getPartnerStats: { method: "GET", path: "/v1/partner/stats", pathParams: [], query: ["subId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getPartnerStorefronts: { method: "GET", path: "/v1/partner/storefronts", pathParams: [], query: ["orgId","programId"], body: false, kind: "json" },
   getPartnerTaxDocuments: { method: "GET", path: "/v1/partner/tax-documents", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerTaxDocumentsId: { method: "GET", path: "/v1/partner/tax-documents/{id}", pathParams: ["id"], query: [], body: false, kind: "text" },
   getPartnerTerms: { method: "GET", path: "/v1/partner/terms", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -207,18 +213,20 @@ export const operations = {
   getProgramsIdNegotiationPolicy: { method: "GET", path: "/v1/programs/{id}/negotiation-policy", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdPromotions: { method: "GET", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdRefereeReward: { method: "GET", path: "/v1/programs/{id}/referee-reward", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProgramsIdStoreSetup: { method: "GET", path: "/v1/programs/{id}/store-setup", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdStripeCredits: { method: "GET", path: "/v1/programs/{id}/stripe-credits", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdStripeCreditsLog: { method: "GET", path: "/v1/programs/{id}/stripe-credits/log", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdTerms: { method: "GET", path: "/v1/programs/{id}/terms", pathParams: ["id"], query: ["locale"], body: false, kind: "json" },
   getProgramsIdTermsAcceptances: { method: "GET", path: "/v1/programs/{id}/terms-acceptances", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProspects: { method: "GET", path: "/v1/prospects", pathParams: [], query: ["status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPublicProgramsHandle: { method: "GET", path: "/v1/public/programs/{handle}", pathParams: ["handle"], query: ["locale"], body: false, kind: "json", public: true },
+  getPublicStorefrontsOrgSlugOrDomainSlug: { method: "GET", path: "/v1/public/storefronts/{orgSlugOrDomain}/{slug}", pathParams: ["orgSlugOrDomain","slug"], query: [], body: false, kind: "json", public: true },
   getReferrals: { method: "GET", path: "/v1/referrals", pathParams: [], query: ["programId","partnerId","status","customerRef","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getReferralsId: { method: "GET", path: "/v1/referrals/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getReferralsIdJourney: { method: "GET", path: "/v1/referrals/{id}/journey", pathParams: ["id"], query: [], body: false, kind: "json" },
   getReportsFilteredClicks: { method: "GET", path: "/v1/reports/filtered-clicks", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getReportsPartnerPerformance: { method: "GET", path: "/v1/reports/partner-performance", pathParams: [], query: ["format"], body: false, kind: "json" },
-  getReportsProducts: { method: "GET", path: "/v1/reports/products", pathParams: [], query: ["programId","partnerId","from","to","currency","limit"], body: false, kind: "json" },
+  getReportsProducts: { method: "GET", path: "/v1/reports/products", pathParams: [], query: ["programId","partnerId","from","to","currency","subId","groupBy","limit"], body: false, kind: "json" },
   getRewards: { method: "GET", path: "/v1/rewards", pathParams: [], query: ["status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getRewardsGranted: { method: "GET", path: "/v1/rewards/granted", pathParams: [], query: [], body: false, kind: "json" },
   getRewardsLookupCode: { method: "GET", path: "/v1/rewards/lookup/{code}", pathParams: ["code"], query: [], body: false, kind: "json" },
@@ -319,6 +327,9 @@ export const operations = {
   postBrandingDomainVerify: { method: "POST", path: "/v1/branding/domain/verify", pathParams: [], query: [], body: false, kind: "json" },
   postBrandingLinkDomain: { method: "POST", path: "/v1/branding/link-domain", pathParams: [], query: [], body: true, kind: "json" },
   postBrandingLinkDomainVerify: { method: "POST", path: "/v1/branding/link-domain/verify", pathParams: [], query: [], body: false, kind: "json" },
+  postCatalogFeeds: { method: "POST", path: "/v1/catalog/feeds", pathParams: [], query: [], body: true, kind: "json" },
+  postCatalogFeedsIdSync: { method: "POST", path: "/v1/catalog/feeds/{id}/sync", pathParams: ["id"], query: [], body: false, kind: "json" },
+  postCatalogSync: { method: "POST", path: "/v1/catalog/sync", pathParams: [], query: [], body: true, kind: "json" },
   postCliDeviceCodes: { method: "POST", path: "/v1/cli/device-codes", pathParams: [], query: [], body: true, kind: "json", public: true },
   postCliDeviceCodesToken: { method: "POST", path: "/v1/cli/device-codes/token", pathParams: [], query: [], body: true, kind: "json", public: true },
   postCliDeviceCodesUserCodeApprove: { method: "POST", path: "/v1/cli/device-codes/{userCode}/approve", pathParams: ["userCode"], query: [], body: true, kind: "json" },
@@ -391,6 +402,7 @@ export const operations = {
   postPartnerInvitationsIdDecline: { method: "POST", path: "/v1/partner/invitations/{id}/decline", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPartnerKycSubmit: { method: "POST", path: "/v1/partner/kyc/submit", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerLinks: { method: "POST", path: "/v1/partner/links", pathParams: [], query: [], body: true, kind: "json" },
+  postPartnerLinksProduct: { method: "POST", path: "/v1/partner/links/product", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerNotificationsIdRead: { method: "POST", path: "/v1/partner/notifications/{id}/read", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPartnerOrgsOrgIdSelfBilling: { method: "POST", path: "/v1/partner/orgs/{orgId}/self-billing", pathParams: ["orgId"], query: [], body: true, kind: "json" },
   postPartnerOrgsOrgIdTaxForm: { method: "POST", path: "/v1/partner/orgs/{orgId}/tax-form", pathParams: ["orgId"], query: [], body: true, kind: "json" },
@@ -401,6 +413,7 @@ export const operations = {
   postPartnerSecurityTotpSetup: { method: "POST", path: "/v1/partner/security/totp/setup", pathParams: [], query: [], body: false, kind: "json" },
   postPartnersIdPortalLink: { method: "POST", path: "/v1/partners/{id}/portal-link", pathParams: ["id"], query: [], body: true, kind: "json" },
   postPartnersIdTaxForm: { method: "POST", path: "/v1/partners/{id}/tax-form", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postPartnerStorefrontBarToken: { method: "POST", path: "/v1/partner/storefront-bar/token", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerTermsVersionIdAccept: { method: "POST", path: "/v1/partner/terms/{versionId}/accept", pathParams: ["versionId"], query: [], body: false, kind: "json" },
   postPassportVerify: { method: "POST", path: "/v1/passport/verify", pathParams: [], query: [], body: true, kind: "json", public: true },
   postPayoutRuns: { method: "POST", path: "/v1/payout-runs", pathParams: [], query: [], body: false, kind: "json" },
@@ -432,6 +445,7 @@ export const operations = {
   postProgramsIdLinksRepoint: { method: "POST", path: "/v1/programs/{id}/links/repoint", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdPromotions: { method: "POST", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdReferrers: { method: "POST", path: "/v1/programs/{id}/referrers", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postProgramsIdStoreSetup: { method: "POST", path: "/v1/programs/{id}/store-setup", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdStripeCreditsRequeue: { method: "POST", path: "/v1/programs/{id}/stripe-credits/requeue", pathParams: ["id"], query: [], body: true, kind: "json" },
   postPromotionsIdEnd: { method: "POST", path: "/v1/promotions/{id}/end", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPublicProgramsHandleJoin: { method: "POST", path: "/v1/public/programs/{handle}/join", pathParams: ["handle"], query: [], body: true, kind: "json" },
@@ -474,6 +488,7 @@ export const operations = {
   putBillingConnectionsIdSecret: { method: "PUT", path: "/v1/billing/connections/{id}/secret", pathParams: ["id"], query: [], body: true, kind: "json" },
   putBillingConnectionsIdValueMapping: { method: "PUT", path: "/v1/billing/connections/{id}/value-mapping", pathParams: ["id"], query: [], body: true, kind: "json" },
   putBranding: { method: "PUT", path: "/v1/branding", pathParams: [], query: [], body: true, kind: "json" },
+  putCatalogItems: { method: "PUT", path: "/v1/catalog/items", pathParams: [], query: [], body: true, kind: "json" },
   putEmailSettings: { method: "PUT", path: "/v1/email/settings", pathParams: [], query: [], body: true, kind: "json" },
   putEmailTemplatesEventLocale: { method: "PUT", path: "/v1/email/templates/{event}/{locale}", pathParams: ["event","locale"], query: [], body: true, kind: "json" },
   putIntegrationsHubspot: { method: "PUT", path: "/v1/integrations/hubspot", pathParams: [], query: [], body: true, kind: "json" },
@@ -501,6 +516,8 @@ export const operations = {
   putPartnerProfile: { method: "PUT", path: "/v1/partner/profile", pathParams: [], query: [], body: true, kind: "json" },
   putPartnersIdPayoutProfile: { method: "PUT", path: "/v1/partners/{id}/payout-profile", pathParams: ["id"], query: [], body: true, kind: "json" },
   putPartnersIdVat: { method: "PUT", path: "/v1/partners/{id}/vat", pathParams: ["id"], query: [], body: true, kind: "json" },
+  putPartnerStorefronts: { method: "PUT", path: "/v1/partner/storefronts", pathParams: [], query: ["orgId","programId"], body: true, kind: "json" },
+  putPartnerStorefrontsIdItems: { method: "PUT", path: "/v1/partner/storefronts/{id}/items", pathParams: ["id"], query: [], body: true, kind: "json" },
   putPayoutConnectionsProvider: { method: "PUT", path: "/v1/payout-connections/{provider}", pathParams: ["provider"], query: [], body: true, kind: "json" },
   putPortalThemeDraft: { method: "PUT", path: "/v1/portal/theme/draft", pathParams: [], query: [], body: true, kind: "json" },
   putProfitabilityProductsProductRef: { method: "PUT", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: true, kind: "json" },
@@ -762,6 +779,28 @@ export function buildResources(t: Transport) {
         create: (body: T.PostBrandingLinkDomainBody, options?: RequestOptions): Promise<T.PostBrandingLinkDomainResponse> => t.op("postBrandingLinkDomain", { body }, options),
         /** Verify the link domain. POST /v1/branding/link-domain/verify */
         verify: (options?: RequestOptions): Promise<T.PostBrandingLinkDomainVerifyResponse> => t.op("postBrandingLinkDomainVerify", {  }, options),
+      },
+    },
+    catalog: {
+      /** Sync the catalog from a store. POST /v1/catalog/sync */
+      sync: (body: T.PostCatalogSyncBody, options?: RequestOptions): Promise<T.PostCatalogSyncResponse> => t.op("postCatalogSync", { body }, options),
+      feeds: {
+        /** Delete a catalog feed. DELETE /v1/catalog/feeds/{id} */
+        delete: (id: string, options?: RequestOptions): Promise<T.DeleteCatalogFeedsIdResponse> => t.op("deleteCatalogFeedsId", { path: { id } }, options),
+        /** List catalog feeds. GET /v1/catalog/feeds */
+        retrieve: (options?: RequestOptions): Promise<T.GetCatalogFeedsResponse> => t.op("getCatalogFeeds", {  }, options),
+        /** Add a catalog feed. POST /v1/catalog/feeds */
+        create: (body: T.PostCatalogFeedsBody, options?: RequestOptions): Promise<T.PostCatalogFeedsResponse> => t.op("postCatalogFeeds", { body }, options),
+        /** Sync a catalog feed now. POST /v1/catalog/feeds/{id}/sync */
+        sync: (id: string, options?: RequestOptions): Promise<T.PostCatalogFeedsIdSyncResponse> => t.op("postCatalogFeedsIdSync", { path: { id } }, options),
+      },
+      items: {
+        /** Delete a catalog item. DELETE /v1/catalog/items/{id} */
+        delete: (id: string, options?: RequestOptions): Promise<T.DeleteCatalogItemsIdResponse> => t.op("deleteCatalogItemsId", { path: { id } }, options),
+        /** List catalog items. GET /v1/catalog/items */
+        retrieve: (query?: (T.GetCatalogItemsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetCatalogItemsResponse> => t.op("getCatalogItems", { query }, options),
+        /** Upsert catalog items. PUT /v1/catalog/items */
+        update: (body: T.PutCatalogItemsBody, options?: RequestOptions): Promise<T.PutCatalogItemsResponse> => t.op("putCatalogItems", { body }, options),
       },
     },
     chatly: {
@@ -1229,6 +1268,8 @@ export function buildResources(t: Transport) {
       achievements: (query?: (T.GetPartnerAchievementsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerAchievementsResponse['data'][number], T.GetPartnerAchievementsResponse> => t.list("getPartnerAchievements", { query }, options),
       /** List marketing assets. GET /v1/partner/assets */
       assets: (query?: (T.GetPartnerAssetsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerAssetsResponse['data'][number], T.GetPartnerAssetsResponse> => t.list("getPartnerAssets", { query }, options),
+      /** Search products to promote. GET /v1/partner/catalog */
+      catalog: (query?: (T.GetPartnerCatalogQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPartnerCatalogResponse> => t.op("getPartnerCatalog", { query }, options),
       /** List my groups. GET /v1/partner/groups */
       groups: (query?: (T.GetPartnerGroupsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerGroupsResponse['data'][number], T.GetPartnerGroupsResponse> => t.list("getPartnerGroups", { query }, options),
       /** Browse the marketplace. GET /v1/partner/marketplace */
@@ -1310,6 +1351,8 @@ export function buildResources(t: Transport) {
         qr: (id: string, options?: RequestOptions): Promise<string> => t.op("getPartnerLinksIdQr", { path: { id } }, options),
         /** Create a link. POST /v1/partner/links */
         create: (body: T.PostPartnerLinksBody, options?: RequestOptions): Promise<T.PostPartnerLinksResponse> => t.op("postPartnerLinks", { body }, options),
+        /** Get my link for a product. POST /v1/partner/links/product */
+        product: (body: T.PostPartnerLinksProductBody, options?: RequestOptions): Promise<T.PostPartnerLinksProductResponse> => t.op("postPartnerLinksProduct", { body }, options),
       },
       notifications: {
         /** List my notifications. GET /v1/partner/notifications */
@@ -1374,6 +1417,18 @@ export function buildResources(t: Transport) {
           /** Start two-factor setup. POST /v1/partner/security/totp/setup */
           setup: (options?: RequestOptions): Promise<T.PostPartnerSecurityTotpSetupResponse> => t.op("postPartnerSecurityTotpSetup", {  }, options),
         },
+      },
+      storefrontBar: {
+        /** Turn on the get-link bar for a shop. POST /v1/partner/storefront-bar/token */
+        token: (body: T.PostPartnerStorefrontBarTokenBody, options?: RequestOptions): Promise<T.PostPartnerStorefrontBarTokenResponse> => t.op("postPartnerStorefrontBarToken", { body }, options),
+      },
+      storefronts: {
+        /** Get my storefront. GET /v1/partner/storefronts */
+        retrieve: (query: T.GetPartnerStorefrontsQuery, options?: RequestOptions): Promise<T.GetPartnerStorefrontsResponse> => t.op("getPartnerStorefronts", { query }, options),
+        /** Save my storefront. PUT /v1/partner/storefronts */
+        update: (body: T.PutPartnerStorefrontsBody, query: T.PutPartnerStorefrontsQuery, options?: RequestOptions): Promise<T.PutPartnerStorefrontsResponse> => t.op("putPartnerStorefronts", { body, query }, options),
+        /** Set my storefront products. PUT /v1/partner/storefronts/{id}/items */
+        updateItems: (id: string, body: T.PutPartnerStorefrontsIdItemsBody, options?: RequestOptions): Promise<T.PutPartnerStorefrontsIdItemsResponse> => t.op("putPartnerStorefrontsIdItems", { path: { id }, body }, options),
       },
       taxDocuments: {
         /** List my tax documents. GET /v1/partner/tax-documents */
@@ -1671,6 +1726,12 @@ export function buildResources(t: Transport) {
         /** Set the referee reward. PUT /v1/programs/{id}/referee-reward */
         update: (id: string, body: T.PutProgramsIdRefereeRewardBody, options?: RequestOptions): Promise<T.PutProgramsIdRefereeRewardResponse> => t.op("putProgramsIdRefereeReward", { path: { id }, body }, options),
       },
+      storeSetup: {
+        /** Get the store setup checklist. GET /v1/programs/{id}/store-setup */
+        retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdStoreSetupResponse> => t.op("getProgramsIdStoreSetup", { path: { id } }, options),
+        /** Set up a store in one call. POST /v1/programs/{id}/store-setup */
+        create: (id: string, body: T.PostProgramsIdStoreSetupBody, options?: RequestOptions): Promise<T.PostProgramsIdStoreSetupResponse> => t.op("postProgramsIdStoreSetup", { path: { id }, body }, options),
+      },
       stripeCredits: {
         /** Get a program's Stripe balance credit settings. GET /v1/programs/{id}/stripe-credits */
         retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdStripeCreditsResponse> => t.op("getProgramsIdStripeCredits", { path: { id } }, options),
@@ -1691,6 +1752,8 @@ export function buildResources(t: Transport) {
       list: (query?: (T.GetProspectsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProspectsResponse['data'][number], T.GetProspectsResponse> => t.list("getProspects", { query }, options),
     },
     public: {
+      /** Get a partner's public storefront. GET /v1/public/storefronts/{orgSlugOrDomain}/{slug} */
+      storefronts: (orgSlugOrDomain: string, slug: string, options?: RequestOptions): Promise<T.GetPublicStorefrontsOrgSlugOrDomainSlugResponse> => t.op("getPublicStorefrontsOrgSlugOrDomainSlug", { path: { orgSlugOrDomain, slug } }, options),
       programs: {
         /** Get a program's public page. GET /v1/public/programs/{handle} */
         retrieve: (handle: string, query?: (T.GetPublicProgramsHandleQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPublicProgramsHandleResponse> => t.op("getPublicProgramsHandle", { path: { handle }, query }, options),

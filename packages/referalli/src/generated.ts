@@ -41,6 +41,10 @@ export type ProgramSettings = {
     amountMinor: number;
     currency: string;
   } | null;
+  /** Whether partners of this program may publish a storefront page (default off). */
+  storefronts: {
+    enabled: boolean;
+  };
   /** How long before the referral a payment still earns, 0 to 1440. Default 5. */
   signupPaymentGraceMinutes: number;
   riskPolicy: {
@@ -2843,6 +2847,13 @@ export type GetTOrgTokenCodesCodeResponse = {
   } | null;
 };
 
+export type PostTOrgTokenBarResponse = {
+  /** The program's base commission in words; null with no published rule. */
+  earns: string | null;
+  /** The partner's link for the page; null for a `preview`. */
+  shortUrl: string | null;
+};
+
 export type GetTOrgTokenWidgetMeResponse = {
   program: {
     id: string;
@@ -3465,6 +3476,29 @@ export type PostProgramsIdEnrollmentsEnrollmentIdApproveResponse = {
 export type PostProgramsIdEnrollmentsEnrollmentIdRejectResponse = {
   id: string;
   status: "rejected";
+};
+
+export type PostProgramsIdStoreSetupResponse = {
+  programId: string;
+  provider: "shopify" | "woocommerce" | "bigcommerce";
+  connectionId: string;
+  /** Every step succeeded; a false step says what to do by hand. */
+  ok: boolean;
+  checklist: Array<{
+    step: string;
+    ok: boolean;
+    detail: string;
+  }>;
+};
+
+export type GetProgramsIdStoreSetupResponse = {
+  programId: string;
+  ok: boolean;
+  checklist: Array<{
+    step: string;
+    ok: boolean;
+    detail: string;
+  }>;
 };
 
 export type PostPartnersResponse = Partner & ({
@@ -4274,6 +4308,8 @@ export type GetReportsPartnerPerformanceResponse = Array<{
 }>;
 
 export type GetReportsProductsResponse = Array<{
+  /** The sub-ID the row is for with `groupBy=subId`; null otherwise. */
+  subId: string | null;
   productId: string | null;
   sku: string | null;
   category: string | null;
@@ -4289,6 +4325,101 @@ export type GetReportsProductsResponse = Array<{
   indirectOrders: number;
   currency: string;
 }>;
+
+export type GetCatalogItemsResponse = {
+  items: Array<{
+    id: string;
+    programId: string | null;
+    source: string;
+    externalId: string;
+    sku: string | null;
+    title: string;
+    url: string;
+    imageUrl: string | null;
+    priceMinor: number | null;
+    currency: string | null;
+    category: string | null;
+    inStock: boolean;
+    /** False when the product disappeared from the last full sync. */
+    active: boolean;
+    updatedAt: string;
+  }>;
+  nextCursor: string | null;
+};
+
+export type PutCatalogItemsResponse = {
+  upserted: number;
+  deactivated: number;
+};
+
+export type GetCatalogFeedsResponse = {
+  data: Array<PostCatalogFeedsResponse>;
+};
+
+export type PostCatalogFeedsResponse = {
+  id: string;
+  programId: string | null;
+  url: string;
+  format: "google_xml" | "csv" | "json";
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+};
+
+export type PostCatalogFeedsIdSyncResponse = {
+  upserted: number;
+  deactivated: number;
+  /** Why the sync failed; also stored as the feed lastError. */
+  error: string | null;
+};
+
+export type GetPartnerStorefrontsResponse = PutPartnerStorefrontsResponse | null;
+
+export type PutPartnerStorefrontsResponse = {
+  id: string;
+  programId: string;
+  slug: string;
+  title: string | null;
+  bio: string | null;
+  published: boolean;
+  /** Where the storefront is shown: the verified portal domain, else Referalli with ?org=. */
+  publicUrl: string;
+  items: Array<{
+    id: string;
+    catalogItemId: string;
+    title: string;
+    imageUrl: string | null;
+    priceMinor: number | null;
+    currency: string | null;
+    inStock: boolean;
+    note: string | null;
+    /** The partner's short link for the product. */
+    url: string | null;
+  }>;
+};
+
+export type GetPublicStorefrontsOrgSlugOrDomainSlugResponse = {
+  title: string | null;
+  bio: string | null;
+  partner: {
+    displayName: string;
+  };
+  items: Array<{
+    title: string;
+    imageUrl: string | null;
+    priceMinor: number | null;
+    currency: string | null;
+    note: string | null;
+    /** The partner's short link: a visit through it is credited to them. */
+    url: string;
+  }>;
+};
+
+export type PostPartnerStorefrontBarTokenResponse = {
+  /** The shop page with the bar token in its URL fragment. */
+  url: string;
+  expiresAt: string;
+};
 
 export type GetProfitabilitySettingsResponse = {
   reportingCurrency: string;
@@ -4525,6 +4656,8 @@ export type GetPartnerStatsResponse = {
 };
 
 export type GetPartnerReportsProductsResponse = Array<{
+  /** The sub-ID the row is for with `groupBy=subId`; null otherwise. */
+  subId: string | null;
   productId: string | null;
   sku: string | null;
   category: string | null;
@@ -4598,6 +4731,49 @@ export type GetPartnerDisputesResponse = {
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type GetPartnerCatalogResponse = {
+  items: Array<{
+    id: string;
+    orgId: string;
+    programId: string;
+    source: string;
+    externalId: string;
+    sku: string | null;
+    title: string;
+    url: string;
+    imageUrl: string | null;
+    priceMinor: number | null;
+    currency: string | null;
+    category: string | null;
+    inStock: boolean;
+    updatedAt: string;
+    commission: {
+      /** The item's percentage in basis points; null for a fixed amount or a rule not yet published. */
+      bps: number | null;
+      /** Display text, e.g. `12%` or `$5.00 per sale`; null when the program has no published rule. */
+      label: string | null;
+    };
+    /** The partner's existing link for this product, or null. */
+    link: {
+      id: string;
+      shortUrl: string;
+    } | null;
+  }>;
+  nextCursor: string | null;
+};
+
+export type PostPartnerLinksProductResponse = {
+  id: string;
+  orgId: string;
+  programId: string;
+  code: string;
+  destinationUrl: string;
+  productRef: string | null;
+  shortUrl: string;
+  created: boolean;
+  catalogItemId: string | null;
 };
 
 export type GetPartnerReferralsResponse = {
@@ -8305,6 +8481,7 @@ export type GetTOrgTokenConfigJsonQuery = {
 
 /** GET /go/{orgToken}/{code}: Follow a tracked link */
 export type GetGoOrgTokenCodeQuery = {
+  sub?: string;
   cx?: string;
 };
 export type GetGoOrgTokenCodeResponse = void;
@@ -8315,6 +8492,8 @@ export type PostTOrgTokenVisitBody = {
   clickId?: string;
   code?: string;
   url?: string;
+  /** The partner's sub-ID from `?sub=`, stored on a click this beacon creates. */
+  sub?: string;
   referer?: string;
   /** The visitor's consent as the tracker read it from the site's CMP (`aff.consentEvidence()`). Stored on the click and the visit. */
   consent?: {
@@ -8349,6 +8528,15 @@ export type PostTOrgTokenIdentifyBody = {
   emailHash?: string;
 };
 export type PostTOrgTokenIdentifyResponse = Ok;
+
+/** POST /t/{orgToken}/bar: Get a partner link for a shop page */
+export type PostTOrgTokenBarBody = {
+  token: string;
+  programId: string;
+  url: string;
+  /** Only report what the partner earns; create no link. */
+  preview?: boolean;
+};
 
 /** GET /t/{orgToken}/widget.js: Get the referral widget script */
 export type GetTOrgTokenWidgetJsResponse = string;
@@ -8914,6 +9102,9 @@ export type PostProgramsBody = {
     amountMinor: number;
     currency: string;
   } | null;
+  storefronts?: {
+    enabled: boolean;
+  };
   signupPaymentGraceMinutes?: number;
   riskPolicy?: {
     holdBotScore?: number;
@@ -9012,6 +9203,9 @@ export type PatchProgramsIdBody = {
     amountMinor: number;
     currency: string;
   } | null;
+  storefronts?: {
+    enabled: boolean;
+  };
   signupPaymentGraceMinutes?: number;
   riskPolicy?: {
     holdBotScore?: number;
@@ -9082,6 +9276,9 @@ export type PatchProgramsIdBody = {
       amountMinor: number;
       currency: string;
     } | null;
+    storefronts?: {
+      enabled: boolean;
+    };
     signupPaymentGraceMinutes?: number;
     riskPolicy?: {
       holdBotScore?: number;
@@ -9172,6 +9369,17 @@ export type GetProgramsIdEnrollmentsQuery = {
 /** POST /v1/programs/{id}/enrollments/{enrollmentId}/approve: Approve an application */
 
 /** POST /v1/programs/{id}/enrollments/{enrollmentId}/reject: Reject an application */
+
+/** POST /v1/programs/{id}/store-setup: Set up a store in one call */
+export type PostProgramsIdStoreSetupBody = {
+  provider: "shopify" | "woocommerce" | "bigcommerce";
+  shop?: string;
+  storeUrl?: string;
+  credentials: Record<string, string>;
+  rateCardPreset?: "general_retail" | "none";
+};
+
+/** GET /v1/programs/{id}/store-setup: Get the store setup checklist */
 
 /** POST /v1/partners: Create a partner */
 export type PostPartnersBody = {
@@ -10190,7 +10398,101 @@ export type GetReportsProductsQuery = {
   from?: string;
   to?: string;
   currency?: string;
+  subId?: string;
+  groupBy?: "subId";
   limit?: number;
+};
+
+/** GET /v1/catalog/items: List catalog items */
+export type GetCatalogItemsQuery = {
+  programId?: string;
+  q?: string;
+  category?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+/** PUT /v1/catalog/items: Upsert catalog items */
+export type PutCatalogItemsBody = {
+  /** Limit the items to one program; omit for every program in the org. */
+  programId?: string | null;
+  items: Array<{
+    /** The provider product id: equals an order line productId and a link productRef. */
+    externalId: string;
+    sku?: string | null;
+    title: string;
+    url: string;
+    imageUrl?: string | null;
+    priceMinor?: number | null;
+    currency?: string | null;
+    category?: string | null;
+    inStock?: boolean;
+  }>;
+};
+
+/** DELETE /v1/catalog/items/{id}: Delete a catalog item */
+export type DeleteCatalogItemsIdResponse = Ok;
+
+/** GET /v1/catalog/feeds: List catalog feeds */
+
+/** POST /v1/catalog/feeds: Add a catalog feed */
+export type PostCatalogFeedsBody = {
+  programId?: string | null;
+  url: string;
+  format: "google_xml" | "csv" | "json";
+};
+
+/** DELETE /v1/catalog/feeds/{id}: Delete a catalog feed */
+export type DeleteCatalogFeedsIdResponse = Ok;
+
+/** POST /v1/catalog/feeds/{id}/sync: Sync a catalog feed now */
+
+/** POST /v1/catalog/sync: Sync the catalog from a store */
+export type PostCatalogSyncBody = {
+  provider: "shopify" | "woocommerce" | "bigcommerce";
+  connectionId: string;
+  programId?: string | null;
+  /** The provider API credentials, when the connection doesn't hold them (Shopify: shopDomain, accessToken; WooCommerce: siteUrl, consumerKey, consumerSecret; BigCommerce: storeHash, apiToken). Used once, not stored. */
+  credentials?: Record<string, string>;
+};
+export type PostCatalogSyncResponse = PutCatalogItemsResponse;
+
+/** GET /v1/partner/storefronts: Get my storefront */
+export type GetPartnerStorefrontsQuery = {
+  orgId: string;
+  programId: string;
+};
+
+/** PUT /v1/partner/storefronts: Save my storefront */
+export type PutPartnerStorefrontsBody = {
+  /** The public page's path segment, unique in the merchant's org. */
+  slug: string;
+  title?: string | null;
+  bio?: string | null;
+  published?: boolean;
+};
+export type PutPartnerStorefrontsQuery = {
+  orgId: string;
+  programId: string;
+};
+
+/** PUT /v1/partner/storefronts/{id}/items: Set my storefront products */
+export type PutPartnerStorefrontsIdItemsBody = {
+  items: Array<{
+    catalogItemId: string;
+    note?: string | null;
+  }>;
+};
+export type PutPartnerStorefrontsIdItemsResponse = PutPartnerStorefrontsResponse;
+
+/** GET /v1/public/storefronts/{orgSlugOrDomain}/{slug}: Get a partner's public storefront */
+
+/** POST /v1/partner/storefront-bar/token: Turn on the get-link bar for a shop */
+export type PostPartnerStorefrontBarTokenBody = {
+  orgId: string;
+  programId: string;
+  /** A page of the shop; the partner is sent back to it with the bar token in the URL fragment. */
+  storeUrl: string;
 };
 
 /** GET /v1/profitability/settings: Get profitability settings */
@@ -10399,6 +10701,7 @@ export type PostPartnerKycSubmitBody = {
 
 /** GET /v1/partner/stats: Get my stats */
 export type GetPartnerStatsQuery = {
+  subId?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -10414,6 +10717,8 @@ export type GetPartnerReportsProductsQuery = {
   to?: string;
   currency?: string;
   limit?: number;
+  subId?: string;
+  groupBy?: "subId";
 };
 
 /** GET /v1/partner/links: List my links */
@@ -10460,6 +10765,23 @@ export type PostPartnerDisputesBody = {
   referralId?: string;
   kind: "missing_attribution" | "unpaid_commission";
   detail: string;
+};
+
+/** GET /v1/partner/catalog: Search products to promote */
+export type GetPartnerCatalogQuery = {
+  orgId?: string;
+  programId?: string;
+  q?: string;
+  category?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+/** POST /v1/partner/links/product: Get my link for a product */
+export type PostPartnerLinksProductBody = {
+  programId: string;
+  catalogItemId?: string;
+  url?: string;
 };
 
 /** GET /v1/partner/links/{id}/qr: Get my link's QR code */
@@ -12610,6 +12932,7 @@ export const operations = {
   getTOrgTokenCodesCode: { method: 'GET', path: '/t/{orgToken}/codes/{code}' },
   postTOrgTokenHandoff: { method: 'POST', path: '/t/{orgToken}/handoff' },
   postTOrgTokenIdentify: { method: 'POST', path: '/t/{orgToken}/identify' },
+  postTOrgTokenBar: { method: 'POST', path: '/t/{orgToken}/bar' },
   getTOrgTokenWidgetJs: { method: 'GET', path: '/t/{orgToken}/widget.js' },
   getTOrgTokenWidgetMe: { method: 'GET', path: '/t/{orgToken}/widget/me' },
   postTOrgTokenWidgetPortalLink: { method: 'POST', path: '/t/{orgToken}/widget/portal-link' },
@@ -12702,6 +13025,8 @@ export const operations = {
   getV1ProgramsIdEnrollments: { method: 'GET', path: '/v1/programs/{id}/enrollments' },
   postV1ProgramsIdEnrollmentsEnrollmentIdApprove: { method: 'POST', path: '/v1/programs/{id}/enrollments/{enrollmentId}/approve' },
   postV1ProgramsIdEnrollmentsEnrollmentIdReject: { method: 'POST', path: '/v1/programs/{id}/enrollments/{enrollmentId}/reject' },
+  postV1ProgramsIdStoreSetup: { method: 'POST', path: '/v1/programs/{id}/store-setup' },
+  getV1ProgramsIdStoreSetup: { method: 'GET', path: '/v1/programs/{id}/store-setup' },
   postV1Partners: { method: 'POST', path: '/v1/partners' },
   getV1Partners: { method: 'GET', path: '/v1/partners' },
   getV1PartnersId: { method: 'GET', path: '/v1/partners/{id}' },
@@ -12816,6 +13141,19 @@ export const operations = {
   getV1AnalyticsCouponPerformance: { method: 'GET', path: '/v1/analytics/coupon-performance' },
   getV1ReportsPartnerPerformance: { method: 'GET', path: '/v1/reports/partner-performance' },
   getV1ReportsProducts: { method: 'GET', path: '/v1/reports/products' },
+  getV1CatalogItems: { method: 'GET', path: '/v1/catalog/items' },
+  putV1CatalogItems: { method: 'PUT', path: '/v1/catalog/items' },
+  deleteV1CatalogItemsId: { method: 'DELETE', path: '/v1/catalog/items/{id}' },
+  getV1CatalogFeeds: { method: 'GET', path: '/v1/catalog/feeds' },
+  postV1CatalogFeeds: { method: 'POST', path: '/v1/catalog/feeds' },
+  deleteV1CatalogFeedsId: { method: 'DELETE', path: '/v1/catalog/feeds/{id}' },
+  postV1CatalogFeedsIdSync: { method: 'POST', path: '/v1/catalog/feeds/{id}/sync' },
+  postV1CatalogSync: { method: 'POST', path: '/v1/catalog/sync' },
+  getV1PartnerStorefronts: { method: 'GET', path: '/v1/partner/storefronts' },
+  putV1PartnerStorefronts: { method: 'PUT', path: '/v1/partner/storefronts' },
+  putV1PartnerStorefrontsIdItems: { method: 'PUT', path: '/v1/partner/storefronts/{id}/items' },
+  getV1PublicStorefrontsOrgSlugOrDomainSlug: { method: 'GET', path: '/v1/public/storefronts/{orgSlugOrDomain}/{slug}' },
+  postV1PartnerStorefrontBarToken: { method: 'POST', path: '/v1/partner/storefront-bar/token' },
   getV1ProfitabilitySettings: { method: 'GET', path: '/v1/profitability/settings' },
   putV1ProfitabilitySettings: { method: 'PUT', path: '/v1/profitability/settings' },
   getV1ProfitabilityProducts: { method: 'GET', path: '/v1/profitability/products' },
@@ -12846,6 +13184,8 @@ export const operations = {
   getV1PartnerAssets: { method: 'GET', path: '/v1/partner/assets' },
   getV1PartnerDisputes: { method: 'GET', path: '/v1/partner/disputes' },
   postV1PartnerDisputes: { method: 'POST', path: '/v1/partner/disputes' },
+  getV1PartnerCatalog: { method: 'GET', path: '/v1/partner/catalog' },
+  postV1PartnerLinksProduct: { method: 'POST', path: '/v1/partner/links/product' },
   getV1PartnerLinksIdQr: { method: 'GET', path: '/v1/partner/links/{id}/qr' },
   getV1PartnerReferrals: { method: 'GET', path: '/v1/partner/referrals' },
   getV1PartnerReferralsIdTransparency: { method: 'GET', path: '/v1/partner/referrals/{id}/transparency' },
