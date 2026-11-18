@@ -36,6 +36,8 @@ export type ProgramSettings = {
   allowPaidSearch: boolean;
   challengeLinks: boolean;
   settlement: "payout" | "merchant_credit";
+  /** Days a cart add (aff.js `cartAdd`, made while the visitor's referral was live) can credit its line when the order arrives with no live referral. 0 turns it off. */
+  cartWindowDays: number;
   /** What one of your credits costs; `commission.settled` then carries `credits`. Null when unset. */
   creditRate: {
     amountMinor: number;
@@ -1275,6 +1277,10 @@ export type Promotion = {
   programId: string;
   name: string;
   groupId: string | null;
+  scope: {
+    categories?: Array<string>;
+    productIds?: Array<string>;
+  } | null;
   effect: ({
     kind: "replace";
     base: {
@@ -2845,6 +2851,12 @@ export type GetTOrgTokenCodesCodeResponse = {
     currency: string;
     on: string;
   } | null;
+};
+
+export type PostTOrgTokenCartResponse = {
+  ok: true;
+  /** True when the add was stored: cartWindowDays is on and the visitor's referral context is live. */
+  recorded: boolean;
 };
 
 export type PostTOrgTokenBarResponse = {
@@ -4762,6 +4774,24 @@ export type GetPartnerCatalogResponse = {
     } | null;
   }>;
   nextCursor: string | null;
+};
+
+export type GetPartnerLinksMatchResponse = {
+  matches: Array<{
+    orgId: string;
+    programId: string;
+    programName: string;
+    catalogItemId: string | null;
+    title: string | null;
+    commission: {
+      bps: number | null;
+      label: string | null;
+    };
+    link: {
+      id: string;
+      shortUrl: string;
+    } | null;
+  }>;
 };
 
 export type PostPartnerLinksProductResponse = {
@@ -8474,6 +8504,9 @@ export type GetTOrgTokenAffJsQuery = {
 };
 export type GetTOrgTokenAffJsResponse = string;
 
+/** GET /t/{orgToken}/bar.js: Get the partner get-link bar script */
+export type GetTOrgTokenBarJsResponse = string;
+
 /** GET /t/{orgToken}/config.json: Get the tracking script config */
 export type GetTOrgTokenConfigJsonQuery = {
   program?: string;
@@ -8521,6 +8554,14 @@ export type PostTOrgTokenHandoffBody = {
 };
 export type PostTOrgTokenHandoffResponse = HandoffToken;
 
+/** POST /t/{orgToken}/cart: Record a cart add */
+export type PostTOrgTokenCartBody = {
+  anonId: string;
+  productId?: string;
+  sku?: string;
+  quantity?: number;
+};
+
 /** POST /t/{orgToken}/identify: Identify a visitor */
 export type PostTOrgTokenIdentifyBody = {
   anonId: string;
@@ -8537,6 +8578,12 @@ export type PostTOrgTokenBarBody = {
   /** Only report what the partner earns; create no link. */
   preview?: boolean;
 };
+
+/** GET /t/cards.js: Get the product card script */
+export type GetTCardsJsResponse = string;
+
+/** GET /t/{orgToken}/card/{file}: Get a product card */
+export type GetTOrgTokenCardFileResponse = string;
 
 /** GET /t/{orgToken}/widget.js: Get the referral widget script */
 export type GetTOrgTokenWidgetJsResponse = string;
@@ -9102,6 +9149,7 @@ export type PostProgramsBody = {
     amountMinor: number;
     currency: string;
   } | null;
+  cartWindowDays?: number;
   storefronts?: {
     enabled: boolean;
   };
@@ -9203,6 +9251,7 @@ export type PatchProgramsIdBody = {
     amountMinor: number;
     currency: string;
   } | null;
+  cartWindowDays?: number;
   storefronts?: {
     enabled: boolean;
   };
@@ -9276,6 +9325,7 @@ export type PatchProgramsIdBody = {
       amountMinor: number;
       currency: string;
     } | null;
+    cartWindowDays?: number;
     storefronts?: {
       enabled: boolean;
     };
@@ -9830,6 +9880,12 @@ export type PostCommissionRulesBody = {
       productCategories?: Record<string, string>;
       indirectBps?: number;
     };
+    bonuses?: Array<{
+      thresholdMinor: number;
+      amountMinor: number;
+      currency: string;
+      period: "month";
+    }>;
     newVsExpansion?: {
       newBps: number;
       expansionBps: number;
@@ -9924,6 +9980,12 @@ export type PutProgramsIdCommissionRuleBody = {
       productCategories?: Record<string, string>;
       indirectBps?: number;
     };
+    bonuses?: Array<{
+      thresholdMinor: number;
+      amountMinor: number;
+      currency: string;
+      period: "month";
+    }>;
     newVsExpansion?: {
       newBps: number;
       expansionBps: number;
@@ -10777,6 +10839,11 @@ export type GetPartnerCatalogQuery = {
   cursor?: string;
 };
 
+/** GET /v1/partner/links/match: Find the programs for a page */
+export type GetPartnerLinksMatchQuery = {
+  url: string;
+};
+
 /** POST /v1/partner/links/product: Get my link for a product */
 export type PostPartnerLinksProductBody = {
   programId: string;
@@ -11396,6 +11463,10 @@ export type GetProgramsIdPromotionsQuery = {
 /** POST /v1/programs/{id}/promotions: Create a promotion */
 export type PostProgramsIdPromotionsBody = {
   name: string;
+  scope?: {
+    categories?: Array<string>;
+    productIds?: Array<string>;
+  } | null;
   groupId?: string | null;
   effect: ({
     kind: "replace";
@@ -12926,13 +12997,17 @@ export type WebhookPayloads = {
 /** Every operation, by operationId. */
 export const operations = {
   getTOrgTokenAffJs: { method: 'GET', path: '/t/{orgToken}/aff.js' },
+  getTOrgTokenBarJs: { method: 'GET', path: '/t/{orgToken}/bar.js' },
   getTOrgTokenConfigJson: { method: 'GET', path: '/t/{orgToken}/config.json' },
   getGoOrgTokenCode: { method: 'GET', path: '/go/{orgToken}/{code}' },
   postTOrgTokenVisit: { method: 'POST', path: '/t/{orgToken}/visit' },
   getTOrgTokenCodesCode: { method: 'GET', path: '/t/{orgToken}/codes/{code}' },
   postTOrgTokenHandoff: { method: 'POST', path: '/t/{orgToken}/handoff' },
+  postTOrgTokenCart: { method: 'POST', path: '/t/{orgToken}/cart' },
   postTOrgTokenIdentify: { method: 'POST', path: '/t/{orgToken}/identify' },
   postTOrgTokenBar: { method: 'POST', path: '/t/{orgToken}/bar' },
+  getTCardsJs: { method: 'GET', path: '/t/cards.js' },
+  getTOrgTokenCardFile: { method: 'GET', path: '/t/{orgToken}/card/{file}' },
   getTOrgTokenWidgetJs: { method: 'GET', path: '/t/{orgToken}/widget.js' },
   getTOrgTokenWidgetMe: { method: 'GET', path: '/t/{orgToken}/widget/me' },
   postTOrgTokenWidgetPortalLink: { method: 'POST', path: '/t/{orgToken}/widget/portal-link' },
@@ -13185,6 +13260,7 @@ export const operations = {
   getV1PartnerDisputes: { method: 'GET', path: '/v1/partner/disputes' },
   postV1PartnerDisputes: { method: 'POST', path: '/v1/partner/disputes' },
   getV1PartnerCatalog: { method: 'GET', path: '/v1/partner/catalog' },
+  getV1PartnerLinksMatch: { method: 'GET', path: '/v1/partner/links/match' },
   postV1PartnerLinksProduct: { method: 'POST', path: '/v1/partner/links/product' },
   getV1PartnerLinksIdQr: { method: 'GET', path: '/v1/partner/links/{id}/qr' },
   getV1PartnerReferrals: { method: 'GET', path: '/v1/partner/referrals' },

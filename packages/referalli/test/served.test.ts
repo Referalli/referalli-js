@@ -238,3 +238,14 @@ describe('served aff.js: legacy referally_ctx twin', () => {
     expect(js).toContain('var KEYS=WKEYS.concat(["old_ctx"])');
   });
 });
+
+describe('cart auto-capture regex survives the template literal', () => {
+  it('renders a real regex, not a // comment', () => {
+    const js = renderSnippetJs('tok', 'https://referalli.com');
+    const start = js.indexOf('var re=');
+    const re = runInNewContext(`${js.slice(start, js.indexOf(';', start) + 1)} re`) as RegExp;
+    expect(re.test('/cart/add.js')).toBe(true);
+    expect(re.test('/cart/add?x=1')).toBe(true);
+    expect(re.test('/cart/added')).toBe(false);
+  });
+});

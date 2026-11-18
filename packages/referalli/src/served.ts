@@ -116,6 +116,11 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
     else if(state==='denied'){clear();dropped=true;pendingId=null;}}
   var gate=${src.gate}(window,CFG,${src.adapters},${src.order},onConsent);
   function view(){return gone||dropped?{anonId:null,code:null,clickId:null,ts:null}:{anonId:ctx.anonId,code:ctx.code,clickId:ctx.clickId,ts:ctx.ts};}
+  // Cart extension: a cart add is sent only for a visitor who came through a referral and has consented; the server also
+  // checks the referral context is still live and the program has cartWindowDays on.
+  function cartAdd(o){o=o||{};if(gone||dropped||cstate!=='granted'||!(ctx.code||ctx.clickId))return;
+    var p=o.productId!=null&&o.productId!==''?String(o.productId):undefined,k=o.sku?String(o.sku):undefined;if(!p&&!k)return;
+    var q=Math.floor(Number(o.quantity));post('/t/${token}/cart',{anonId:ctx.anonId,productId:p,sku:k,quantity:q>0?q:undefined});}
   var api={
     getReferral:view,
     signupMetadata:function(){var v=view();var m={referalli_anon_id:v.anonId};if(v.clickId)m.referalli_click_id=v.clickId;if(v.code)m.referalli_coupon=v.code;return m;},
@@ -124,6 +129,7 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
       return fetch(BASE+'/t/${token}/handoff',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({anonId:v.anonId,clickId:v.clickId||undefined,code:v.code||undefined})})
         .then(function(r){return r.ok?r.json():null;}).then(function(j){return j&&j.handoffToken||null;},function(){return null;});},
     forget:forget,
+    cartAdd:cartAdd,
     consent:function(g){gate.push(g===true);},
     consentState:function(){return cstate;},
     consentEvidence:function(){return gate.evidence();},
@@ -133,10 +139,40 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   var prev=window.aff;var queued=prev&&prev.q&&typeof prev.q.length==='number'?prev.q:[];
   api.q={push:run};
   window.aff=api;
+  // Get-link bar for partners (data-partner-bar="on"): bar.js loads only when the portal sent a bar token (#rl_pbar=) or one is
+  // already in sessionStorage, so shoppers never download it.
+  (function(){if(attr('data-partner-bar')!=='on')return;var has=/(^|[#&])rl_pbar=/.test(location.hash||'');
+    if(!has)try{has=!!sessionStorage.getItem('referalli_pbar');}catch(e){}
+    if(has){var b=document.createElement('script');b.async=true;b.src=BASE+'/t/${token}/bar.js';(document.head||document.body).appendChild(b);}})();
+  // data-cart="auto": Shopify's /cart/add (fetch, XHR; the response names product_id and sku) and WooCommerce's added_to_cart.
+  (function(){
+    if(attr('data-cart')!=='auto')return;
+    var re=/\\/cart\\/add(\\.js)?(\\?|$)/;
+    function items(j){if(!j)return;var l=j.items&&j.items.length?j.items:[j];for(var i=0;i<l.length;i++){var it=l[i];
+      if(it&&(it.product_id||it.sku))cartAdd({productId:it.product_id,sku:it.sku,quantity:it.quantity});}}
+    if(window.fetch){var of=window.fetch;window.fetch=function(a,b){var url=String(a&&a.url||a||''),r=of.apply(this,arguments);
+      if(re.test(url))r.then(function(res){if(res&&res.ok)res.clone().json().then(items,function(){});},function(){});return r;};}
+    var xo=window.XMLHttpRequest&&XMLHttpRequest.prototype.open;
+    if(xo){XMLHttpRequest.prototype.open=function(m,u){var self=this;
+      if(re.test(String(u||'')))this.addEventListener('load',function(){try{if(self.status<300)items(JSON.parse(self.responseText));}catch(e){}});
+      return xo.apply(this,arguments);};}
+    function woo(){var $=window.jQuery;if(!$)return;$(document.body).on('added_to_cart',function(e,f,h,btn){
+      var b=btn&&btn.data?btn:null;if(b)cartAdd({productId:b.data('product_id'),sku:b.data('product_sku'),quantity:b.data('quantity')});});}
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',woo);else woo();
+  })();
+  gate.start();
+  for(var qi=0;qi<queued.length;qi++)run(queued[qi]);
+})();`;
+}
+
+/** The partner get-link bar, loaded by aff.js only on a page carrying a bar token (kept out of aff.js's size budget). */
+export function renderBarJs(token: string, baseUrl: string): string {
+  return `(function(){
+  'use strict';
+  var BASE=${JSON.stringify(baseUrl)};
   // Get-link bar for signed-in partners (data-partner-bar="on"). The portal opens the shop with #rl_pbar=<token>&rl_prg=<program>;
   // the token goes to sessionStorage (no cookie) and the hash is removed. Fixed position: no layout shift. Never shown without a token.
   (function(){
-    if(attr('data-partner-bar')!=='on')return;
     var SK='referalli_pbar',tok=null,prg=null;
     try{var hp=new URLSearchParams(String(location.hash||'').replace(/^#/,''));var nt=hp.get('rl_pbar');
       if(nt){sessionStorage.setItem(SK,JSON.stringify({t:nt,p:hp.get('rl_prg')}));hp.delete('rl_pbar');hp.delete('rl_prg');var rest=hp.toString();
@@ -161,7 +197,5 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
       x.onclick=function(){try{sessionStorage.removeItem(SK);}catch(e){}bar.remove();};
       bar.appendChild(btn);bar.appendChild(x);document.body.appendChild(bar);});
   })();
-  gate.start();
-  for(var qi=0;qi<queued.length;qi++)run(queued[qi]);
 })();`;
 }

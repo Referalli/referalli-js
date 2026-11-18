@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.17 - 2026-11-18
+
+- Generated types and methods for product-scoped promotions (`scope`), earnings `bonuses` on commission rules, the program `cartWindowDays` setting, and `GET /v1/partner/links/match`.
+- The served `aff.js` adds `referalli.cartAdd({productId, sku, quantity})` and, with `data-cart="auto"`, records Shopify and WooCommerce add-to-cart events for the cart extension.
+
 ## 0.3.16 - 2026-11-18
 
 - Generated types and methods for the product catalog (`/v1/catalog/items`, feeds and sync), one-step store setup (`/v1/programs/{id}/store-setup`), partner product search and one-click product links (`/v1/partner/catalog`, `/v1/partner/links/product`), partner storefronts and the public storefront, sub-ID filters on stats and product reports, and the program `storefronts` setting.

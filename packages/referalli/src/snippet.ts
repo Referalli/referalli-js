@@ -77,6 +77,11 @@ export interface AffApi {
    * Null with no context, after `forget()` or a denial, or on a network error.
    */
   getHandoffToken(): Promise<string | null>;
+  /**
+   * Record a cart add (product id or SKU) for the cart extension: sent only after consent, for a visitor who came through
+   * a referral; the server stores it while the referral is live and the program's `cartWindowDays` is on.
+   */
+  cartAdd(opts: { productId?: string | number; sku?: string; quantity?: number }): void;
   /** Delete the stored context (consent withdrawn) and stop sending. */
   forget(): void;
   /** The push path for pages without a supported CMP. Idempotent; the latest signal wins. */
@@ -278,6 +283,12 @@ export async function initSnippet(env: SnippetEnv, config: SnippetConfig): Promi
       } catch {
         return null;
       }
+    },
+    cartAdd: (o) => {
+      const productId = o.productId != null && o.productId !== '' ? String(o.productId) : undefined;
+      if (gone || dropped || state !== 'granted' || !(ctx.code || ctx.clickId) || (!productId && !o.sku)) return;
+      const q = Math.floor(Number(o.quantity));
+      void post(`/t/${config.token}/cart`, { anonId: ctx.anonId, productId, sku: o.sku, quantity: q > 0 ? q : undefined }).catch(() => {});
     },
     forget: () => {
       gone = true;

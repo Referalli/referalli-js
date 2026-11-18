@@ -148,6 +148,7 @@ export const operations = {
   getPartnerKycStatus: { method: "GET", path: "/v1/partner/kyc/status", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerLinks: { method: "GET", path: "/v1/partner/links", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerLinksIdQr: { method: "GET", path: "/v1/partner/links/{id}/qr", pathParams: ["id"], query: [], body: false, kind: "text" },
+  getPartnerLinksMatch: { method: "GET", path: "/v1/partner/links/match", pathParams: [], query: ["url"], body: false, kind: "json" },
   getPartnerMarketplace: { method: "GET", path: "/v1/partner/marketplace", pathParams: [], query: ["category","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerMe: { method: "GET", path: "/v1/partner/me", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerNotifications: { method: "GET", path: "/v1/partner/notifications", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -1349,6 +1350,8 @@ export function buildResources(t: Transport) {
         list: (query?: (T.GetPartnerLinksQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerLinksResponse['data'][number], T.GetPartnerLinksResponse> => t.list("getPartnerLinks", { query }, options),
         /** Get my link's QR code. GET /v1/partner/links/{id}/qr */
         qr: (id: string, options?: RequestOptions): Promise<string> => t.op("getPartnerLinksIdQr", { path: { id } }, options),
+        /** Find the programs for a page. GET /v1/partner/links/match */
+        match: (query: T.GetPartnerLinksMatchQuery, options?: RequestOptions): Promise<T.GetPartnerLinksMatchResponse> => t.op("getPartnerLinksMatch", { query }, options),
         /** Create a link. POST /v1/partner/links */
         create: (body: T.PostPartnerLinksBody, options?: RequestOptions): Promise<T.PostPartnerLinksResponse> => t.op("postPartnerLinks", { body }, options),
         /** Get my link for a product. POST /v1/partner/links/product */
