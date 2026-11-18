@@ -153,6 +153,8 @@ export type Link = {
   /** Lowercase; matched case-insensitively. */
   code: string;
   destinationUrl: string;
+  /** The product (id or sku) the link points to, or null. */
+  productRef: string | null;
   /** Absolute link, on the org's verified link domain when it has one. */
   shortUrl: string;
   clicks: number;
@@ -165,6 +167,7 @@ export type CreatedLink = {
   partnerId: string;
   code: string;
   destinationUrl: string;
+  productRef?: string | null;
   shortUrl?: string;
 };
 
@@ -1874,6 +1877,8 @@ export type CommissionEarnedEventData = {
   level: number;
   memo: string;
   basisMinor: number | null;
+  /** Per order line earnings (productId, sku, category, quantity, amountMinor, bps, earnedMinor, direct) when a rate card rule paid by line. */
+  lineItems?: Array<Record<string, unknown>>;
 };
 
 /** A commission line was earned: the `commission.earned` delivery body. */
@@ -4268,6 +4273,23 @@ export type GetReportsPartnerPerformanceResponse = Array<{
   reversedMinor: number;
 }>;
 
+export type GetReportsProductsResponse = Array<{
+  productId: string | null;
+  sku: string | null;
+  category: string | null;
+  /** Eligible clicks on links pointing at the product, on its highest-commission currency row. */
+  clicks: number;
+  orders: number;
+  items: number;
+  revenueMinor: number;
+  refundedMinor: number;
+  /** Gross earned level-0 commission for the product; refund reversals are not netted. */
+  commissionMinor: number;
+  directOrders: number;
+  indirectOrders: number;
+  currency: string;
+}>;
+
 export type GetProfitabilitySettingsResponse = {
   reportingCurrency: string;
   defaultMarginBps: number | null;
@@ -4502,6 +4524,24 @@ export type GetPartnerStatsResponse = {
   next_cursor: string | null;
 };
 
+export type GetPartnerReportsProductsResponse = Array<{
+  productId: string | null;
+  sku: string | null;
+  category: string | null;
+  /** Eligible clicks on links pointing at the product, on its highest-commission currency row. */
+  clicks: number;
+  orders: number;
+  items: number;
+  revenueMinor: number;
+  refundedMinor: number;
+  /** Gross earned level-0 commission for the product; refund reversals are not netted. */
+  commissionMinor: number;
+  directOrders: number;
+  indirectOrders: number;
+  currency: string;
+  orgId: string;
+}>;
+
 export type GetPartnerLinksResponse = {
   object: "list";
   data: Array<{
@@ -4510,6 +4550,7 @@ export type GetPartnerLinksResponse = {
     programId: string;
     code: string;
     destinationUrl: string;
+    productRef?: string | null;
     shortPath: string;
     /** Absolute link, on the merchant's verified link domain when it has one. */
     shortUrl: string;
@@ -9328,6 +9369,8 @@ export type PostLinksBody = {
   partnerId: string;
   code?: string;
   destinationUrl: string;
+  /** The product (id or sku) the link points to; on a rate card rule it is the direct product, anything else bought is indirect. */
+  productRef?: string | null;
 };
 export type PostLinksResponse = CreatedLink;
 
@@ -9346,6 +9389,7 @@ export type GetLinksQuery = {
 export type PatchLinksIdBody = {
   destinationUrl?: string;
   code?: string;
+  productRef?: string | null;
 };
 export type PatchLinksIdResponse = Link;
 
@@ -9571,6 +9615,13 @@ export type PostCommissionRulesBody = {
       levels: number;
       ratesBps: Array<number>;
     };
+    rateCard?: {
+      rates: Record<string, number>;
+      defaultBps?: number;
+      exclude?: Array<string>;
+      productCategories?: Record<string, string>;
+      indirectBps?: number;
+    };
     newVsExpansion?: {
       newBps: number;
       expansionBps: number;
@@ -9657,6 +9708,13 @@ export type PutProgramsIdCommissionRuleBody = {
     subAffiliate?: {
       levels: number;
       ratesBps: Array<number>;
+    };
+    rateCard?: {
+      rates: Record<string, number>;
+      defaultBps?: number;
+      exclude?: Array<string>;
+      productCategories?: Record<string, string>;
+      indirectBps?: number;
     };
     newVsExpansion?: {
       newBps: number;
@@ -10125,6 +10183,16 @@ export type GetReportsPartnerPerformanceQuery = {
   format?: "json" | "csv";
 };
 
+/** GET /v1/reports/products: Get product report */
+export type GetReportsProductsQuery = {
+  programId?: string;
+  partnerId?: string;
+  from?: string;
+  to?: string;
+  currency?: string;
+  limit?: number;
+};
+
 /** GET /v1/profitability/settings: Get profitability settings */
 export type GetProfitabilitySettingsQuery = {
   programId?: string;
@@ -10338,6 +10406,16 @@ export type GetPartnerStatsQuery = {
   "created[lte]"?: string;
 };
 
+/** GET /v1/partner/reports/products: Get my product report */
+export type GetPartnerReportsProductsQuery = {
+  orgId?: string;
+  programId?: string;
+  from?: string;
+  to?: string;
+  currency?: string;
+  limit?: number;
+};
+
 /** GET /v1/partner/links: List my links */
 export type GetPartnerLinksQuery = {
   limit?: number;
@@ -10352,6 +10430,7 @@ export type PostPartnerLinksBody = {
   orgId: string;
   programId: string;
   destinationUrl: string;
+  productRef?: string | null;
   assetId?: string;
   code?: string;
 };
@@ -12736,6 +12815,7 @@ export const operations = {
   getV1AnalyticsByChannel: { method: 'GET', path: '/v1/analytics/by-channel' },
   getV1AnalyticsCouponPerformance: { method: 'GET', path: '/v1/analytics/coupon-performance' },
   getV1ReportsPartnerPerformance: { method: 'GET', path: '/v1/reports/partner-performance' },
+  getV1ReportsProducts: { method: 'GET', path: '/v1/reports/products' },
   getV1ProfitabilitySettings: { method: 'GET', path: '/v1/profitability/settings' },
   putV1ProfitabilitySettings: { method: 'PUT', path: '/v1/profitability/settings' },
   getV1ProfitabilityProducts: { method: 'GET', path: '/v1/profitability/products' },
@@ -12760,6 +12840,7 @@ export const operations = {
   postV1PartnerKycSubmit: { method: 'POST', path: '/v1/partner/kyc/submit' },
   getV1PartnerMe: { method: 'GET', path: '/v1/partner/me' },
   getV1PartnerStats: { method: 'GET', path: '/v1/partner/stats' },
+  getV1PartnerReportsProducts: { method: 'GET', path: '/v1/partner/reports/products' },
   getV1PartnerLinks: { method: 'GET', path: '/v1/partner/links' },
   postV1PartnerLinks: { method: 'POST', path: '/v1/partner/links' },
   getV1PartnerAssets: { method: 'GET', path: '/v1/partner/assets' },

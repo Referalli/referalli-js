@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.15 - 2026-11-18
+
+- Generated types and methods for store affiliate programs: `rateCard` on commission rules (per-category rates, excluded categories, `productCategories`, `indirectBps`), `lines` on generic billing events, `productRef` on links, `lineItems` on `commission.earned`, and the product reports (`GET /v1/reports/products`, `GET /v1/partner/reports/products`).
+
 ## 0.3.14 - 2026-11-18
 
 - Generated types for what the API added today: `draft` on commission rules and on `GET /v1/programs/{id}/terms`, a program's `creditRate` and `credits` on `commission.settled`, and `programIds` on DSAR executor keys.

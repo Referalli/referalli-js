@@ -157,6 +157,7 @@ export const operations = {
   getPartnerRecruit: { method: "GET", path: "/v1/partner/recruit", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerReferrals: { method: "GET", path: "/v1/partner/referrals", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerReferralsIdTransparency: { method: "GET", path: "/v1/partner/referrals/{id}/transparency", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getPartnerReportsProducts: { method: "GET", path: "/v1/partner/reports/products", pathParams: [], query: ["orgId","programId","from","to","currency","limit"], body: false, kind: "json" },
   getPartners: { method: "GET", path: "/v1/partners", pathParams: [], query: ["email","externalRef","programId","status","includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerSecurity: { method: "GET", path: "/v1/partner/security", pathParams: [], query: [], body: false, kind: "json" },
   getPartnersId: { method: "GET", path: "/v1/partners/{id}", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
@@ -217,6 +218,7 @@ export const operations = {
   getReferralsIdJourney: { method: "GET", path: "/v1/referrals/{id}/journey", pathParams: ["id"], query: [], body: false, kind: "json" },
   getReportsFilteredClicks: { method: "GET", path: "/v1/reports/filtered-clicks", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getReportsPartnerPerformance: { method: "GET", path: "/v1/reports/partner-performance", pathParams: [], query: ["format"], body: false, kind: "json" },
+  getReportsProducts: { method: "GET", path: "/v1/reports/products", pathParams: [], query: ["programId","partnerId","from","to","currency","limit"], body: false, kind: "json" },
   getRewards: { method: "GET", path: "/v1/rewards", pathParams: [], query: ["status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getRewardsGranted: { method: "GET", path: "/v1/rewards/granted", pathParams: [], query: [], body: false, kind: "json" },
   getRewardsLookupCode: { method: "GET", path: "/v1/rewards/lookup/{code}", pathParams: ["code"], query: [], body: false, kind: "json" },
@@ -1357,6 +1359,10 @@ export function buildResources(t: Transport) {
         /** Explain a referral. GET /v1/partner/referrals/{id}/transparency */
         transparency: (id: string, options?: RequestOptions): Promise<T.GetPartnerReferralsIdTransparencyResponse> => t.op("getPartnerReferralsIdTransparency", { path: { id } }, options),
       },
+      reports: {
+        /** Get my product report. GET /v1/partner/reports/products */
+        products: (query?: (T.GetPartnerReportsProductsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPartnerReportsProductsResponse> => t.op("getPartnerReportsProducts", { query }, options),
+      },
       security: {
         /** Get my security settings. GET /v1/partner/security */
         retrieve: (options?: RequestOptions): Promise<T.GetPartnerSecurityResponse> => t.op("getPartnerSecurity", {  }, options),
@@ -1721,6 +1727,8 @@ export function buildResources(t: Transport) {
       filteredClicks: (query?: (T.GetReportsFilteredClicksQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetReportsFilteredClicksResponse['data'][number], T.GetReportsFilteredClicksResponse> => t.list("getReportsFilteredClicks", { query }, options),
       /** Get partner performance. GET /v1/reports/partner-performance */
       partnerPerformance: (query?: (T.GetReportsPartnerPerformanceQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetReportsPartnerPerformanceResponse> => t.op("getReportsPartnerPerformance", { query }, options),
+      /** Get product report. GET /v1/reports/products */
+      products: (query?: (T.GetReportsProductsQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetReportsProductsResponse> => t.op("getReportsProducts", { query }, options),
     },
     rewards: {
       /** List issued referee rewards. GET /v1/rewards */
