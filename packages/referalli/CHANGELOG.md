@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.14 - 2026-11-18
+
+- Generated types for what the API added today: `draft` on commission rules and on `GET /v1/programs/{id}/terms`, a program's `creditRate` and `credits` on `commission.settled`, and `programIds` on DSAR executor keys.
+
 ## 0.3.13 - 2026-11-18
 
 - `stripeEventToBillingEvents` maps `checkout.session.completed` and `checkout.session.async_payment_succeeded` for a paid one-time Checkout with no invoice (`mode: payment`, no `invoice_creation`) to an `invoice_paid` keyed by its payment intent, so a one-time price earns. A session with an invoice is left to `invoice.paid`, never both. A guest with no Stripe customer is filed under `client_reference_id`, else the payment intent, which the session's metadata then links. `charge.refunded` and `charge.dispute.created` with no invoice carry the payment intent too, so they reverse it.

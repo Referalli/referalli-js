@@ -36,6 +36,11 @@ export type ProgramSettings = {
   allowPaidSearch: boolean;
   challengeLinks: boolean;
   settlement: "payout" | "merchant_credit";
+  /** What one of your credits costs; `commission.settled` then carries `credits`. Null when unset. */
+  creditRate: {
+    amountMinor: number;
+    currency: string;
+  } | null;
   /** How long before the referral a payment still earns, 0 to 1440. Default 5. */
   signupPaymentGraceMinutes: number;
   riskPolicy: {
@@ -1968,6 +1973,8 @@ export type CommissionSettledEventData = {
   currency: string;
   method: "store_credit" | "merchant_credit";
   reference: string;
+  /** With the program's `creditRate` in this currency: whole credits the amount buys, `floor(amountMinor / creditRate.amountMinor)`. Absent otherwise. */
+  credits?: number;
   customerRef: string | null;
   billingEventId: string | null;
   /** The billing provider's own event id. */
@@ -3773,6 +3780,60 @@ export type GetCommissionRulesResponse = {
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type GetProgramsIdTermsResponse = {
+  programId: string;
+  /** The commission rule version these terms come from (the latest). */
+  ruleVersion: number;
+  base: {
+    kind: "percent";
+    /** Basis points: 2000 is 20%. */
+    percentBps: number;
+  } | {
+    kind: "fixed";
+    /** Integer minor units (cents). */
+    amountMinor: number;
+    currency: string;
+  };
+  recurring: {
+    type: "one_time";
+  } | {
+    type: "lifetime";
+  } | {
+    type: "months";
+    months: number;
+  };
+  holdDays: number;
+  /** The rule's cap per referred customer: the most one referral earns its partner, over every payment. */
+  capPerReferral: {
+    /** Integer minor units (cents). */
+    amountMinor: number;
+    currency: string;
+  } | null;
+  /** The program's signupToConversionDays when set (null at the 365-day default): a payment more than this many days after sign-up earns nothing. */
+  signupWindowDays: number | null;
+  /** Overrides, tiers or new-vs-expansion rates can change the rate a partner earns. */
+  ratesVary: boolean;
+  /** The same sentence in each partner-portal locale. */
+  summary: {
+    en: string;
+    es: string;
+    de: string;
+    fr: string;
+    pt: string;
+    it: string;
+    nl: string;
+    sv: string;
+    ja: string;
+    zh: string;
+  };
+  /** With `?locale=` or `Accept-Language`: the locale chosen (`en` when the one asked for is not supported). */
+  locale?: string;
+  /** With `?locale=` or `Accept-Language`: the summary in `locale`. */
+  text?: string;
+  /** The latest rule is a draft: it accrues nothing, and partners and the join page see no terms until a version without `draft` is published. */
+  draft?: true;
 };
 
 export type GetCommissionsResponse = {
@@ -8808,6 +8869,10 @@ export type PostProgramsBody = {
   allowPaidSearch?: boolean;
   challengeLinks?: boolean;
   settlement?: "payout" | "merchant_credit";
+  creditRate?: {
+    amountMinor: number;
+    currency: string;
+  } | null;
   signupPaymentGraceMinutes?: number;
   riskPolicy?: {
     holdBotScore?: number;
@@ -8902,6 +8967,10 @@ export type PatchProgramsIdBody = {
   allowPaidSearch?: boolean;
   challengeLinks?: boolean;
   settlement?: "payout" | "merchant_credit";
+  creditRate?: {
+    amountMinor: number;
+    currency: string;
+  } | null;
   signupPaymentGraceMinutes?: number;
   riskPolicy?: {
     holdBotScore?: number;
@@ -8968,6 +9037,10 @@ export type PatchProgramsIdBody = {
     allowPaidSearch?: boolean;
     challengeLinks?: boolean;
     settlement?: "payout" | "merchant_credit";
+    creditRate?: {
+      amountMinor: number;
+      currency: string;
+    } | null;
     signupPaymentGraceMinutes?: number;
     riskPolicy?: {
       holdBotScore?: number;
@@ -9453,6 +9526,7 @@ export type PostCommissionRulesBody = {
       amountMinor: number;
       currency: string;
     };
+    draft?: boolean;
     rounding?: "half_even" | "floor";
     conditions?: {
       countries?: Array<string>;
@@ -9539,6 +9613,7 @@ export type PutProgramsIdCommissionRuleBody = {
       amountMinor: number;
       currency: string;
     };
+    draft?: boolean;
     rounding?: "half_even" | "floor";
     conditions?: {
       countries?: Array<string>;
@@ -9594,7 +9669,6 @@ export type PutProgramsIdCommissionRuleBody = {
 export type GetProgramsIdTermsQuery = {
   locale?: string;
 };
-export type GetProgramsIdTermsResponse = ProgramTerms;
 
 /** GET /v1/commissions: List commission ledger events */
 export type GetCommissionsQuery = {
@@ -11998,6 +12072,8 @@ export type PostPrivacyExecutorKeysBody = {
   /** Mint a new executor key (the old one stops working). false keeps the current key and only updates the settings. */
   rotate?: boolean;
   enabled?: boolean;
+  /** Limit the tool to these programs of the org: its lookups, exports and erasures then reach only people in them. `null` reaches the whole org again; left out, the current limit stays. */
+  programIds?: Array<string> | null;
 };
 
 /** DELETE /v1/privacy/executors/{adapter}: Disconnect a DSAR tool */
