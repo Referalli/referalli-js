@@ -29,6 +29,7 @@ export const operations = {
   deletePrivacyExecutorsAdapter: { method: "DELETE", path: "/v1/privacy/executors/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
   deleteProductLinksId: { method: "DELETE", path: "/v1/product-links/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProfitabilityProductsProductRef: { method: "DELETE", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: false, kind: "json" },
+  deleteProgramsIdEmailSettings: { method: "DELETE", path: "/v1/programs/{id}/email-settings", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProgramsIdLinkDomain: { method: "DELETE", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteRewardsRulesKey: { method: "DELETE", path: "/v1/rewards/rules/{key}", pathParams: ["key"], query: [], body: false, kind: "json" },
   deleteStripeCreditsConnection: { method: "DELETE", path: "/v1/stripe-credits/connection", pathParams: [], query: [], body: false, kind: "json" },
@@ -197,6 +198,7 @@ export const operations = {
   getProgramsIdAutopricing: { method: "GET", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdCreditRail: { method: "GET", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdCreditRailLog: { method: "GET", path: "/v1/programs/{id}/credit-rail/log", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getProgramsIdEmailSettings: { method: "GET", path: "/v1/programs/{id}/email-settings", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdEnrollments: { method: "GET", path: "/v1/programs/{id}/enrollments", pathParams: ["id"], query: ["status","partnerId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdGraph: { method: "GET", path: "/v1/programs/{id}/graph", pathParams: ["id"], query: ["root","depth"], body: false, kind: "json" },
   getProgramsIdGroups: { method: "GET", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: ["includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -282,7 +284,7 @@ export const operations = {
   postAdminStatusIncidentsIdUpdates: { method: "POST", path: "/v1/admin/status/incidents/{id}/updates", pathParams: ["id"], query: [], body: true, kind: "json" },
   postAgentsRegister: { method: "POST", path: "/v1/agents/register", pathParams: [], query: [], body: true, kind: "json", public: true },
   postAnomaliesScan: { method: "POST", path: "/v1/anomalies/scan", pathParams: [], query: [], body: false, kind: "json" },
-  postApiKeys: { method: "POST", path: "/v1/api-keys", pathParams: [], query: [], body: true, kind: "json" },
+  postApiKeys: { method: "POST", path: "/v1/api-keys", pathParams: [], query: ["dryRun"], body: true, kind: "json" },
   postApiKeysIdRotate: { method: "POST", path: "/v1/api-keys/{id}/rotate", pathParams: ["id"], query: [], body: true, kind: "json" },
   postAssets: { method: "POST", path: "/v1/assets", pathParams: [], query: [], body: true, kind: "json" },
   postAttributionReplay: { method: "POST", path: "/v1/attribution/replay", pathParams: [], query: [], body: true, kind: "json" },
@@ -305,7 +307,7 @@ export const operations = {
   postBillingCheckout: { method: "POST", path: "/v1/billing/checkout", pathParams: [], query: [], body: true, kind: "json" },
   postBillingConnections: { method: "POST", path: "/v1/billing/connections", pathParams: [], query: [], body: true, kind: "json" },
   postBillingConnectionsIdEvents: { method: "POST", path: "/v1/billing/connections/{id}/events", pathParams: ["id"], query: ["dryRun"], body: true, kind: "json" },
-  postBillingConnectionsIdRotateSecret: { method: "POST", path: "/v1/billing/connections/{id}/rotate-secret", pathParams: ["id"], query: [], body: false, kind: "json" },
+  postBillingConnectionsIdRotateSecret: { method: "POST", path: "/v1/billing/connections/{id}/rotate-secret", pathParams: ["id"], query: [], body: true, kind: "json" },
   postBillingConnectionsIdStripeForward: { method: "POST", path: "/v1/billing/connections/{id}/stripe-forward", pathParams: ["id"], query: ["dryRun"], body: true, kind: "json", public: true },
   postBillingConnectionsIdValueMappingPreview: { method: "POST", path: "/v1/billing/connections/{id}/value-mapping/preview", pathParams: ["id"], query: [], body: true, kind: "json" },
   postBillingEventsIdRelease: { method: "POST", path: "/v1/billing/events/{id}/release", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -361,6 +363,7 @@ export const operations = {
   postOrgAlerts: { method: "POST", path: "/v1/org/alerts", pathParams: [], query: [], body: true, kind: "json" },
   postOrgAlertsIdTest: { method: "POST", path: "/v1/org/alerts/{id}/test", pathParams: ["id"], query: [], body: false, kind: "json" },
   postOrgConsentPartnersCookiemunchLink: { method: "POST", path: "/v1/org/consent-partners/cookiemunch/link", pathParams: [], query: [], body: true, kind: "json" },
+  postOrgConsentPartnersCookiemunchLookupTest: { method: "POST", path: "/v1/org/consent-partners/cookiemunch/lookup-test", pathParams: [], query: [], body: true, kind: "json" },
   postOrgConsentPartnersCookiemunchStampsCheck: { method: "POST", path: "/v1/org/consent-partners/cookiemunch/stamps/check", pathParams: [], query: [], body: true, kind: "json" },
   postOrgHostedPagesCheck: { method: "POST", path: "/v1/org/hosted-pages/check", pathParams: [], query: [], body: false, kind: "json" },
   postOrgMembers: { method: "POST", path: "/v1/org/members", pathParams: [], query: [], body: true, kind: "json" },
@@ -417,6 +420,8 @@ export const operations = {
   postProgramsIdApplyLeveling: { method: "POST", path: "/v1/programs/{id}/apply-leveling", pathParams: ["id"], query: [], body: false, kind: "json" },
   postProgramsIdAutopriceRun: { method: "POST", path: "/v1/programs/{id}/autoprice/run", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdCreditRailRequeue: { method: "POST", path: "/v1/programs/{id}/credit-rail/requeue", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postProgramsIdEmailSettingsTest: { method: "POST", path: "/v1/programs/{id}/email-settings/test", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postProgramsIdEmailSettingsVerifyDomain: { method: "POST", path: "/v1/programs/{id}/email-settings/verify-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
   postProgramsIdEnrollments: { method: "POST", path: "/v1/programs/{id}/enrollments", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdEnrollmentsEnrollmentIdApprove: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/approve", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdEnrollmentsEnrollmentIdReject: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/reject", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
@@ -455,7 +460,7 @@ export const operations = {
   postWebhookDeliveriesIdReplay: { method: "POST", path: "/v1/webhook-deliveries/{id}/replay", pathParams: ["id"], query: [], body: false, kind: "json" },
   postWebhookEndpoints: { method: "POST", path: "/v1/webhook-endpoints", pathParams: [], query: [], body: true, kind: "json" },
   postWebhookEndpointsIdReplay: { method: "POST", path: "/v1/webhook-endpoints/{id}/replay", pathParams: ["id"], query: ["since"], body: false, kind: "json" },
-  postWebhookEndpointsIdRotateSecret: { method: "POST", path: "/v1/webhook-endpoints/{id}/rotate-secret", pathParams: ["id"], query: [], body: false, kind: "json" },
+  postWebhookEndpointsIdRotateSecret: { method: "POST", path: "/v1/webhook-endpoints/{id}/rotate-secret", pathParams: ["id"], query: [], body: true, kind: "json" },
   postWidgetSession: { method: "POST", path: "/v1/widget/session", pathParams: [], query: [], body: true, kind: "json", public: true },
   postWidgetTokens: { method: "POST", path: "/v1/widget/tokens", pathParams: [], query: [], body: true, kind: "json" },
   postZapierConversions: { method: "POST", path: "/v1/zapier/conversions", pathParams: [], query: [], body: true, kind: "json" },
@@ -501,6 +506,7 @@ export const operations = {
   putProgramsIdAutopricing: { method: "PUT", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdCommissionRule: { method: "PUT", path: "/v1/programs/{id}/commission-rule", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdCreditRail: { method: "PUT", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: true, kind: "json" },
+  putProgramsIdEmailSettings: { method: "PUT", path: "/v1/programs/{id}/email-settings", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdIncrementality: { method: "PUT", path: "/v1/programs/{id}/incrementality", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdLinkDomain: { method: "PUT", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdNegotiationPolicy: { method: "PUT", path: "/v1/programs/{id}/negotiation-policy", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -590,7 +596,7 @@ export function buildResources(t: Transport) {
       /** Update an API key. PATCH /v1/api-keys/{id} */
       update: (id: string, body: T.PatchApiKeysIdBody, options?: RequestOptions): Promise<T.PatchApiKeysIdResponse> => t.op("patchApiKeysId", { path: { id }, body }, options),
       /** Create an API key. POST /v1/api-keys */
-      create: (body: T.PostApiKeysBody, options?: RequestOptions): Promise<T.PostApiKeysResponse> => t.op("postApiKeys", { body }, options),
+      create: (body: T.PostApiKeysBody, query?: (T.PostApiKeysQuery) | RequestOptions, options?: RequestOptions): Promise<T.PostApiKeysResponse> => t.op("postApiKeys", { body, query }, options),
       /** Rotate an API key. POST /v1/api-keys/{id}/rotate */
       rotate: (id: string, body: T.PostApiKeysIdRotateBody, options?: RequestOptions): Promise<T.PostApiKeysIdRotateResponse> => t.op("postApiKeysIdRotate", { path: { id }, body }, options),
     },
@@ -705,7 +711,7 @@ export function buildResources(t: Transport) {
         /** Send events to a generic connection. POST /v1/billing/connections/{id}/events */
         events: (id: string, body: T.PostBillingConnectionsIdEventsBody, query?: (T.PostBillingConnectionsIdEventsQuery) | RequestOptions, options?: RequestOptions): Promise<T.PostBillingConnectionsIdEventsResponse> => t.op("postBillingConnectionsIdEvents", { path: { id }, body, query }, options),
         /** Rotate the webhook signing secret. POST /v1/billing/connections/{id}/rotate-secret */
-        rotateSecret: (id: string, options?: RequestOptions): Promise<T.PostBillingConnectionsIdRotateSecretResponse> => t.op("postBillingConnectionsIdRotateSecret", { path: { id } }, options),
+        rotateSecret: (id: string, body?: T.PostBillingConnectionsIdRotateSecretBody, options?: RequestOptions): Promise<T.PostBillingConnectionsIdRotateSecretResponse> => t.op("postBillingConnectionsIdRotateSecret", { path: { id }, body }, options),
         /** Forward a Stripe event to a generic connection. POST /v1/billing/connections/{id}/stripe-forward */
         stripeForward: (id: string, body: T.PostBillingConnectionsIdStripeForwardBody, query?: (T.PostBillingConnectionsIdStripeForwardQuery) | RequestOptions, options?: RequestOptions): Promise<T.PostBillingConnectionsIdStripeForwardResponse> => t.op("postBillingConnectionsIdStripeForward", { path: { id }, body, query }, options),
         /** Set provider API credentials. PUT /v1/billing/connections/{id}/credentials */
@@ -1099,6 +1105,8 @@ export function buildResources(t: Transport) {
           updateSites: (cbid: string, body: T.PatchOrgConsentPartnersCookiemunchSitesCbidBody, options?: RequestOptions): Promise<T.PatchOrgConsentPartnersCookiemunchSitesCbidResponse> => t.op("patchOrgConsentPartnersCookiemunchSitesCbid", { path: { cbid }, body }, options),
           /** Link a Cookie Munch site in one call. POST /v1/org/consent-partners/cookiemunch/link */
           link: (body: T.PostOrgConsentPartnersCookiemunchLinkBody, options?: RequestOptions): Promise<T.PostOrgConsentPartnersCookiemunchLinkResponse> => t.op("postOrgConsentPartnersCookiemunchLink", { body }, options),
+          /** See the answer Cookie Munch's key gets. POST /v1/org/consent-partners/cookiemunch/lookup-test */
+          lookupTest: (body: T.PostOrgConsentPartnersCookiemunchLookupTestBody, options?: RequestOptions): Promise<T.PostOrgConsentPartnersCookiemunchLookupTestResponse> => t.op("postOrgConsentPartnersCookiemunchLookupTest", { body }, options),
           /** Set the Cookie Munch sites to accept consent events for. PUT /v1/org/consent-partners/cookiemunch */
           update: (body: T.PutOrgConsentPartnersCookiemunchBody, options?: RequestOptions): Promise<T.PutOrgConsentPartnersCookiemunchResponse> => t.op("putOrgConsentPartnersCookiemunch", { body }, options),
           stamps: {
@@ -1593,6 +1601,18 @@ export function buildResources(t: Transport) {
         /** Set a program's account-credit rail settings. PUT /v1/programs/{id}/credit-rail */
         update: (id: string, body: T.PutProgramsIdCreditRailBody, options?: RequestOptions): Promise<T.PutProgramsIdCreditRailResponse> => t.op("putProgramsIdCreditRail", { path: { id }, body }, options),
       },
+      emailSettings: {
+        /** Remove a program's email provider. DELETE /v1/programs/{id}/email-settings */
+        delete: (id: string, options?: RequestOptions): Promise<T.DeleteProgramsIdEmailSettingsResponse> => t.op("deleteProgramsIdEmailSettings", { path: { id } }, options),
+        /** Get a program's email settings. GET /v1/programs/{id}/email-settings */
+        retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdEmailSettingsResponse> => t.op("getProgramsIdEmailSettings", { path: { id } }, options),
+        /** Send a test email through a program's provider. POST /v1/programs/{id}/email-settings/test */
+        test: (id: string, body: T.PostProgramsIdEmailSettingsTestBody, options?: RequestOptions): Promise<T.PostProgramsIdEmailSettingsTestResponse> => t.op("postProgramsIdEmailSettingsTest", { path: { id }, body }, options),
+        /** Check a program's sending domain. POST /v1/programs/{id}/email-settings/verify-domain */
+        verifyDomain: (id: string, options?: RequestOptions): Promise<T.PostProgramsIdEmailSettingsVerifyDomainResponse> => t.op("postProgramsIdEmailSettingsVerifyDomain", { path: { id } }, options),
+        /** Set a program's email provider. PUT /v1/programs/{id}/email-settings */
+        update: (id: string, body: T.PutProgramsIdEmailSettingsBody, options?: RequestOptions): Promise<T.PutProgramsIdEmailSettingsResponse> => t.op("putProgramsIdEmailSettings", { path: { id }, body }, options),
+      },
       enrollments: {
         /** List program enrollments. GET /v1/programs/{id}/enrollments */
         list: (id: string, query?: (T.GetProgramsIdEnrollmentsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdEnrollmentsResponse['data'][number], T.GetProgramsIdEnrollmentsResponse> => t.list("getProgramsIdEnrollments", { path: { id }, query }, options),
@@ -1892,7 +1912,7 @@ export function buildResources(t: Transport) {
       /** Replay failed deliveries. POST /v1/webhook-endpoints/{id}/replay */
       replay: (id: string, query: T.PostWebhookEndpointsIdReplayQuery, options?: RequestOptions): Promise<T.PostWebhookEndpointsIdReplayResponse> => t.op("postWebhookEndpointsIdReplay", { path: { id }, query }, options),
       /** Rotate an endpoint secret. POST /v1/webhook-endpoints/{id}/rotate-secret */
-      rotateSecret: (id: string, options?: RequestOptions): Promise<T.PostWebhookEndpointsIdRotateSecretResponse> => t.op("postWebhookEndpointsIdRotateSecret", { path: { id } }, options),
+      rotateSecret: (id: string, body?: T.PostWebhookEndpointsIdRotateSecretBody, options?: RequestOptions): Promise<T.PostWebhookEndpointsIdRotateSecretResponse> => t.op("postWebhookEndpointsIdRotateSecret", { path: { id }, body }, options),
     },
     widget: {
       /** Exchange a user session for a widget token. POST /v1/widget/session */

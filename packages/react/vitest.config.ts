@@ -1,6 +1,6 @@
-import { defineConfig } from 'vitest/config';
+import { withLight } from '../../vitest.shared.js';
 
-export default defineConfig({
+export default withLight({
   esbuild: { jsx: 'automatic' },
   test: { environment: 'jsdom', environmentOptions: { jsdom: { url: 'https://shop.example/' } }, setupFiles: ['./test/setup.ts'] },
 });

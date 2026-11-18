@@ -182,6 +182,11 @@ export class PayloadTooLargeError extends ApiError {
   override readonly name: string = "PayloadTooLargeError";
 }
 
+/** `unsupported_media_type` (HTTP 415). */
+export class UnsupportedMediaTypeError extends ApiError {
+  override readonly name: string = "UnsupportedMediaTypeError";
+}
+
 /** `connection_paused` (HTTP 423). */
 export class ConnectionPausedError extends ApiError {
   override readonly name: string = "ConnectionPausedError";
@@ -260,6 +265,7 @@ export const errorClasses: Record<string, typeof ApiError> = {
   provider_credentials_wrong_mode: ProviderCredentialsWrongModeError,
   provider_permission: ProviderPermissionError,
   payload_too_large: PayloadTooLargeError,
+  unsupported_media_type: UnsupportedMediaTypeError,
   connection_paused: ConnectionPausedError,
   rate_limited: RateLimitedError,
   internal_error: InternalServerError,

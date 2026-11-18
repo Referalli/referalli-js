@@ -56,14 +56,33 @@ function fieldsOf(type: string, obj: any): Partial<GenericBillingEvent> | null {
     case 'charge.refunded':
       return {
         type: 'refund',
-        invoiceRef: idOf(obj.invoice),
+        // Without an invoice: the payment intent, a one-time Checkout payment's ref.
+        invoiceRef: idOf(obj.invoice) ?? idOf(obj.payment_intent),
         // amount_refunded is the charge's running total. The flag makes Referalli reverse only what earlier refunds haven't.
         amountGross: obj.amount_refunded ?? 0,
         metadata: { ...obj.metadata, chargeRef: obj.id, refundCumulative: true },
       };
     case 'charge.dispute.created': {
       const chargeRef = idOf(obj.charge);
-      return { type: 'dispute', invoiceRef: idOf(obj.invoice), amountGross: obj.amount ?? 0, metadata: { ...obj.metadata, ...(chargeRef ? { chargeRef } : {}) } };
+      return { type: 'dispute', invoiceRef: idOf(obj.invoice) ?? idOf(obj.payment_intent), amountGross: obj.amount ?? 0, metadata: { ...obj.metadata, ...(chargeRef ? { chargeRef } : {}) } };
+    }
+    // A one-time Checkout payment with no invoice (`invoice_creation` off): it earns here, never also on invoice.paid.
+    case 'checkout.session.completed':
+    case 'checkout.session.async_payment_succeeded': {
+      if (obj.mode !== 'payment' || obj.payment_status !== 'paid' || obj.invoice) return null;
+      // Refunds and disputes name the payment intent, so it is the payment's ref.
+      const ref = idOf(obj.payment_intent) ?? obj.id;
+      const email = obj.customer_details?.email ?? obj.customer_email;
+      return {
+        type: 'invoice_paid',
+        invoiceRef: ref,
+        amountGross: obj.amount_total ?? 0,
+        tax: obj.total_details?.amount_tax ?? 0,
+        // A guest has no Stripe customer: the app's own id (client_reference_id), else the payment (linked by metadata).
+        customerRef: obj.client_reference_id || ref,
+        ...(API_EMAIL.test(email ?? '') ? { customerEmail: email } : {}),
+        metadata: { ...obj.metadata, checkoutSessionRef: obj.id },
+      };
     }
     case 'customer.subscription.created':
       return {
@@ -102,7 +121,7 @@ export async function stripeEventToBillingEvents(event: StripeEventLike, options
     {
       ...(fields as Pick<GenericBillingEvent, 'type'>),
       providerEventId: `stripe:${event.id}`,
-      customerRef: mapped || stripeCustomer,
+      customerRef: mapped || stripeCustomer || fields.customerRef,
       currency: obj.currency?.toLowerCase(),
       occurredAt: new Date(event.created * 1000).toISOString(),
       metadata: { ...fields.metadata, ...(stripeCustomer && !mapped ? { stripeCustomerUnmapped: true } : {}) },

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.13 - 2026-11-18
+
+- `stripeEventToBillingEvents` maps `checkout.session.completed` and `checkout.session.async_payment_succeeded` for a paid one-time Checkout with no invoice (`mode: payment`, no `invoice_creation`) to an `invoice_paid` keyed by its payment intent, so a one-time price earns. A session with an invoice is left to `invoice.paid`, never both. A guest with no Stripe customer is filed under `client_reference_id`, else the payment intent, which the session's metadata then links. `charge.refunded` and `charge.dispute.created` with no invoice carry the payment intent too, so they reverse it.
+- Generated types and methods for what the API added since 0.3.12: program email settings and their test send, `trackingToken` and `effectiveTrackingConsent` on a program, `capPerReferral`, `domainDetail`, the test-mode partner delete's `removed`, and `graceHours` on secret rotation.
+
 ## 0.3.12 - 2026-11-11
 
 - `stripeEventToBillingEvents` reads an invoice's linked id from `parent.subscription_details.metadata` even when the event also has a top-level `subscription_details`; sources merge with the invoice's own metadata winning, then subscription details, then the first line.

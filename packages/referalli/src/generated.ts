@@ -347,6 +347,14 @@ export type ProgramTerms = {
     months: number;
   };
   holdDays: number;
+  /** The rule's cap per referred customer: the most one referral earns its partner, over every payment. */
+  capPerReferral: {
+    /** Integer minor units (cents). */
+    amountMinor: number;
+    currency: string;
+  } | null;
+  /** The program's signupToConversionDays when set (null at the 365-day default): a payment more than this many days after sign-up earns nothing. */
+  signupWindowDays: number | null;
   /** Overrides, tiers or new-vs-expansion rates can change the rate a partner earns. */
   ratesVary: boolean;
   /** The same sentence in each partner-portal locale. */
@@ -1133,6 +1141,24 @@ export type EmailSettings = {
   signingSecret?: string;
 };
 
+export type ProgramEmailSettings = {
+  programId: string;
+  /** False: the program's partner email uses the org's settings (GET /v1/email/settings). */
+  configured: boolean;
+  provider: ("resend" | "brevo" | "postmark" | "hermetica" | "webhook") | null;
+  /** The key itself is write-only and never returned. */
+  hasApiKey: boolean;
+  fromAddress: string | null;
+  fromName: string | null;
+  replyTo: string | null;
+  endpointUrl: string | null;
+  domainStatus: "unknown" | "pending" | "verified" | "failed";
+  domainCheckedAt: string | null;
+  updatedAt: string | null;
+  /** Only in the response that set up `webhook` without your own secret. Shown once. */
+  signingSecret?: string;
+};
+
 export type AlertDestination = {
   id: string;
   type: "webhook" | "slack" | "watchtower";
@@ -1505,6 +1531,20 @@ export type RoiTrace = {
     currency: string;
     reason: "no_fx_rate";
   }>;
+};
+
+/** `?dryRun=1`: the key(s) that would be minted, after every check; nothing is minted. */
+export type ApiKeyDryRun = {
+  dryRun: true;
+  name: string;
+  modes: Array<"live" | "test">;
+  scopes: Array<string>;
+  publishable: boolean;
+  allowedOrigins: Array<string>;
+  apiVersion: string;
+  owner: string | null;
+  expiresAt: string | null;
+  programIds: Array<string> | null;
 };
 
 export type AuditLogEntry = {
@@ -3361,6 +3401,10 @@ export type GetProgramsResponse = {
 export type GetProgramsIdResponse = Program & ({
   /** The program's effective default link destination: the widget's, else a sign-in connection's; null when it has none. */
   destinationUrl: string | null;
+  /** The consent mode aff.js serves this program: its own `trackingConsent`, else the org's. Readable by program-scoped keys. */
+  effectiveTrackingConsent: string;
+  /** The tracking token aff.js and links use for this program in this mode (the org's; public, it is in every page's snippet). Readable by program-scoped keys. */
+  trackingToken: string;
 });
 
 export type PatchProgramsIdResponse = Program & {
@@ -3447,6 +3491,12 @@ export type GetPartnersIdEnrollmentsResponse = {
   next_cursor: string | null;
 };
 
+export type DeletePartnersIdResponse = {
+  ok: true;
+  /** Test mode only: rows removed per table with the partner. */
+  removed?: Record<string, number>;
+};
+
 export type GetProgramsIdGraphResponse = GraphPartner & {
   depth: number;
   truncated: boolean;
@@ -3456,7 +3506,7 @@ export type PostApiKeysResponse = IssuedApiKey | {
   pairId: string;
   live: IssuedApiKey;
   test: IssuedApiKey;
-};
+} | ApiKeyDryRun;
 
 export type GetApiKeysResponse = {
   object: "list";
@@ -3847,7 +3897,8 @@ export type PostBillingConnectionsIdRotateSecretResponse = {
   provider: string;
   /** Returned only here. The previous secret keeps verifying until previousSecretExpiresAt. */
   webhookSecret: string;
-  previousSecretExpiresAt: string;
+  /** Null with `graceHours: 0`: the old secret stopped working at once. */
+  previousSecretExpiresAt: string | null;
 };
 
 export type DeleteBillingConnectionsIdResponse = {
@@ -4591,7 +4642,8 @@ export type PostWebhookEndpointsIdRotateSecretResponse = {
   id: string;
   /** The new secret, shown once. The old one keeps signing until previousSecretExpiresAt. */
   secret: string;
-  previousSecretExpiresAt: string;
+  /** Null with `graceHours: 0`: the old secret stopped working at once. */
+  previousSecretExpiresAt: string | null;
 };
 
 export type GetWebhookDeliveriesResponse = {
@@ -5797,8 +5849,23 @@ export type GetPrivacyRequestsIdResultResponse = {
   }>;
 };
 
-export type PostEmailSettingsVerifyDomainResponse = EmailSettings & {
+export type PostEmailSettingsVerifyDomainResponse = EmailSettings & ({
   domain: string;
+  /** Why the status is not verified: the provider's own error (for example a missing scope), or what is missing on its side. Null when verified. */
+  domainDetail: string | null;
+});
+
+export type PostProgramsIdEmailSettingsVerifyDomainResponse = ProgramEmailSettings & ({
+  domain: string;
+  /** Why the status is not verified: the provider's own error (for example a missing scope), or what is missing on its side. Null when verified. */
+  domainDetail: string | null;
+});
+
+export type PostProgramsIdEmailSettingsTestResponse = {
+  sent: true;
+  id: string;
+  provider: string;
+  captured?: boolean;
 };
 
 export type GetEmailTemplatesResponse = {
@@ -6342,6 +6409,11 @@ export type GetIntegrationHealthResponse = {
   ok: boolean;
   checks: Array<HealthCheck>;
   generatedAt: string;
+  /** Present for a program-scoped key: its programs, and the org-wide checks left out. */
+  scope?: {
+    programIds: Array<string>;
+    skipped: Array<string>;
+  };
 };
 
 export type GetPlansResponse = {
@@ -6631,6 +6703,22 @@ export type GetOrgConsentPartnersCookiemunchResponse = {
     cbid: string;
     programIds: Array<string> | null;
   }>;
+  /** Each registered site in the three setup steps (the same document POST …/link answers), with what is left to do. */
+  handshakes: Array<{
+    cbid: string;
+    /** The documented steps in order, and where each stands. */
+    steps: Array<{
+      id: "register_site" | "partner_link" | "executor_key";
+      status: "done" | "action_required" | "unknown" | "waiting_on_cookiemunch";
+      /** partner_link: the site's grant as Cookie Munch reports it. */
+      state: ("granted" | "waiting_on_partner" | "revoked" | "expired" | "none" | "unknown") | null;
+      linkId: string | null;
+    }>;
+    /** The executor slot holding the key Cookie Munch minted for these programs; null until it has. */
+    executorKeyId: string | null;
+    /** What is left for the merchant (in Cookie Munch) or for Cookie Munch, and why Referalli can't do it server-side: the partner link is the site owner's grant, made with the merchant's own Cookie Munch credentials, and the executor key is fetched by Cookie Munch in a signed call. Empty when everything is done. */
+    nextSteps: Array<string>;
+  }>;
 };
 
 export type PostOrgConsentPartnersCookiemunchLinkResponse = {
@@ -6651,6 +6739,28 @@ export type PostOrgConsentPartnersCookiemunchLinkResponse = {
   executorKeyId: string | null;
   /** What is left for the merchant (in Cookie Munch) or for Cookie Munch, and why Referalli can't do it server-side: the partner link is the site owner's grant, made with the merchant's own Cookie Munch credentials, and the executor key is fetched by Cookie Munch in a signed call. Empty when everything is done. */
   nextSteps: Array<string>;
+};
+
+export type PostOrgConsentPartnersCookiemunchLookupTestResponse = {
+  /** The key Cookie Munch holds for this site, never in full; null until it has minted one. */
+  executor: ({
+    id: string;
+    keyHint: string;
+    programIds: Array<string> | null;
+    mintedAt: string;
+    lastError: string | null;
+  }) | null;
+  request: {
+    path: string;
+    headers: Record<string, string>;
+    body: Record<string, unknown>;
+  };
+  /** Referalli's answer to that lookup, as Cookie Munch would get it. */
+  answer: {
+    status: number;
+    body: unknown;
+  } | null;
+  detail: string | null;
 };
 
 export type PatchOrgConsentPartnersCookiemunchSitesCbidResponse = {
@@ -8012,6 +8122,9 @@ export type PostWebhooksCookiemunchConsentResponse = {
 export type PostApiPrivacyLookupResponse = {
   subjectId: string | null;
   status: "found" | "no_match";
+  scope?: {
+    programId: string;
+  };
 };
 
 export type PostApiPrivacyRequestsResponse = ({
@@ -8986,7 +9099,6 @@ export type PatchPartnersIdBody = {
 export type PatchPartnersIdResponse = Partner;
 
 /** DELETE /v1/partners/{id}: Delete a partner */
-export type DeletePartnersIdResponse = Ok;
 
 /** GET /v1/partners/{id}/enrollments: List a partner's enrollments */
 export type GetPartnersIdEnrollmentsQuery = {
@@ -9015,6 +9127,9 @@ export type PostApiKeysBody = {
   expiresInDays?: number;
   expiresAt?: string;
   programIds?: Array<string>;
+};
+export type PostApiKeysQuery = {
+  dryRun?: "0" | "1" | "true" | "false";
 };
 
 /** GET /v1/api-keys: List API keys */
@@ -9334,6 +9449,10 @@ export type PostCommissionRulesBody = {
       months: number;
     };
     holdDays?: number;
+    capPerReferral?: {
+      amountMinor: number;
+      currency: string;
+    };
     rounding?: "half_even" | "floor";
     conditions?: {
       countries?: Array<string>;
@@ -9416,6 +9535,10 @@ export type PutProgramsIdCommissionRuleBody = {
       months: number;
     };
     holdDays?: number;
+    capPerReferral?: {
+      amountMinor: number;
+      currency: string;
+    };
     rounding?: "half_even" | "floor";
     conditions?: {
       countries?: Array<string>;
@@ -9664,6 +9787,9 @@ export type PostBillingConnectionsIdValueMappingPreviewBody = {
 export type PostBillingConnectionsIdValueMappingPreviewResponse = ValueMappingPreview;
 
 /** POST /v1/billing/connections/{id}/rotate-secret: Rotate the webhook signing secret */
+export type PostBillingConnectionsIdRotateSecretBody = {
+  graceHours?: number;
+};
 
 /** GET /v1/billing/events: List billing events */
 export type GetBillingEventsQuery = {
@@ -10283,6 +10409,9 @@ export type DeleteWebhookEndpointsIdResponse = Ok;
 export type GetWebhookEndpointsIdResponse = WebhookEndpoint;
 
 /** POST /v1/webhook-endpoints/{id}/rotate-secret: Rotate an endpoint secret */
+export type PostWebhookEndpointsIdRotateSecretBody = {
+  graceHours?: number;
+};
 
 /** GET /v1/webhook-deliveries: List webhook deliveries */
 export type GetWebhookDeliveriesQuery = {
@@ -11236,6 +11365,32 @@ export type PutEmailSettingsResponse = EmailSettings;
 
 /** POST /v1/email/settings/verify-domain: Check the sending domain */
 
+/** GET /v1/programs/{id}/email-settings: Get a program's email settings */
+export type GetProgramsIdEmailSettingsResponse = ProgramEmailSettings;
+
+/** PUT /v1/programs/{id}/email-settings: Set a program's email provider */
+export type PutProgramsIdEmailSettingsBody = {
+  provider: "resend" | "brevo" | "postmark" | "hermetica" | "webhook";
+  apiKey?: string;
+  endpointUrl?: string | null;
+  fromAddress?: string | null;
+  fromName?: string | null;
+  replyTo?: string | null;
+};
+export type PutProgramsIdEmailSettingsResponse = ProgramEmailSettings;
+
+/** DELETE /v1/programs/{id}/email-settings: Remove a program's email provider */
+export type DeleteProgramsIdEmailSettingsResponse = ProgramEmailSettings;
+
+/** POST /v1/programs/{id}/email-settings/verify-domain: Check a program's sending domain */
+
+/** POST /v1/programs/{id}/email-settings/test: Send a test email through a program's provider */
+export type PostProgramsIdEmailSettingsTestBody = {
+  event: "payout_sent" | "payout_failed" | "invitation_received" | "partner_approved" | "contract_sent" | "webhook_endpoint_disabled" | "webhook_endpoint_failing" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved" | "referral_held";
+  locale: "en" | "es" | "de" | "fr" | "pt" | "it" | "nl" | "sv" | "ja" | "zh";
+  to: string;
+};
+
 /** GET /v1/email/templates: List email templates */
 export type GetEmailTemplatesQuery = {
   limit?: number;
@@ -11892,6 +12047,22 @@ export type PostOrgConsentPartnersCookiemunchLinkBody = {
   cbid: string;
   /** The programs this site serves; its consent events and its executor key stay inside them. Narrows a site already registered for the whole org. Default: the calling key's programs, else the site's current programs, else the whole org. */
   programIds?: Array<string>;
+};
+
+/** POST /v1/org/consent-partners/cookiemunch/lookup-test: See the answer Cookie Munch's key gets */
+export type PostOrgConsentPartnersCookiemunchLookupTestBody = {
+  /** A Cookie Munch site id (cbid). */
+  cbid: string;
+  emails: Array<string>;
+  /** As Cookie Munch sends it: the sign-in identity (issuer and subject). When given it decides the answer, not the emails. */
+  identity?: {
+    iss: string;
+    sub: string;
+    ext?: string;
+    principal?: string;
+  };
+  /** As Cookie Munch sends it: {"programId": "prg_..."} on a connection scoped to one program. */
+  scope?: unknown;
 };
 
 /** PATCH /v1/org/consent-partners/cookiemunch/sites/{cbid}: Change a Cookie Munch site's programs */
@@ -12683,6 +12854,11 @@ export const operations = {
   getV1EmailSettings: { method: 'GET', path: '/v1/email/settings' },
   putV1EmailSettings: { method: 'PUT', path: '/v1/email/settings' },
   postV1EmailSettingsVerifyDomain: { method: 'POST', path: '/v1/email/settings/verify-domain' },
+  getV1ProgramsIdEmailSettings: { method: 'GET', path: '/v1/programs/{id}/email-settings' },
+  putV1ProgramsIdEmailSettings: { method: 'PUT', path: '/v1/programs/{id}/email-settings' },
+  deleteV1ProgramsIdEmailSettings: { method: 'DELETE', path: '/v1/programs/{id}/email-settings' },
+  postV1ProgramsIdEmailSettingsVerifyDomain: { method: 'POST', path: '/v1/programs/{id}/email-settings/verify-domain' },
+  postV1ProgramsIdEmailSettingsTest: { method: 'POST', path: '/v1/programs/{id}/email-settings/test' },
   getV1EmailTemplates: { method: 'GET', path: '/v1/email/templates' },
   putV1EmailTemplatesEventLocale: { method: 'PUT', path: '/v1/email/templates/{event}/{locale}' },
   deleteV1EmailTemplatesEventLocale: { method: 'DELETE', path: '/v1/email/templates/{event}/{locale}' },
@@ -12781,6 +12957,7 @@ export const operations = {
   getV1OrgConsentPartnersCookiemunch: { method: 'GET', path: '/v1/org/consent-partners/cookiemunch' },
   putV1OrgConsentPartnersCookiemunch: { method: 'PUT', path: '/v1/org/consent-partners/cookiemunch' },
   postV1OrgConsentPartnersCookiemunchLink: { method: 'POST', path: '/v1/org/consent-partners/cookiemunch/link' },
+  postV1OrgConsentPartnersCookiemunchLookupTest: { method: 'POST', path: '/v1/org/consent-partners/cookiemunch/lookup-test' },
   patchV1OrgConsentPartnersCookiemunchSitesCbid: { method: 'PATCH', path: '/v1/org/consent-partners/cookiemunch/sites/{cbid}' },
   getV1OrgConsentPartnersCookiemunchEvents: { method: 'GET', path: '/v1/org/consent-partners/cookiemunch/events' },
   postV1OrgConsentPartnersCookiemunchStampsCheck: { method: 'POST', path: '/v1/org/consent-partners/cookiemunch/stamps/check' },
