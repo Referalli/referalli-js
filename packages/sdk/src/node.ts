@@ -218,7 +218,7 @@ export class ReferalliClient {
  * the client (window.aff.getReferral()) — pass a resolver that reads it from
  * wherever you stashed it (a cookie, the user's metadata, the pending sign-up).
  *
- *   import { Referalli, referalliAuthEvents, referralFromCookieHeader } from "referalli";
+ *   import { Referalli, referalliAuthEvents, referralFromCookieHeader } from "@referalli/sdk";
  *   const events = referalliAuthEvents(new Referalli(), {
  *     programId: "prg_...",
  *     // Sync or async. Reads referalli_ctx, falling back to the pre-rename referally_ctx.

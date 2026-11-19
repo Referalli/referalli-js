@@ -21,7 +21,7 @@ import {
   parseReferral,
   serializeReferralCookies,
   type StoredReferral,
-} from 'referalli/attribution';
+} from '@referalli/sdk/attribution';
 
 /** The visitor's consent for the referral cookie, as your CMP reports it server-side. */
 export type ConsentState = 'granted' | 'denied' | 'unknown';

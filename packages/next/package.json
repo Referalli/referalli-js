@@ -1,6 +1,6 @@
 {
   "name": "@referalli/next",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Next.js kit for Referalli: middleware that captures ?ref= into a first-party cookie, getReferral() for server code, webhook route handlers and signup attribution.",
   "license": "MIT",
   "type": "module",
@@ -55,8 +55,8 @@
     "prepack": "node scripts/build.mjs"
   },
   "dependencies": {
-    "@referalli/react": "^0.4.0",
-    "referalli": "^0.3.20"
+    "@referalli/react": "^0.4.1",
+    "@referalli/sdk": "^0.3.20"
   },
   "peerDependencies": {
     "next": ">=13.4"

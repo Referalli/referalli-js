@@ -36,4 +36,4 @@ export {
   type ReferralWidgetAttributes,
   type ReferralWidgetElement,
 } from './referral-panel.js';
-export type { ReferralContext } from 'referalli/browser';
+export type { ReferralContext } from '@referalli/sdk/browser';

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { renderToString } from 'react-dom/server';
-import { Referalli } from 'referalli';
+import { Referalli } from '@referalli/sdk';
 import { describe, expect, it } from 'vitest';
 import { getReferralPanel, getReferrerSummary, ReferralPanel } from '../src/server.js';
 

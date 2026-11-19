@@ -6,7 +6,7 @@
 - First-party referral attribution cookies
 
 ```sh
-npm install @referalli/express referalli
+npm install @referalli/express @referalli/sdk
 ```
 
 ## Webhooks
@@ -34,7 +34,7 @@ The middleware verifies the exact bytes Referalli signed. It reads them from the
 ## Attribution
 
 ```ts
-import { Referalli } from 'referalli';
+import { Referalli } from '@referalli/sdk';
 import { attributeSignup, referalliAttribution } from '@referalli/express';
 
 const referalli = new Referalli(); // REFERALLI_API_KEY

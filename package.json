@@ -4,7 +4,7 @@
   "description": "Generated from the Referalli monorepo; see CONTRIBUTING.md.",
   "license": "MIT",
   "workspaces": [
-    "packages/referalli",
+    "packages/sdk",
     "packages/react",
     "packages/next",
     "packages/express"

@@ -9,7 +9,7 @@
  * button is a client island.
  */
 import type { ReactNode } from 'react';
-import { ApiError, Referalli, type GetTOrgTokenWidgetMeResponse } from 'referalli';
+import { ApiError, Referalli, type GetTOrgTokenWidgetMeResponse } from '@referalli/sdk';
 import { ReferralLink } from '@referalli/react';
 import { LivePanelSwap } from './live-panel.js';
 

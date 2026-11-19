@@ -9,7 +9,7 @@ Next.js support for [Referalli](https://referalli.com):
 - `<ReferralPanel>` as a server component (`@referalli/next/server`)
 
 ```sh
-npm install @referalli/next referalli
+npm install @referalli/next @referalli/sdk
 ```
 
 ## Middleware
@@ -82,7 +82,7 @@ It fetches the user's code and link with `REFERALLI_API_KEY` on the server and r
 
 ```ts
 'use server';
-import { Referalli } from 'referalli';
+import { Referalli } from '@referalli/sdk';
 import { attributeSignup } from '@referalli/next';
 
 const referalli = new Referalli(); // REFERALLI_API_KEY

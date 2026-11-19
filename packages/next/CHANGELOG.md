@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.4 - 2026-11-18
+
+- Depends on `@referalli/sdk`, the core SDK's new name on npm (the unscoped `referalli` package stays at 0.3.16 and gets no more releases). Install `@referalli/sdk` and import from it.
+
 ## 0.4.3 - 2026-11-11
 
 - **Added:** `getReferrerSummary({ customerRef })` in `@referalli/next/server`: link, code, friends, commissions with release dates and payout status in one call, for your own referral page.

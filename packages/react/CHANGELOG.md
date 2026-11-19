@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 - 2026-11-18
+
+- Depends on `@referalli/sdk`, the core SDK's new name on npm (the unscoped `referalli` package stays at 0.3.16 and gets no more releases). Install `@referalli/sdk` and import from it.
+
 ## 0.4.0 - 2026-11-03
 
 - New `<ReferralPanel programId auth getAuthToken token tokenUrl lang trackingToken baseUrl className onReady onError />`: the signed-in referral panel (`<referalli-referral-widget>`). Loads `widget.js` once, sets `getAuthToken` as a property, renders nothing on the server, removes its element on unmount. The tracking token and base URL default to `<ReferalliProvider>`'s.

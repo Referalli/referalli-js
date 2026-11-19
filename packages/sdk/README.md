@@ -10,7 +10,7 @@ The official Referalli SDK for JavaScript and TypeScript. It calls every API ope
 - ESM and CommonJS, no dependencies
 
 ```sh
-npm install referalli
+npm install @referalli/sdk
 ```
 
 Framework kits: [`@referalli/react`](https://www.npmjs.com/package/@referalli/react), [`@referalli/next`](https://www.npmjs.com/package/@referalli/next), [`@referalli/express`](https://www.npmjs.com/package/@referalli/express).
@@ -20,7 +20,7 @@ Framework kits: [`@referalli/react`](https://www.npmjs.com/package/@referalli/re
 Keep your secret `rk_` key on your server.
 
 ```ts
-import { Referalli } from 'referalli';
+import { Referalli } from '@referalli/sdk';
 
 const referalli = new Referalli({ apiKey: process.env.REFERALLI_API_KEY });
 ```
@@ -83,7 +83,7 @@ Webhooks are signed with [Standard Webhooks](https://www.standardwebhooks.com). 
 
 ```ts
 // app/api/referalli/route.ts
-import { webhooks } from 'referalli';
+import { webhooks } from '@referalli/sdk';
 
 export async function POST(req: Request) {
   const event = await webhooks.constructEvent(await req.text(), req.headers, process.env.REFERALLI_WEBHOOK_SECRET!);
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
 
 ```ts
 import express from 'express';
-import { webhooks, WebhookVerificationError } from 'referalli';
+import { webhooks, WebhookVerificationError } from '@referalli/sdk';
 
 app.post('/webhooks/referalli', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
@@ -125,7 +125,7 @@ Deliveries signed more than 5 minutes ago, or more than 5 minutes in the future,
 So an outage longer than the client's retries does not lose a payment, queue `generic` billing events and flush them:
 
 ```ts
-import { createOutbox } from 'referalli';
+import { createOutbox } from '@referalli/sdk';
 
 const outbox = createOutbox({ store, connectionId: 'bcon_...', secret: process.env.REFERALLI_BILLING_SECRET });
 await outbox.enqueue({ providerEventId: invoice.id, type: 'invoice_paid', customerRef: user.id, amountGross: 4900, currency: 'usd', occurredAt: invoice.paidAt });
@@ -174,7 +174,7 @@ Every error extends `ReferalliError`.
 | `WebhookVerificationError` | A webhook failed verification. `reason` is `missing_headers`, `timestamp` or `signature`. |
 
 ```ts
-import { NotFoundError, RateLimitedError } from 'referalli';
+import { NotFoundError, RateLimitedError } from '@referalli/sdk';
 
 try {
   await referalli.partners.retrieve('ptr_missing');
@@ -215,14 +215,14 @@ for await (const r of referalli.listAll('getReferrals', { query: { limit: 100 } 
 
 To send a raw request with the client's auth, retries and error handling, use `referalli.request({ method, path, query, body })`.
 
-The API's types are exported from the package root (`import type { Partner, Program } from 'referalli'`) and from `referalli/types`.
+The API's types are exported from the package root (`import type { Partner, Program } from '@referalli/sdk'`) and from `referalli/types`.
 
 ## Browser tracker
 
 Only your public tracking token goes in the browser, never an `rk_` key.
 
 ```ts
-import { createTracker } from 'referalli/browser';
+import { createTracker } from '@referalli/sdk/browser';
 
 const tracker = await createTracker({ publishableKey: 'tk_...' });
 tracker.getReferral(); // { anonId, code, clickId, ts }

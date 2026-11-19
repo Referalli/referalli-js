@@ -9,11 +9,11 @@
  *
  * The middleware lives in `@referalli/next/middleware` (edge-safe).
  */
-import { associateFields, hashEmail, parseReferral, REFERRAL_COOKIE_NAMES, referralFromCookieHeader, type ReferralContext } from 'referalli/attribution';
-import { webhooks, WebhookVerificationError, type VerifyOptions, type WebhookEvent, type WebhookEventOf, type WebhookTopic } from 'referalli';
+import { associateFields, hashEmail, parseReferral, REFERRAL_COOKIE_NAMES, referralFromCookieHeader, type ReferralContext } from '@referalli/sdk/attribution';
+import { webhooks, WebhookVerificationError, type VerifyOptions, type WebhookEvent, type WebhookEventOf, type WebhookTopic } from '@referalli/sdk';
 
 export { captureReferral, referalliMiddleware, type CaptureOptions, type ConsentState } from './middleware.js';
-export type { ReferralContext } from 'referalli/attribution';
+export type { ReferralContext } from '@referalli/sdk/attribution';
 
 const view = (s: ReturnType<typeof parseReferral>): ReferralContext | null =>
   s ? { anonId: s.anonId, code: s.code, clickId: s.clickId, ts: s.ts } : null;

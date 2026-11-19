@@ -4,7 +4,7 @@ The official JavaScript and TypeScript packages for [Referalli](https://referall
 
 | Package | Install | What it is |
 | --- | --- | --- |
-| [`referalli`](./packages/referalli) | `npm install referalli` | Typed API client for Node.js and the browser, webhook verification, the tracking snippet |
+| [`referalli`](./packages/referalli) | `npm install @referalli/sdk` | Typed API client for Node.js and the browser, webhook verification, the tracking snippet |
 | [`@referalli/react`](./packages/react) | `npm install @referalli/react` | React provider and hooks |
 | [`@referalli/next`](./packages/next) | `npm install @referalli/next` | Next.js middleware and server helpers |
 | [`@referalli/express`](./packages/express) | `npm install @referalli/express` | Express webhook verification and attribution middleware |

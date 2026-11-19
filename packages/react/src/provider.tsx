@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { createTracker, getReferral, type ReferralContext, type Tracker, type TrackerOptions } from 'referalli/browser';
+import { createTracker, getReferral, type ReferralContext, type Tracker, type TrackerOptions } from '@referalli/sdk/browser';
 
 export const DEFAULT_BASE_URL = 'https://referalli.com';
 

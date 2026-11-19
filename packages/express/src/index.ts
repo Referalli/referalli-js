@@ -9,7 +9,7 @@
  *   app.use(referalliAttribution()); // req.referral on every request
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { webhooks, WebhookVerificationError, type VerifyOptions, type WebhookEvent } from 'referalli';
+import { webhooks, WebhookVerificationError, type VerifyOptions, type WebhookEvent } from '@referalli/sdk';
 import {
   associateFields,
   clearReferralCookies,
@@ -20,12 +20,12 @@ import {
   referralFromUrl,
   serializeReferralCookies,
   type ReferralContext,
-} from 'referalli/attribution';
+} from '@referalli/sdk/attribution';
 
 /** The visitor's consent for the referral cookie, as your CMP reports it server-side. */
 export type ConsentState = 'granted' | 'denied' | 'unknown';
 
-export type { ReferralContext } from 'referalli/attribution';
+export type { ReferralContext } from '@referalli/sdk/attribution';
 
 type Next = (err?: unknown) => void;
 type Req = IncomingMessage & {

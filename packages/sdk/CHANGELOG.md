@@ -2,6 +2,7 @@
 
 ## 0.3.20 - 2026-11-18
 
+- Published as `@referalli/sdk`. The unscoped `referalli` package stays at 0.3.16; install `@referalli/sdk` and change imports from `referalli` (and `referalli/browser`, ...) to `@referalli/sdk` (`@referalli/sdk/browser`, ...). Nothing else changed.
 - Generated types for the program settings `payoutTaxFormPolicy` and `recordCountry`, `enableWidget` / `widgetEnabled` on auth connections, the typed `GenericBillingEvent` (with top-level `customerCreatedAt`), native import row types (`NativeImportRow`) and its dry-run report, the referee reward `issueOn` option and the `referee_reward` sandbox scenario. 0.3.19 was never published to npm; this release includes its changes.
 
 ## 0.3.19 - 2026-11-18

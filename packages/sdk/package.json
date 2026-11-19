@@ -1,5 +1,5 @@
 {
-  "name": "referalli",
+  "name": "@referalli/sdk",
   "version": "0.3.20",
   "description": "Official Referalli SDK for JavaScript and TypeScript: every API operation typed, webhooks, and the browser referral tracker.",
   "license": "MIT",
@@ -93,7 +93,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Referalli/referalli-js.git",
-    "directory": "packages/referalli"
+    "directory": "packages/sdk"
   },
   "bugs": {
     "url": "https://github.com/Referalli/referalli-js/issues"
