@@ -394,6 +394,8 @@ export type Referral = {
     clickId: string | null;
   }>;
   reasoning: AttributionReasoning;
+  /** The opaque third-party visit token stored on the referral's click (`GET /v1/referrals/{id}` only), or null. */
+  visitToken?: string | null;
 };
 
 export type SignupReasonCode = "consent_missing" | "unknown_code" | "customer_is_partner" | "self_referral" | "banned_partner" | "archived_partner" | "flagged_partner" | "fingerprint_ignored" | "risk_hold" | "no_email_for_enroll" | "enroll_email_taken" | "enroll_code_unavailable";
@@ -419,6 +421,8 @@ export type AssociateResponse = {
       clickId: string | null;
     }>;
     reasoning: AttributionReasoning;
+    /** The opaque third-party visit token stored on the referral's click (`GET /v1/referrals/{id}` only), or null. */
+    visitToken?: string | null;
     orgId: string;
   }) | null;
   /** Why a partner was skipped or the referral held, in English (no codes here). The matched referral carries its own `reasoning.notes` and `reasoning.noteCodes`. */
@@ -1842,6 +1846,8 @@ export type ReferralCreatedEventData = {
   /** Your id for the referred customer. */
   customerRef: string;
   status: "active" | "pending_review" | "paused" | "void";
+  /** The opaque third-party visit token (for example Seolyticize's) stored on the referral's click, or null. */
+  visitToken: string | null;
   matchedVia: string;
 };
 
@@ -1867,6 +1873,8 @@ export type ReferralHeldEventData = {
   /** Your id for the referred customer. */
   customerRef: string;
   status: "active" | "pending_review" | "paused" | "void";
+  /** The opaque third-party visit token (for example Seolyticize's) stored on the referral's click, or null. */
+  visitToken: string | null;
   reasons: Array<string>;
   caseId: string;
 };
@@ -1893,6 +1901,8 @@ export type ReferralApprovedEventData = {
   /** Your id for the referred customer. */
   customerRef: string;
   status: "active" | "pending_review" | "paused" | "void";
+  /** The opaque third-party visit token (for example Seolyticize's) stored on the referral's click, or null. */
+  visitToken: string | null;
   reason?: string;
   caseId?: string;
 };
@@ -1919,6 +1929,8 @@ export type ReferralVoidedEventData = {
   /** Your id for the referred customer. */
   customerRef: string;
   status: "active" | "pending_review" | "paused" | "void";
+  /** The opaque third-party visit token (for example Seolyticize's) stored on the referral's click, or null. */
+  visitToken: string | null;
   reason?: string;
   caseId?: string;
 };
@@ -1945,6 +1957,8 @@ export type ReferralPausedEventData = {
   /** Your id for the referred customer. */
   customerRef: string;
   status: "active" | "pending_review" | "paused" | "void";
+  /** The opaque third-party visit token (for example Seolyticize's) stored on the referral's click, or null. */
+  visitToken: string | null;
 };
 
 /** A referral was paused: the `referral.paused` delivery body. */
@@ -1969,6 +1983,8 @@ export type ReferralResumedEventData = {
   /** Your id for the referred customer. */
   customerRef: string;
   status: "active" | "pending_review" | "paused" | "void";
+  /** The opaque third-party visit token (for example Seolyticize's) stored on the referral's click, or null. */
+  visitToken: string | null;
 };
 
 /** A paused referral was resumed: the `referral.resumed` delivery body. */
@@ -1993,6 +2009,8 @@ export type ReferralReassignedEventData = {
   /** Your id for the referred customer. */
   customerRef: string;
   status: "active" | "pending_review" | "paused" | "void";
+  /** The opaque third-party visit token (for example Seolyticize's) stored on the referral's click, or null. */
+  visitToken: string | null;
   previousPartnerId: string;
   previousPartnerExternalRef: string | null;
 };
@@ -2542,6 +2560,74 @@ export type BillingEventRecordedEvent = {
   livemode: boolean;
   createdAt: string;
   data: BillingEventRecordedEventData;
+};
+
+/** `data` of a `order.attributed` event: Fires once per paid billing event per credited referral, in the same transaction as the commission lines (so a payment that credits two referrals sends two events). `orderId` is the invoice ref, else the charge ref, else the provider event id. `amountMinor` is what the buyer paid, `basisMinor` the order value the commission was computed on (null for fixed amounts). `visitToken` is the opaque visit token on the referral's click, or null. */
+export type OrderAttributedEventData = {
+  /** The invoice ref, else the charge ref, else the provider event id. */
+  orderId: string;
+  billingEventId: string;
+  /** What the buyer paid (gross); for `order.refunded`, the refunded amount. */
+  amountMinor: number;
+  basisMinor: number | null;
+  /** Lowercase ISO 4217 code. */
+  currency: string;
+  partnerId: string;
+  partnerName: string;
+  partnerExternalRef: string | null;
+  programId: string;
+  programSlug: string;
+  referralId: string;
+  customerRef: string;
+  visitToken: string | null;
+  occurredAt: string;
+};
+
+/** A paid order was attributed to a partner: the `order.attributed` delivery body. */
+export type OrderAttributedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "order.attributed";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: OrderAttributedEventData;
+};
+
+/** `data` of a `order.refunded` event: Fires when a refund or dispute reverses an order that earned a referral, once per credited referral. Same fields as `order.attributed`; `refundOf` is the original `orderId` and `amountMinor` the refunded amount (the whole order for a dispute). `billingEventId` is the refund's own billing event. */
+export type OrderRefundedEventData = {
+  /** The invoice ref, else the charge ref, else the provider event id. */
+  orderId: string;
+  billingEventId: string;
+  /** What the buyer paid (gross); for `order.refunded`, the refunded amount. */
+  amountMinor: number;
+  basisMinor: number | null;
+  /** Lowercase ISO 4217 code. */
+  currency: string;
+  partnerId: string;
+  partnerName: string;
+  partnerExternalRef: string | null;
+  programId: string;
+  programSlug: string;
+  referralId: string;
+  customerRef: string;
+  visitToken: string | null;
+  occurredAt: string;
+  /** The `orderId` of the order that was refunded. */
+  refundOf: string;
+};
+
+/** An attributed order was refunded: the `order.refunded` delivery body. */
+export type OrderRefundedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "order.refunded";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: OrderRefundedEventData;
 };
 
 /** `data` of a `billing_event.held` event: A payment over its connection's `maxAmountMinor` (approximate US cents), dated more than a day ahead, or in a currency that isn't ISO 4217, earned nothing and waits for POST /v1/billing/events/{id}/release. */
@@ -4055,6 +4141,8 @@ export type GetReferralsIdJourneyResponse = {
     clickId: string | null;
   }>;
   reasoning: AttributionReasoning;
+  /** The opaque third-party visit token stored on the referral's click (`GET /v1/referrals/{id}` only), or null. */
+  visitToken?: string | null;
   touchpoints: Array<{
     clickId: string;
     ts: string;
@@ -9128,6 +9216,8 @@ export type PostTOrgTokenVisitBody = {
   url?: string;
   /** The partner's sub-ID from `?sub=`, stored on a click this beacon creates. */
   sub?: string;
+  /** An opaque third-party visit token (the Seolyticize tag's, `v1.…`; printable ASCII, at most 512 characters), stored on a click this beacon creates. Ignored when invalid. */
+  visitToken?: unknown;
   referer?: string;
   /** The visitor's consent as the tracker read it from the site's CMP (`aff.consentEvidence()`). Stored on the click and the visit. */
   consent?: {
@@ -10581,6 +10671,8 @@ export type PostTrackEventsBody = {
   kind?: string;
   metadata?: Record<string, unknown>;
   occurredAt?: string;
+  /** An opaque third-party visit token (printable ASCII, at most 512 characters) stored beside the click. */
+  visitToken?: string;
 } | {
   programId: string;
   partnerId: string;
@@ -13924,6 +14016,10 @@ export type WebhookPayloads = {
   "credit.redeemed": CreditRedeemedEvent;
   /** A billing event was recorded */
   "billing_event.recorded": BillingEventRecordedEvent;
+  /** A paid order was attributed to a partner */
+  "order.attributed": OrderAttributedEvent;
+  /** An attributed order was refunded */
+  "order.refunded": OrderRefundedEvent;
   /** A payment was held for review */
   "billing_event.held": BillingEventHeldEvent;
   /** A parked refund or dispute expired */

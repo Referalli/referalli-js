@@ -15,6 +15,8 @@
  *  - `data-attribution="first" | "last"`: which referral a new one replaces.
  *  - `data-cookie-domain=".app.com"`: share the cookie with subdomains (an
  *    auth page on auth.app.com can then read the referral).
+ *  - `data-visit-token="v1...."`: an opaque third-party visit token to send with the click. Without it, a
+ *    `window.seolyticize('visit')` (the Seolyticize tag) is asked, waiting at most 300 ms.
  *  - `data-partner-bar="on"`: show the get-link bar to a partner the portal sent here with a bar token
  *    (sessionStorage only, no cookie; see routes/storefronts.ts).
  * `aff.consent(true|false)` is the push path for pages without a supported
@@ -105,13 +107,18 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   var cm=attr('data-consent');if(cm&&${JSON.stringify(CONSENT_MODES)}.indexOf(cm)>=0)CFG.mode=cm;
   var cc=attr('data-consent-category');if(cc)CFG.category=cc.slice(0,80);
   var tv=parseInt(attr('data-consent-tcf-vendor')||'',10);if(tv>0)CFG.tcfVendorId=tv;
+  // The Seolyticize tag's visit token (or data-visit-token), only sent with a click consent already allows; waits 300 ms at most.
+  function visitToken(cb){var d=false;function done(t){if(d)return;d=true;cb(typeof t==='string'&&/^[\\x21-\\x7e]{1,512}$/.test(t)?t:null);}
+    var m=attr('data-visit-token');if(m)return done(m);
+    try{if(typeof window.seolyticize==='function'){setTimeout(done,300);Promise.resolve(window.seolyticize('visit')).then(done,function(){done();});return;}}catch(e){}
+    done();}
   function identify(o){o=o||{};if(gone||dropped)return;if(!active&&!st.anonId)return;
     if(cstate!=='granted'){pendingId=o;return;}
     post('/t/${token}/identify',{anonId:ctx.anonId,customerRef:o.customerRef,emailHash:o.emailHash});}
   function onConsent(state,ev){cstate=state;
     if(state==='granted'){dropped=false;
       if(active){write(ctx);
-        if(!sent){sent=true;post('/t/${token}/visit',{anonId:ctx.anonId,code:(keep?null:code)||ctx.code||undefined,clickId:(keep?null:clickId)||ctx.clickId||undefined,url:window.location.href,sub:sub||undefined,consent:ev||undefined},function(j){var w=j&&j.cookieWindowDays;if(w>0&&!dropped&&!gone){days=Math.min(w,400);ctx.exp=Date.now()+days*86400000;write(ctx);}});}}
+        if(!sent){sent=true;visitToken(function(vt){post('/t/${token}/visit',{anonId:ctx.anonId,code:(keep?null:code)||ctx.code||undefined,clickId:(keep?null:clickId)||ctx.clickId||undefined,url:window.location.href,sub:sub||undefined,visitToken:vt||undefined,consent:ev||undefined},function(j){var w=j&&j.cookieWindowDays;if(w>0&&!dropped&&!gone){days=Math.min(w,400);ctx.exp=Date.now()+days*86400000;write(ctx);}});});}}
       if(pendingId){var o=pendingId;pendingId=null;identify(o);}}
     else if(state==='denied'){clear();dropped=true;pendingId=null;}}
   var gate=${src.gate}(window,CFG,${src.adapters},${src.order},onConsent);

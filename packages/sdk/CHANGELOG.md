@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.23 - 2026-11-19
+
+- Types for the `order.attributed` and `order.refunded` webhooks and `visitToken` (server touches, `referral.*` events, referrals). The served `aff.js` passes the Seolyticize visit token (or `data-visit-token`) with the visit.
+
 ## 0.3.22 - 2026-11-19
 
 - **Added:** request option `signWith` (the connection secret) for signature-auth routes such as `billing.connections.stripeForward`: signs the exact body sent as `x-referalli-signature: t=,v1=`, sends no API key, and needs none. The Stripe forward body accepts a `Stripe.Event` without a cast.
