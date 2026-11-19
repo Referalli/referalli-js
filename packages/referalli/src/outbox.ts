@@ -163,12 +163,12 @@ export function createOutbox(options: OutboxOptions): Outbox {
       // maxRetries 0: the outbox does the waiting, so a flush never blocks on backoff.
       await api().billing.connections.events(
         connectionId,
-        { events: [event as unknown as Record<string, unknown>] },
+        { events: [event as never] },
         { idempotencyKey: `outbox:${connectionId}:${event.providerEventId}`, maxRetries: 0 },
       );
       return;
     }
-    const body = JSON.stringify({ events: [event] });
+    const body = JSON.stringify({ events: [event as never] });
     const signature = toHex(hmacSha256(new TextEncoder().encode(secret), new TextEncoder().encode(body)));
     const base = (options.baseUrl ?? options.client?.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
     const res = await (options.fetch ?? ((url: string, init: RequestInit) => globalThis.fetch(url, init)))(`${base}/webhooks/billing/${encodeURIComponent(connectionId)}`, {

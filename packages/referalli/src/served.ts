@@ -98,7 +98,7 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
     clickId:keep?(st.clickId||null):(clickId||st.clickId||null),
     ts:st.ts||Date.now()};
   ctx.exp=keep&&st.exp?st.exp:((code||clickId)?Date.now()+days*86400000:(st.exp||Date.now()+days*86400000));
-  function post(p,b){if(gone||dropped)return;try{fetch(BASE+p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b),keepalive:true}).catch(function(){});}catch(e){}}
+  function post(p,b,cb){if(gone||dropped)return;try{fetch(BASE+p,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b),keepalive:true}).then(function(r){return cb?r.json():0;}).then(function(j){if(cb)cb(j);}).catch(function(){});}catch(e){}}
   var active=!referralOnly||code||clickId;
   // Consent: the org default, overridden by the tag.
   var CFG=${JSON.stringify(consent)};
@@ -111,7 +111,7 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   function onConsent(state,ev){cstate=state;
     if(state==='granted'){dropped=false;
       if(active){write(ctx);
-        if(!sent){sent=true;post('/t/${token}/visit',{anonId:ctx.anonId,code:(keep?null:code)||ctx.code||undefined,clickId:(keep?null:clickId)||ctx.clickId||undefined,url:window.location.href,sub:sub||undefined,consent:ev||undefined});}}
+        if(!sent){sent=true;post('/t/${token}/visit',{anonId:ctx.anonId,code:(keep?null:code)||ctx.code||undefined,clickId:(keep?null:clickId)||ctx.clickId||undefined,url:window.location.href,sub:sub||undefined,consent:ev||undefined},function(j){var w=j&&j.cookieWindowDays;if(w>0&&!dropped&&!gone){days=Math.min(w,400);ctx.exp=Date.now()+days*86400000;write(ctx);}});}}
       if(pendingId){var o=pendingId;pendingId=null;identify(o);}}
     else if(state==='denied'){clear();dropped=true;pendingId=null;}}
   var gate=${src.gate}(window,CFG,${src.adapters},${src.order},onConsent);

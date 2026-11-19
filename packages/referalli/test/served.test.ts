@@ -8,6 +8,7 @@ function browser(href: string, attrs: Record<string, string> = {}, opts: Snippet
   const cookieWrites: string[] = [];
   const cookies = new Map<string, string>();
   const sent: Array<{ url: string; body: any }> = [];
+  let visitWindow: number | null = null;
   const page = new URL(href);
   const document = {
     currentScript: { src: 'https://track.example.com/t/tk_1/aff.js', getAttribute: (n: string) => attrs[n] ?? null },
@@ -36,6 +37,7 @@ function browser(href: string, attrs: Record<string, string> = {}, opts: Snippet
     },
     fetch: (url: string, init: { body: string }) => {
       sent.push({ url, body: JSON.parse(init.body) });
+      if (url.endsWith('/visit')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, clickId: null, cookieWindowDays: visitWindow }) });
       if (url.endsWith('/handoff')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ handoffToken: 'rh_served' }) });
       return Promise.resolve();
     },
@@ -53,7 +55,7 @@ function browser(href: string, attrs: Record<string, string> = {}, opts: Snippet
     runInNewContext(renderSnippetJs('tk_1', 'https://internal:4000', opts), ctx);
     return window.aff as { getReferral(): any; identify(o: object): void; forget(): void; getHandoffToken(): Promise<string | null> };
   };
-  return { load, store, cookies, cookieWrites, sent };
+  return { load, store, cookies, cookieWrites, sent, setVisitWindow: (n: number | null) => { visitWindow = n; } };
 }
 
 describe('served aff.js', () => {
@@ -80,6 +82,15 @@ describe('served aff.js', () => {
     b.load();
     expect(b.cookieWrites[0]).toContain('; Secure');
     expect(b.cookieWrites[0]).toContain(`max-age=${30 * 86400}`);
+  });
+
+  it("REF-02: the visit response's link window re-writes the cookie for that long", async () => {
+    const b = browser('https://shop.example.com/?via=dana', {}, { cookieDays: 90 });
+    b.setVisitWindow(10);
+    b.load();
+    expect(b.cookieWrites[0]).toContain(`max-age=${90 * 86400}`);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(b.cookieWrites.at(-1)).toContain(`max-age=${10 * 86400}`);
   });
 
   it('data-cookie-days overrides the default', () => {

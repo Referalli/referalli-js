@@ -1,6 +1,69 @@
 // Generated from the Referalli OpenAPI document. Do not edit by hand:
 // run `pnpm --filter referalli gen` after changing the API.
 
+export type NativeImportPartnerRow = {
+  type: "partner";
+  /** Idempotency key of the row; default is the commission `reference`, else a hash of the row. */
+  key?: string;
+  programId: string;
+  externalRef: string;
+  /** Required for a partner not yet in Referalli. */
+  email?: string;
+  displayName?: string;
+  coupon?: string | Array<string>;
+  links?: Array<{
+    code: string;
+    label?: string;
+    status?: "active" | "disabled";
+    cookieWindowDays?: number;
+    commission?: {
+      bps: number;
+    };
+    destinationUrl?: string;
+  }>;
+};
+
+export type NativeImportReferralRow = {
+  type: "referral";
+  /** Idempotency key of the row; default is the commission `reference`, else a hash of the row. */
+  key?: string;
+  programId: string;
+  partnerExternalRef: string;
+  customerRef: string;
+  /** When the customer was referred. One of `referredAt` or `signedUpAt` is required. */
+  referredAt?: string;
+  /** Alias of `referredAt`; `referredAt` wins when both are sent. */
+  signedUpAt?: string;
+  matchedVia?: "import";
+  payBounties?: false;
+};
+
+export type NativeImportCommissionRow = {
+  type: "commission";
+  /** Idempotency key of the row; default is the commission `reference`, else a hash of the row. */
+  key?: string;
+  programId: string;
+  partnerExternalRef: string;
+  /** Links the line to the customer's imported referral; needed for it to count as the referral's earnings. */
+  customerRef?: string;
+  amountMinor: number;
+  currency: string;
+  /** `pending` and `held` (needs `holdUntil`): earned, waiting. `approved`: approved, not paid. `paid`: earned, approved and paid. `reversed`: earned then reversed, net zero. */
+  state: "pending" | "held" | "approved" | "paid" | "reversed";
+  /** Only with `paid`. */
+  paidAt?: string;
+  /** Only with `pending`, `held` and `approved`. */
+  holdUntil?: string;
+  /** Your id for the line; with `programId` it makes the row idempotent. */
+  reference?: string;
+  /** Your payout id. Only with `paid`; stored on the paid line. */
+  payoutRef?: string;
+  /** The amount the commission was computed on, stored for reporting. */
+  baseMinor?: number;
+};
+
+export type NativeImportRow = NativeImportPartnerRow | NativeImportReferralRow | NativeImportCommissionRow;
+
 export type Ok = {
   ok: true;
 };
@@ -82,6 +145,10 @@ export type ProgramSettings = {
   attributionScope: "customer" | "payment";
   /** With `required` (payment scope), an order line is credited only by clicks whose `productRef` equals the line's product id or sku. */
   productMatch: "optional" | "required";
+  /** Tax-form policy for this program's payouts: `required` or `delegated` (a partner paid by `stripe_connect` with a `stripeAccountId` is paid without a Referalli tax form). Null inherits the org's `payoutTaxFormPolicy`. */
+  payoutTaxFormPolicy: ("required" | "delegated") | null;
+  /** Whether clicks store the visitor's country (from the click request's Cloudflare `CF-IPCountry` header, never from a supplied IP). Default true. False: clicks carry no country, so `countries` allow/block lists see an unknown country and allow it. */
+  recordCountry: boolean;
   /** Whether partners of this program may publish a storefront page (default off). */
   storefronts: {
     enabled: boolean;
@@ -1150,6 +1217,8 @@ export type CreatedAuthConnection = {
   appId?: string;
   autoEnrollUsers?: boolean;
   destinationUrl?: string | null;
+  /** True when this call turned on the program's widget (`widget.autoEnroll`, with `destinationUrl`) because it had none; false otherwise, always false for `enableWidget: false`. */
+  widgetEnabled: boolean;
   signupsUrl?: string;
   eraseUrl?: string;
   exportUrl?: string;
@@ -1332,6 +1401,8 @@ export type LinkedProgram = {
   /** How long a mirrored referral earns in the target. */
   windowDays: number;
   createdAt: string;
+  /** POST with `backfill: true` only: how many existing active referrals were mirrored. */
+  backfilled?: number;
 };
 
 export type Incident = {
@@ -2743,7 +2814,7 @@ export type StripeCreditAppliedEventData = {
   programId: string;
   /** The settled commission line, the reversal, or the referee reward this applies. */
   sourceEventId: string;
-  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit" | "referee_debit";
   commissionId: string | null;
   partnerId: string | null;
   customerRef: string | null;
@@ -2782,7 +2853,7 @@ export type StripeCreditFailedEventData = {
   programId: string;
   /** The settled commission line, the reversal, or the referee reward this applies. */
   sourceEventId: string;
-  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit" | "referee_debit";
   commissionId: string | null;
   partnerId: string | null;
   customerRef: string | null;
@@ -2821,7 +2892,7 @@ export type AccountCreditAppliedEventData = {
   programId: string;
   /** The settled commission line, the reversal, or the referee reward this applies. */
   sourceEventId: string;
-  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit" | "referee_debit";
   commissionId: string | null;
   partnerId: string | null;
   customerRef: string | null;
@@ -2866,7 +2937,7 @@ export type AccountCreditReversedEventData = {
   programId: string;
   /** The settled commission line, the reversal, or the referee reward this applies. */
   sourceEventId: string;
-  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit" | "referee_debit";
   commissionId: string | null;
   partnerId: string | null;
   customerRef: string | null;
@@ -2911,7 +2982,7 @@ export type AccountCreditFailedEventData = {
   programId: string;
   /** The settled commission line, the reversal, or the referee reward this applies. */
   sourceEventId: string;
-  kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+  kind: "referrer_credit" | "referrer_debit" | "referee_credit" | "referee_debit";
   commissionId: string | null;
   partnerId: string | null;
   customerRef: string | null;
@@ -2992,6 +3063,8 @@ export type GetTOrgTokenConfigJsonResponse = {
 export type PostTOrgTokenVisitResponse = {
   ok: true;
   clickId: string | null;
+  /** The link's own cookie window in days when the click came from a link that sets one; aff.js keeps the referral context that long. */
+  cookieWindowDays: number | null;
 };
 
 export type GetTOrgTokenCodesCodeResponse = {
@@ -4924,7 +4997,9 @@ export type GetValueImportJobIdResponse = {
 
 export type PostImportNativeResponse = {
   dryRun: boolean;
+  /** Non-blank lines in the body. */
   rows: number;
+  /** What was created (a dry run: what would be). `aliases` counts old spellings kept for renamed codes. */
   created: {
     partners: number;
     links: number;
@@ -4935,17 +5010,24 @@ export type PostImportNativeResponse = {
   };
   /** Rows already imported (same row hash or `key`); skipped. */
   duplicates: number;
-  /** Partners, codes and referrals that already existed unchanged. */
+  /** Codes and referrals that already existed unchanged. */
   existing: number;
   collisions: Array<{
     kind: "link" | "coupon";
     programId: string;
     partnerExternalRef: string;
+    /** The spelling you sent (the alias). */
     code: string;
+    /** The code created instead. */
     proposed: string;
+    /** False on a dry run. */
     resolved: boolean;
   }>;
+  /** Rows that failed (nothing of them was written); the rest still load. */
   errors: Array<{
+    /** 1-based line of the body. */
+    line: number;
+    /** Same as `line`. */
     row: number;
     error: string;
   }>;
@@ -5367,13 +5449,22 @@ export type PostWebhookEndpointsIdReplayResponse = {
   replayed: number;
 };
 
-export type PostSandboxSimulateResponse = {
+export type PostSandboxSimulateResponse = ({
   customerRef: string;
   events: number;
   conversions: number;
   linesCreated: number;
   reversals: number;
-} | ({
+  /** `scenario: "referee_reward"` only: the reward issued before the refund (`referee_reward.earned`); null when the program has no referee reward or the line earned nothing. */
+  refereeReward?: {
+    issued: boolean;
+    rewardId?: string;
+    kind?: string;
+    code?: string;
+    amountMinor?: number;
+    currency?: string;
+  } | null;
+}) | ({
   scenario: "signup_and_pay";
   /** Both steps succeeded: the sign-up was attributed and the payment earned a commission. */
   ok: boolean;
@@ -8674,7 +8765,7 @@ export type GetProgramsIdStripeCreditsLogResponse = {
     programId: string;
     /** The settled commission line, the reversal, or the referee reward this applies. */
     sourceEventId: string;
-    kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+    kind: "referrer_credit" | "referrer_debit" | "referee_credit" | "referee_debit";
     commissionId: string | null;
     partnerId: string | null;
     customerRef: string | null;
@@ -8734,7 +8825,7 @@ export type GetProgramsIdCreditRailLogResponse = {
     programId: string;
     /** The settled commission line, the reversal, or the referee reward this applies. */
     sourceEventId: string;
-    kind: "referrer_credit" | "referrer_debit" | "referee_credit";
+    kind: "referrer_credit" | "referrer_debit" | "referee_credit" | "referee_debit";
     commissionId: string | null;
     partnerId: string | null;
     customerRef: string | null;
@@ -8897,6 +8988,65 @@ export type GetGraphqlResponse = {
 export type PostGraphqlResponse = {
   data?: GetOpenapiJsonResponse | null;
   errors?: Array<GetOpenapiJsonResponse>;
+};
+
+/** One billing event sent to a generic connection. */
+export type GenericBillingEvent = {
+  /** Your id for the event. Idempotency key: a resend answers `duplicate: true`. */
+  providerEventId: string;
+  /** invoice_paid earns commission; refund and dispute reverse it; sub_created, sub_updated and sub_canceled track the subscription; customer_updated carries identity links and no money. */
+  type: "invoice_paid" | "sub_created" | "sub_updated" | "refund" | "dispute" | "sub_canceled" | "customer_updated";
+  /** Your id for the customer, as sent on associate. Required, except on a refund or dispute that names invoiceRef or metadata.chargeRef. */
+  customerRef?: string;
+  subscriptionRef?: string;
+  invoiceRef?: string;
+  productRef?: string;
+  /** Integer minor units paid, default 0. Never negative: send a refund to reverse a payment. */
+  amountGross?: number;
+  /** The part of amountGross commission is computed on instead of the rule's appliesTo (at most amountGross); amountGross still reports as paid. */
+  commissionBaseMinor?: number;
+  /** The most commission this payment may earn, across every partner line. */
+  maxCommissionMinor?: number;
+  tax?: number;
+  fees?: number;
+  /** ISO 4217 code, default usd. */
+  currency?: string;
+  mrrDelta?: number;
+  /** When it happened: an ISO 8601 timestamp such as 2026-11-03T12:00:00Z. */
+  occurredAt: string;
+  /** Free-form string keys; the ones listed here are read by Referalli, any others are stored with the event. */
+  metadata?: {
+    /** Holds the commission line until this time instead of the rule's hold days. */
+    holdUntil?: string;
+    /** Same as the top-level customerCreatedAt, which wins. */
+    customerCreatedAt?: string;
+    /** The customer's ISO 3166-1 alpha-2 country, for program country allow and block lists. */
+    country?: string;
+    /** A coupon code the payment used, for per-payment attribution (attributionScope "payment"). */
+    couponCode?: string;
+    /** The product bought, for per-payment productMatch. */
+    productRef?: string;
+    /** With a refund or dispute and no invoiceRef: the charge it reverses. */
+    chargeRef?: string;
+    [key: string]: unknown;
+  };
+  customerCreatedAt?: string;
+  linkedCustomerRef?: string;
+  customerEmail?: string;
+  productIds?: Array<string>;
+  priceIds?: Array<string>;
+  skus?: Array<string>;
+  /** Order lines for a per-line rate card; an empty array is the same as none. */
+  lines?: Array<{
+    productId?: string;
+    sku?: string;
+    variantId?: string;
+    category?: string;
+    quantity: number;
+    amountMinor: number;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
 };
 
 /** GET /t/{orgToken}/aff.js: Get the tracking script */
@@ -9280,6 +9430,7 @@ export type PostMobilePurchasesBody = {
   productRef?: string;
   commissionBaseMinor?: number;
   maxCommissionMinor?: number;
+  customerCreatedAt?: string;
 };
 
 /** GET /v1/org: Get the organization */
@@ -9666,6 +9817,8 @@ export type PostProgramsBody = {
   } | null;
   attributionScope?: "customer" | "payment";
   productMatch?: "optional" | "required";
+  payoutTaxFormPolicy?: ("required" | "delegated") | null;
+  recordCountry?: boolean;
 };
 export type PostProgramsResponse = Program;
 
@@ -9804,6 +9957,8 @@ export type PatchProgramsIdBody = {
   } | null;
   attributionScope?: "customer" | "payment";
   productMatch?: "optional" | "required";
+  payoutTaxFormPolicy?: ("required" | "delegated") | null;
+  recordCountry?: boolean;
   settings?: {
     publicHandle?: string | null;
     publicPage?: {
@@ -9914,6 +10069,8 @@ export type PatchProgramsIdBody = {
     } | null;
     attributionScope?: "customer" | "payment";
     productMatch?: "optional" | "required";
+    payoutTaxFormPolicy?: ("required" | "delegated") | null;
+    recordCountry?: boolean;
   };
   destinationUrl?: string;
 };
@@ -10601,6 +10758,8 @@ export type PutProgramsIdCommissionRuleBody = {
       expansionBps: number;
     };
   };
+  /** When this version takes effect (ISO 8601). Payments are rated by the version in force at their occurredAt; until then /terms shows it as `upcoming`. Omit for in force once published. */
+  effectiveAt?: string;
 };
 
 /** GET /v1/programs/{id}/terms: Get a program's terms */
@@ -10747,7 +10906,7 @@ export type PatchBillingConnectionsIdResponse = BillingConnection;
 
 /** POST /v1/billing/connections/{id}/events: Send events to a generic connection */
 export type PostBillingConnectionsIdEventsBody = {
-  events: Array<Record<string, unknown>>;
+  events: Array<GenericBillingEvent>;
 };
 export type PostBillingConnectionsIdEventsQuery = {
   dryRun?: "0" | "1" | "true" | "false";
@@ -11706,7 +11865,7 @@ export type PostWebhookDeliveriesIdReplayResponse = Ok;
 export type PostSandboxSimulateBody = {
   programId: string;
   partnerId?: string;
-  scenario?: "subscription" | "refund" | "churn" | "signup_and_pay";
+  scenario?: "subscription" | "refund" | "churn" | "signup_and_pay" | "referee_reward";
   priceMinor?: number;
   months?: number;
   code?: string;
@@ -11715,6 +11874,7 @@ export type PostSandboxSimulateBody = {
   customerRef?: string;
   amountMinor?: number;
   currency?: string;
+  refundMinor?: number;
 };
 
 /** GET /v1/sandbox/billing-fixtures: List billing event fixtures */
@@ -12048,6 +12208,7 @@ export type PutProgramsIdRefereeRewardBody = {
   capMinor?: number;
   on?: "first_commission" | "first_payment";
   rounding?: "half_even" | "floor";
+  issueOn?: "earned" | "approved";
   currency?: string;
   percentOff?: number;
   amountOff?: number;
@@ -12125,6 +12286,7 @@ export type GetProgramsIdLinkedResponse = Array<LinkedProgram>;
 export type PostProgramsIdLinkedBody = {
   sourceProgramId: string;
   windowDays: number;
+  backfill?: boolean;
 };
 export type PostProgramsIdLinkedResponse = LinkedProgram;
 
@@ -12849,6 +13011,7 @@ export type PostAuthConnectionsBody = {
   appId?: string;
   autoEnrollUsers?: boolean;
   destinationUrl?: string;
+  enableWidget?: boolean;
   name?: string;
   secret?: string;
   keys?: {
@@ -13638,6 +13801,9 @@ export type GetLeadOrgTokenCodeResponse = string;
 /** POST /lead/{orgToken}/{code}: Submit a hosted lead form */
 export type PostLeadOrgTokenCodeBody = {
   email: string;
+};
+export type PostLeadOrgTokenCodeQuery = {
+  program?: string;
 };
 export type PostLeadOrgTokenCodeResponse = string;
 

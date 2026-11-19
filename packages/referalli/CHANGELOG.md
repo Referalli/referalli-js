@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.20 - 2026-11-18
+
+- Generated types for the program settings `payoutTaxFormPolicy` and `recordCountry`, `enableWidget` / `widgetEnabled` on auth connections, the typed `GenericBillingEvent` (with top-level `customerCreatedAt`), native import row types (`NativeImportRow`) and its dry-run report, the referee reward `issueOn` option and the `referee_reward` sandbox scenario. 0.3.19 was never published to npm; this release includes its changes.
+
 ## 0.3.19 - 2026-11-18
 
 - Generated types and methods for per-purchase attribution (`attributionScope`, `productMatch`), link `label`, `status`, `cookieWindowDays`, `commission` and `conditions`, lookups by `code`, `PATCH /v1/coupons/{id}`, per-link timeseries, `commissionBaseMinor` and `maxCommissionMinor` on billing events and mobile purchases, rule `capPerPayment`, `effectiveAt` and the `first_earning_payment_after_referral` recurring type, mirrored referee rewards and the `referee_reward.reversed` webhook, `riskPolicy.minCustomerAgeDays` / `requirePriorPayment`, `payoutTaxFormPolicy`, per-line hold and approve, the `daily` payout schedule, server touches with `customerRef`, `productRef`, `kind` and `metadata`, native import (`POST /v1/import/native`), and linked programs with `exclusiveWith` / `priority`.
