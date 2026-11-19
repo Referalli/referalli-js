@@ -147,6 +147,8 @@ export type ProgramSettings = {
   productMatch: "optional" | "required";
   /** Tax-form policy for this program's payouts: `required` or `delegated` (a partner paid by `stripe_connect` with a `stripeAccountId` is paid without a Referalli tax form). Null inherits the org's `payoutTaxFormPolicy`. */
   payoutTaxFormPolicy: ("required" | "delegated") | null;
+  /** Share of each money commission line (basis points, 0-10000, default 0) that a `payout` program settles as merchant credit at once: the line is recorded as two lines, a cash share paid by payout runs and a merchant credit share settled as `merchant_credit` (`commission.settled`). Refunds reverse both shares pro rata. Ignored when `settlement` is `merchant_credit` and for custom units. */
+  merchantCreditBps: number;
   /** Whether clicks store the visitor's country (from the click request's Cloudflare `CF-IPCountry` header, never from a supplied IP). Default true. False: clicks carry no country, so `countries` allow/block lists see an unknown country and allow it. */
   recordCountry: boolean;
   /** Whether partners of this program may publish a storefront page (default off). */
@@ -9819,6 +9821,7 @@ export type PostProgramsBody = {
   productMatch?: "optional" | "required";
   payoutTaxFormPolicy?: ("required" | "delegated") | null;
   recordCountry?: boolean;
+  merchantCreditBps?: number;
 };
 export type PostProgramsResponse = Program;
 
@@ -9959,6 +9962,7 @@ export type PatchProgramsIdBody = {
   productMatch?: "optional" | "required";
   payoutTaxFormPolicy?: ("required" | "delegated") | null;
   recordCountry?: boolean;
+  merchantCreditBps?: number;
   settings?: {
     publicHandle?: string | null;
     publicPage?: {
@@ -10071,6 +10075,7 @@ export type PatchProgramsIdBody = {
     productMatch?: "optional" | "required";
     payoutTaxFormPolicy?: ("required" | "delegated") | null;
     recordCountry?: boolean;
+    merchantCreditBps?: number;
   };
   destinationUrl?: string;
 };

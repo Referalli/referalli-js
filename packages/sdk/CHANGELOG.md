@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.21 - 2026-11-19
+
+- Generated types for the program setting `merchantCreditBps` (part of each commission line paid as merchant credit, the rest as cash).
+
 ## 0.3.20 - 2026-11-18
 
 - Published as `@referalli/sdk`. The unscoped `referalli` package stays at 0.3.16; install `@referalli/sdk` and change imports from `referalli` (and `referalli/browser`, ...) to `@referalli/sdk` (`@referalli/sdk/browser`, ...). Nothing else changed.
