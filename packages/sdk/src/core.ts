@@ -29,6 +29,12 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   /** Override the `referalli-version` for this request (`null` sends none). */
   apiVersion?: string | null;
+  /**
+   * For routes that take a signature instead of an API key (`billing.connections.stripeForward`): the connection
+   * secret. The body is serialised once and signed as `x-referalli-signature: t=<unix>,v1=<HMAC-SHA256 of "<t>.<body>">`;
+   * no `Authorization` header is sent and no API key is needed.
+   */
+  signWith?: string;
 }
 
 /** Query values the SDK can encode. Arrays repeat the key; dates are ISO 8601. */

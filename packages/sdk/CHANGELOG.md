@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.22 - 2026-11-19
+
+- **Added:** request option `signWith` (the connection secret) for signature-auth routes such as `billing.connections.stripeForward`: signs the exact body sent as `x-referalli-signature: t=,v1=`, sends no API key, and needs none. The Stripe forward body accepts a `Stripe.Event` without a cast.
+
 ## 0.3.21 - 2026-11-19
 
 - Generated types for the program setting `merchantCreditBps` (part of each commission line paid as merchant credit, the rest as cash).

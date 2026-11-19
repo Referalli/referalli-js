@@ -219,6 +219,7 @@ export const operations = {
   getProgramsIdCallNumbers: { method: "GET", path: "/v1/programs/{id}/call-numbers", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdCreditRail: { method: "GET", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdCreditRailLog: { method: "GET", path: "/v1/programs/{id}/credit-rail/log", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getProgramsIdDoctorContext: { method: "GET", path: "/v1/programs/{id}/doctor-context", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdEmailSettings: { method: "GET", path: "/v1/programs/{id}/email-settings", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdEnrollments: { method: "GET", path: "/v1/programs/{id}/enrollments", pathParams: ["id"], query: ["status","partnerId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdGraph: { method: "GET", path: "/v1/programs/{id}/graph", pathParams: ["id"], query: ["root","depth"], body: false, kind: "json" },
@@ -1690,6 +1691,8 @@ export function buildResources(t: Transport) {
       handleAvailability: (query: T.GetProgramsHandleAvailabilityQuery, options?: RequestOptions): Promise<T.GetProgramsHandleAvailabilityResponse> => t.op("getProgramsHandleAvailability", { query }, options),
       /** Get a program. GET /v1/programs/{id} */
       retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdResponse> => t.op("getProgramsId", { path: { id } }, options),
+      /** Read the org settings a program uses (doctor). GET /v1/programs/{id}/doctor-context */
+      doctorContext: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdDoctorContextResponse> => t.op("getProgramsIdDoctorContext", { path: { id } }, options),
       /** Get the referral tree. GET /v1/programs/{id}/graph */
       graph: (id: string, query: T.GetProgramsIdGraphQuery, options?: RequestOptions): Promise<T.GetProgramsIdGraphResponse> => t.op("getProgramsIdGraph", { path: { id }, query }, options),
       /** Get a program's terms. GET /v1/programs/{id}/terms */

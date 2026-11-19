@@ -684,6 +684,8 @@ export type BillingConnection = {
   filter: BillingFilter | null;
   /** The provider metadata key that holds your customerRef, when it is not referalli_customer_ref. */
   customerRefMetadataKey?: string | null;
+  /** More metadata keys tried in order after `customerRefMetadataKey` (at most 5). */
+  customerRefMetadataKeys?: Array<string>;
   /** The Stripe webhook endpoint (`we_…`) Referalli registered for this connection with `stripeKey`. */
   stripeWebhookEndpointId?: string | null;
   /** The provider webhooks Referalli registered with `autoRegister` (one per topic for Shopify, BigCommerce, WooCommerce; Stripe's endpoint too). null when set up by hand. */
@@ -706,8 +708,12 @@ export type CreatedBillingConnection = {
   filter: BillingFilter | null;
   /** The provider metadata key that holds your customerRef, when it is not referalli_customer_ref. */
   customerRefMetadataKey?: string | null;
+  /** More metadata keys tried in order after `customerRefMetadataKey` (at most 5). */
+  customerRefMetadataKeys?: Array<string>;
   /** Only referrals in these programs earn from this connection's events; null = every program. */
   programIds: Array<string> | null;
+  /** Things worth fixing that did not stop the create, e.g. no `programIds` in an org with several programs. */
+  warnings?: Array<string>;
   /** With `stripeKey`: the Stripe webhook endpoint (`we_…`) registered or reused. */
   stripeWebhookEndpointId?: string;
   /** With `autoRegister` (not Stripe): the provider webhooks registered or reused. */
@@ -784,6 +790,10 @@ export type BillingDryRun = {
       currency: string;
     }>;
     ignoredReason: string | null;
+    /** Whether the event matched a referral (referralIds is not empty). */
+    matchedReferral: boolean;
+    /** `matched_referral`, else the ignoredReason (`no_referral`, `no_owner`, …), else `recorded_no_referral`. */
+    reason: string;
   }>;
 };
 
@@ -3673,6 +3683,33 @@ export type GetProgramsIdResponse = Program & ({
   /** The tracking token aff.js and links use for this program in this mode (the org's; public, it is in every page's snippet). Readable by program-scoped keys. */
   trackingToken: string;
 });
+
+export type GetProgramsIdDoctorContextResponse = {
+  programId: string;
+  tracking: {
+    /** Public: it is in every page's script tag. */
+    trackingToken: string;
+    scriptPath: string;
+    /** The consent mode aff.js serves this program: its own `trackingConsent`, else the org's. */
+    consent: string;
+  };
+  payouts: {
+    settlement: string;
+    connections: Array<{
+      provider: string;
+      env: string;
+      status: string;
+    }>;
+  };
+  email: {
+    /** `program`/`org`: a BYOK provider; `platform`: the operator's shared sender; `none`: no email is sent. */
+    source: "program" | "org" | "platform" | "none";
+    provider: string | null;
+    fromAddress: string | null;
+    domainStatus: string | null;
+    sends: boolean;
+  };
+};
 
 export type PatchProgramsIdResponse = Program & {
   /** With `destinationUrl` or `widget.destinationUrl`: how many links followed the moved default. */
@@ -9503,14 +9540,14 @@ export type PostOrgAlertsBody = {
   routingKey?: string;
   name?: string | null;
   minSeverity?: "info" | "warning" | "critical";
-  topics?: (Array<"webhook_endpoint.failing" | "webhook_endpoint.disabled" | "billing_event.held" | "payout.failed" | "stripe_credit.failed" | "api_key.expiring">) | null;
+  topics?: (Array<"webhook_endpoint.failing" | "webhook_endpoint.disabled" | "billing_event.held" | "payout.failed" | "stripe_credit.failed" | "api_key.expiring" | "billing.forward.failed">) | null;
 };
 
 /** PATCH /v1/org/alerts/{id}: Update an alert destination */
 export type PatchOrgAlertsIdBody = {
   name?: string | null;
   minSeverity?: "info" | "warning" | "critical";
-  topics?: (Array<"webhook_endpoint.failing" | "webhook_endpoint.disabled" | "billing_event.held" | "payout.failed" | "stripe_credit.failed" | "api_key.expiring">) | null;
+  topics?: (Array<"webhook_endpoint.failing" | "webhook_endpoint.disabled" | "billing_event.held" | "payout.failed" | "stripe_credit.failed" | "api_key.expiring" | "billing.forward.failed">) | null;
   enabled?: boolean;
 };
 export type PatchOrgAlertsIdResponse = AlertDestination;
@@ -10080,6 +10117,8 @@ export type PatchProgramsIdBody = {
   destinationUrl?: string;
 };
 
+/** GET /v1/programs/{id}/doctor-context: Read the org settings a program uses (doctor) */
+
 /** POST /v1/programs/{id}/referrers: Make a user a referrer */
 export type PostProgramsIdReferrersBody = {
   externalRef: string;
@@ -10185,7 +10224,7 @@ export type GetProgramsIdGraphQuery = {
 /** POST /v1/api-keys: Create an API key */
 export type PostApiKeysBody = {
   name: string;
-  scopes?: Array<"admin" | "api_keys:mint" | "full" | "read" | "connections:read" | "connections:write" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
+  scopes?: Array<"admin" | "api_keys:mint" | "programs:create" | "full" | "read" | "connections:read" | "connections:write" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
   publishable?: boolean;
   allowedOrigins?: Array<string>;
   apiVersion?: string;
@@ -10216,7 +10255,7 @@ export type GetApiKeysIdResponse = ApiKey;
 /** PATCH /v1/api-keys/{id}: Update an API key */
 export type PatchApiKeysIdBody = {
   name?: string;
-  scopes?: Array<"admin" | "api_keys:mint" | "full" | "read" | "connections:read" | "connections:write" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
+  scopes?: Array<"admin" | "api_keys:mint" | "programs:create" | "full" | "read" | "connections:read" | "connections:write" | "programs:read" | "programs:write" | "partners:read" | "partners:write" | "links:read" | "links:write" | "events:read" | "events:write" | "referrals:read" | "referrals:write" | "commissions:read" | "commissions:write" | "payouts:read" | "payouts:write" | "billing:read" | "billing:write" | "webhooks:read" | "webhooks:write" | "analytics:read" | "analytics:write" | "fraud:read" | "fraud:write" | "privacy:read" | "privacy:write" | "team:read" | "team:write" | "org:read" | "org:write" | "integrations:read" | "integrations:write" | "growth:read" | "growth:write" | "audit:read" | "audit:write">;
   apiVersion?: string;
   owner?: string | null;
   expiresInDays?: number | null;
@@ -10844,6 +10883,7 @@ export type PostBillingConnectionsBody = {
     skus?: Array<string>;
   };
   customerRefMetadataKey?: string | null;
+  customerRefMetadataKeys?: Array<string>;
   programIds?: Array<string> | null;
   stripeKey?: string;
   creditRail?: {
@@ -10902,6 +10942,7 @@ export type PatchBillingConnectionsIdBody = {
     skus?: Array<string>;
   } | null;
   customerRefMetadataKey?: string | null;
+  customerRefMetadataKeys?: Array<string>;
   programIds?: Array<string> | null;
   maxAmountMinor?: number | null;
 };
@@ -14025,6 +14066,7 @@ export const operations = {
   getV1ProgramsHandleAvailability: { method: 'GET', path: '/v1/programs/handle-availability' },
   getV1ProgramsId: { method: 'GET', path: '/v1/programs/{id}' },
   patchV1ProgramsId: { method: 'PATCH', path: '/v1/programs/{id}' },
+  getV1ProgramsIdDoctorContext: { method: 'GET', path: '/v1/programs/{id}/doctor-context' },
   postV1ProgramsIdReferrers: { method: 'POST', path: '/v1/programs/{id}/referrers' },
   postV1ProgramsIdEnrollments: { method: 'POST', path: '/v1/programs/{id}/enrollments' },
   getV1ProgramsIdEnrollments: { method: 'GET', path: '/v1/programs/{id}/enrollments' },

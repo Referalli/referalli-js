@@ -48,7 +48,7 @@ The referral cookie is a marketing cookie. The `consent` option decides when the
 | `{ cookiemunch: { category: 'affiliates' } }` | The same, for a category you name. There is no fallback. |
 | `(req) => 'granted' \| 'denied' \| 'unknown'` | Your own CMP's cookie. |
 
-- **No decision yet** (`unknown`, for example no `CookieMunch` cookie): nothing is set or sent. The middleware can't see a decision made on the page, so add `<ReferalliProvider consent="cookiemunch" persist="referral-only">` to your root layout. It keeps the referral in memory and saves and records it once the visitor accepts. With the provider, leave `publishableKey` off the middleware so each landing is counted once.
+- **No decision yet** (`unknown`, for example no `CookieMunch` cookie): nothing is set or sent. The middleware can't see a decision made on the page, so add `<ReferalliProvider consent="cookiemunch" persist="referral-only">` to your root layout. It keeps the referral in memory and saves and records it once the visitor accepts. With the provider, leave `publishableKey` off the middleware so each landing is counted once. For consent-later the provider alone is enough; the middleware is optional.
 - **Granted:** the cookie is set. The landing is recorded with the consent evidence, including Cookie Munch's consent stamp.
 - **Denied:** an existing referral cookie is deleted, and nothing is sent.
 
@@ -115,3 +115,14 @@ The handler answers `400` when the signature is bad, `200` when the event is han
 ## License
 
 MIT
+
+## Forward Stripe events
+
+```ts
+import { forwardStripeEvent } from '@referalli/next/server';
+
+const r = await forwardStripeEvent(event); // env: REFERALLI_BILLING_CONNECTION_ID, REFERALLI_BILLING_SECRET
+if (r.status === 'retry') return new Response('retry', { status: 500 });
+```
+
+Returns `{ status: 'sent' | 'skipped' | 'retry', httpStatus?, error? }` and never throws. Unused event types and missing env are `skipped`; network errors, timeouts (`timeoutMs`, default 4000), 5xx, 408 and 429 are `retry`; other 4xx are final (`skipped`).

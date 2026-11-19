@@ -155,3 +155,72 @@ export async function ReferralPanel(props: ReferralPanelProps): Promise<ReactNod
     </LivePanelSwap>
   );
 }
+
+/** The Stripe event types Referalli uses; others are skipped without a request. */
+const FORWARDED_STRIPE_TYPES = new Set([
+  'invoice.paid',
+  'charge.refunded',
+  'charge.dispute.created',
+  'customer.subscription.created',
+  'customer.subscription.deleted',
+  'checkout.session.completed',
+  'checkout.session.async_payment_succeeded',
+]);
+
+export interface ForwardStripeEventOptions {
+  /** Default `REFERALLI_BILLING_CONNECTION_ID`. */
+  connectionId?: string;
+  /** The connection secret. Default `REFERALLI_BILLING_SECRET`. */
+  secret?: string;
+  /** Default `REFERALLI_BASE_URL`, else `https://referalli.com`. */
+  baseUrl?: string;
+  /** Milliseconds before giving up. Default 4000. */
+  timeoutMs?: number;
+  /** A custom fetch (tests). */
+  fetch?: (input: string, init: RequestInit) => Promise<Response>;
+}
+
+export interface ForwardStripeEventResult {
+  /** `sent`: Referalli took it. `retry`: transient failure, answer Stripe with a 5xx so it redelivers. `skipped`: nothing to send, or a final refusal: answer 200. */
+  status: 'sent' | 'skipped' | 'retry';
+  httpStatus?: number;
+  error?: string;
+}
+
+/**
+ * Forwards a verified Stripe event to a `generic` billing connection, signed with the connection secret:
+ *
+ *   const r = await forwardStripeEvent(event);
+ *   if (r.status === 'retry') return new Response('retry', { status: 503 });
+ *
+ * Never throws. Types Referalli does not use are skipped; network errors, timeouts, 5xx, 408 and 429 are `retry`;
+ * any other refusal is final (`skipped` with the error), so Stripe is not asked to redeliver it.
+ */
+export async function forwardStripeEvent(
+  event: { id: string; type: string; created: number; data: { object: unknown } },
+  opts: ForwardStripeEventOptions = {},
+): Promise<ForwardStripeEventResult> {
+  if (!FORWARDED_STRIPE_TYPES.has(event.type)) return { status: 'skipped' };
+  const env = (k: string) => (typeof process !== 'undefined' ? process.env[k] : undefined);
+  const connectionId = opts.connectionId ?? env('REFERALLI_BILLING_CONNECTION_ID');
+  const secret = opts.secret ?? env('REFERALLI_BILLING_SECRET');
+  if (!connectionId || !secret) {
+    return { status: 'skipped', error: 'set REFERALLI_BILLING_CONNECTION_ID and REFERALLI_BILLING_SECRET (or pass connectionId and secret)' };
+  }
+  const client = new Referalli({
+    apiKey: '',
+    maxRetries: 0,
+    timeout: opts.timeoutMs ?? 4000,
+    ...(opts.baseUrl ? { baseUrl: opts.baseUrl } : {}),
+    ...(opts.fetch ? { fetch: opts.fetch } : {}),
+  });
+  try {
+    await client.billing.connections.stripeForward(connectionId, event as never, undefined, { signWith: secret });
+    return { status: 'sent' };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    if (!(err instanceof ApiError)) return { status: 'retry', error };
+    const s = err.status;
+    return { status: s >= 500 || s === 408 || s === 429 ? 'retry' : 'skipped', httpStatus: s, error };
+  }
+}

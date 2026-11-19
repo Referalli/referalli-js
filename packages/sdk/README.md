@@ -235,3 +235,13 @@ The tracker reads `?via=`, `?ref=` or `?aff=` and `ref_click_id` from the landin
 ## License
 
 MIT
+
+## Signed calls (no API key)
+
+`billing.connections.stripeForward` takes the connection secret instead of an API key:
+
+```ts
+await new Referalli().billing.connections.stripeForward(connectionId, stripeEvent, undefined, { signWith: connectionSecret });
+```
+
+The body is serialised once, signed as `x-referalli-signature: t=<unix>,v1=<HMAC-SHA256 of "<t>.<body>">`, and no `Authorization` header is sent.

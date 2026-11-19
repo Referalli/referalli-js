@@ -3,9 +3,10 @@ import { ApiConnectionError, ApiError, ApiTimeoutError, ReferalliError } from '.
 import { errorClasses } from './errors.generated.js';
 import type * as T from './generated.js';
 import { API_VERSION, buildResources, operations, type OperationId, type Resources } from './resources.generated.js';
+import { hmacSha256 } from './sha256.js';
 import { SDK_VERSION } from './version.js';
 
-const OPTION_KEYS = new Set(['idempotencyKey', 'timeout', 'maxRetries', 'signal', 'headers', 'apiVersion']);
+const OPTION_KEYS = new Set(['idempotencyKey', 'timeout', 'maxRetries', 'signal', 'headers', 'apiVersion', 'signWith']);
 
 /** A method that gained a query parameter keeps its old `(id, options)` call working: request options in the query slot move back. */
 function splitOptions<I extends OperationInput>(queryNames: readonly string[], input: I, options: RequestOptions): { input: I; options: RequestOptions } {
@@ -158,7 +159,7 @@ export class Referalli {
     const headers: Record<string, string> = { accept: 'application/json', ...this.headers };
     if (version) headers['referalli-version'] = version;
     if (this.mode) headers['referalli-mode'] = this.mode;
-    if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
+    if (this.apiKey && req.signWith === undefined) headers.authorization = `Bearer ${this.apiKey}`;
     if (typeof (globalThis as { window?: unknown }).window === 'undefined') headers['user-agent'] = `referalli-js/${SDK_VERSION}`;
     const hasBody = req.body !== undefined;
     if (hasBody) headers['content-type'] = 'application/json';
@@ -166,6 +167,7 @@ export class Referalli {
     if (key) headers['idempotency-key'] = key;
     Object.assign(headers, req.headers ?? {});
     const body = hasBody ? JSON.stringify(req.body) : undefined;
+    if (req.signWith !== undefined) headers['x-referalli-signature'] = signBody(body ?? '', req.signWith);
     const retryable = IDEMPOTENT.has(method) || Boolean(key);
     const maxRetries = retryable ? Math.max(0, req.maxRetries ?? this.maxRetries) : 0;
     const timeout = req.timeout ?? this.timeout;
@@ -246,6 +248,13 @@ export class Referalli {
 
 type ValueEvent = T.PostValueEventsBody['events'][number];
 type ValueFact = Omit<ValueEvent, 'kind'>;
+
+/** `t=<unix>,v1=<hex HMAC-SHA256 of "<t>.<body>">`, the timestamped scheme the API verifies within 300 s. */
+function signBody(body: string, secret: string): string {
+  const t = Math.floor(Date.now() / 1000);
+  const mac = hmacSha256(new TextEncoder().encode(secret), new TextEncoder().encode(`${t}.${body}`));
+  return `t=${t},v1=${Array.from(mac, (b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
 
 function encodeQuery(query: object | undefined): string {
   if (!query) return '';

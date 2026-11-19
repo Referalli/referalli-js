@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.5 - 2026-11-19
+
+- **Added:** `forwardStripeEvent(event, opts?)` in `@referalli/next/server`: signs and forwards a verified Stripe event to your generic billing connection and returns `sent`, `skipped` or `retry`. Docs: `<ReferalliProvider>` alone covers consent-later.
+
 ## 0.4.4 - 2026-11-18
 
 - Depends on `@referalli/sdk`, the core SDK's new name on npm (the unscoped `referalli` package stays at 0.3.16 and gets no more releases). Install `@referalli/sdk` and import from it.
