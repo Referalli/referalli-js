@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.19 - 2026-11-18
+
+- Generated types and methods for per-purchase attribution (`attributionScope`, `productMatch`), link `label`, `status`, `cookieWindowDays`, `commission` and `conditions`, lookups by `code`, `PATCH /v1/coupons/{id}`, per-link timeseries, `commissionBaseMinor` and `maxCommissionMinor` on billing events and mobile purchases, rule `capPerPayment`, `effectiveAt` and the `first_earning_payment_after_referral` recurring type, mirrored referee rewards and the `referee_reward.reversed` webhook, `riskPolicy.minCustomerAgeDays` / `requirePriorPayment`, `payoutTaxFormPolicy`, per-line hold and approve, the `daily` payout schedule, server touches with `customerRef`, `productRef`, `kind` and `metadata`, native import (`POST /v1/import/native`), and linked programs with `exclusiveWith` / `priority`.
+
 ## 0.3.18 - 2026-11-18
 
 - Generated types and methods for deep links (`POST /v1/partner/links/deep`), smartlinks (`/v1/partner/smartlinks`), partner product and coupon feeds (`/v1/partner/feeds/products`, `/v1/partner/feeds/coupons`), the program `caps`, `countries`, `trafficSources` and `payPerCall` settings, pay-per-call connections, numbers and calls, and `trafficSources` / `promotionUrl` on partner applications. The served `aff.js` loads `calls.js` with `data-calls="swap"` to show a referred visitor the partner's phone number. 0.3.17 was never published to npm; this release includes its changes.

@@ -64,11 +64,24 @@ export type ProgramSettings = {
     dedupeHours: number;
     forwardTo: string | null;
   };
+  /** The commission percent (basis points) a partner may set on links it creates itself; null = partners cannot set a rate. */
+  allowedRange: {
+    minBps: number;
+    maxBps: number;
+  } | null;
   /** Traffic sources partners may use; every source is allowed until you set a list. Applications declaring others carry `trafficMismatch`. */
   trafficSources: {
     allowed: Array<string>;
     notes: string;
   };
+  /** Program ids this program excludes: a customer live in both earns only in the higher `priority` one (earliest referral breaks a tie). */
+  exclusiveWith: Array<string>;
+  /** Wins over lower-priority programs listed in `exclusiveWith`; default 0. */
+  priority: number;
+  /** `customer` (default): one referral per customer. `payment`: each payment is attributed from the customer's eligible clicks or coupon inside the window before it; no long-lived referral. */
+  attributionScope: "customer" | "payment";
+  /** With `required` (payment scope), an order line is credited only by clicks whose `productRef` equals the line's product id or sku. */
+  productMatch: "optional" | "required";
   /** Whether partners of this program may publish a storefront page (default off). */
   storefronts: {
     enabled: boolean;
@@ -83,6 +96,9 @@ export type ProgramSettings = {
     holdSelfReferral: boolean;
     holdRiskScore: number;
     holdHighRiskLevel: boolean;
+    minCustomerAgeDays?: number;
+    minCustomerAgeAction?: "hold" | "void";
+    requirePriorPayment?: "hold" | "void";
   };
   widget: {
     autoEnroll: boolean;
@@ -187,6 +203,21 @@ export type Link = {
   destinationUrl: string;
   /** The product (id or sku) the link points to, or null. */
   productRef: string | null;
+  /** The partner's externalRef, or null. */
+  partnerExternalRef: string | null;
+  label: string | null;
+  status: "active" | "disabled";
+  /** This link's attribution window in days; null = the program's. */
+  cookieWindowDays: number | null;
+  /** The link's own commission; null = the program rule's. */
+  commission: {
+    base: {
+      kind: "percent";
+      bps: number;
+    };
+  } | null;
+  /** Per-payment conditions (as a rule's conditions); null = none. */
+  conditions: Record<string, unknown> | null;
   /** Absolute link, on the org's verified link domain when it has one. */
   shortUrl: string;
   clicks: number;
@@ -201,14 +232,46 @@ export type CreatedLink = {
   destinationUrl: string;
   productRef?: string | null;
   shortUrl?: string;
+  partnerExternalRef?: string | null;
+  label?: string | null;
+  status?: "active" | "disabled";
+  cookieWindowDays?: number | null;
+  commission?: unknown;
+  conditions?: unknown;
+  clicks?: number;
+  createdAt?: string;
 };
 
 export type Coupon = {
   id: string;
   programId: string;
   partnerId: string;
+  partnerExternalRef: string | null;
   code: string;
+  label: string | null;
+  status: "active" | "disabled";
   createdAt: string;
+};
+
+export type LinkTimeseries = {
+  days: Array<{
+    /** UTC date, YYYY-MM-DD. */
+    day: string;
+    clicks: number;
+    signups: number;
+    payments: number;
+    /** Integer minor units (cents). */
+    revenueMinor: number;
+    /** Integer minor units (cents). */
+    commissionMinor: number;
+    currency: string;
+  }>;
+  totals: {
+    clicks: number;
+    payments: number;
+    /** payments / clicks, 0 without clicks. */
+    conversionRate: number;
+  };
 };
 
 export type ReasonNote = {
@@ -219,6 +282,8 @@ export type ReasonNote = {
 export type PayoutSchedule = {
   kind: "monthly";
   dayOfMonth: number;
+} | {
+  kind: "daily";
 } | {
   kind: "weekly";
   /** 0 = Sunday … 6 = Saturday */
@@ -362,6 +427,8 @@ export type CommissionRule = {
   version: number;
   config: GetOpenapiJsonResponse;
   createdAt: string;
+  /** When this version takes effect; null = in force once published. */
+  effectiveAt?: string | null;
 };
 
 export type ProgramTerms = {
@@ -385,7 +452,11 @@ export type ProgramTerms = {
   } | {
     type: "months";
     months: number;
+  } | {
+    type: "first_earning_payment_after_referral";
   };
+  /** A later rule version published with an `effectiveAt` still in the future: its full terms plus `effectiveAt`. Absent when none. */
+  upcoming?: GetOpenapiJsonResponse;
   holdDays: number;
   /** The rule's cap per referred customer: the most one referral earns its partner, over every payment. */
   capPerReferral: {
@@ -892,6 +963,7 @@ export type Org = {
   settings: GetOpenapiJsonResponse;
   trackingToken: string;
   payoutKycRequired: boolean;
+  payoutTaxFormPolicy: "required" | "delegated";
   /** False for the org's test org (test mode). */
   livemode: boolean;
   /** The plan's caps (null: unlimited). A test org runs on its live org's plan. */
@@ -1250,6 +1322,16 @@ export type Passport = {
   signature: string;
   algorithm: "ed25519";
   publicKey: string;
+};
+
+export type LinkedProgram = {
+  /** The target program: it receives the mirrored referrals. */
+  programId: string;
+  /** The program whose new referrals are mirrored. */
+  sourceProgramId: string;
+  /** How long a mirrored referral earns in the target. */
+  windowDays: number;
+  createdAt: string;
 };
 
 export type Incident = {
@@ -2282,6 +2364,34 @@ export type RefereeRewardEarnedEvent = {
   livemode: boolean;
   createdAt: string;
   data: RefereeRewardEarnedEventData;
+};
+
+/** `data` of a `referee_reward.reversed` event: A refund or dispute on the payment that earned a referee reward clawed back its share: `amountMinor` is this reversal, `reversedMinor` the total reversed so far. Fires alongside `commission.reversed`; take the credit or coupon back. */
+export type RefereeRewardReversedEventData = {
+  rewardId: string;
+  referralId: string;
+  programId: string;
+  customerRef: string;
+  kind: "store_credit" | "coupon" | "gift_card";
+  /** The amount reversed by this refund. */
+  amountMinor: number;
+  /** The total reversed so far, at most the reward. */
+  reversedMinor: number;
+  /** Lowercase ISO 4217 code. */
+  currency: string;
+  billingEventId: string | null;
+};
+
+/** A referred customer's reward was reversed: the `referee_reward.reversed` delivery body. */
+export type RefereeRewardReversedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "referee_reward.reversed";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: RefereeRewardReversedEventData;
 };
 
 /** `data` of a `coupon.created` event: With a `stripe_promotion` referee reward, Referalli made a promotion code for this partner code on your Stripe account (the program's coupon). Pass `stripePromotionCodeId` as `discounts[0].promotion_code` to a Checkout Session, or let customers type `code`. */
@@ -3786,6 +3896,8 @@ export type PostProgramsIdLinksRepointResponse = {
 export type PostCouponsResponse = {
   id: string;
   code: string;
+  label: string | null;
+  status: "active" | "disabled";
 };
 
 export type GetCouponsResponse = {
@@ -3838,6 +3950,10 @@ export type GetReferralsIdJourneyResponse = {
     linkId: string | null;
     fraudScore: number;
     eligible: boolean;
+    customerRef: string | null;
+    productRef: string | null;
+    kind: string | null;
+    metadata: Record<string, unknown> | null;
     weight: number;
     winner: boolean;
   }>;
@@ -3866,6 +3982,7 @@ export type PostCommissionRulesResponse = {
   programId: string;
   version: number;
   config: GetOpenapiJsonResponse;
+  effectiveAt?: string | null;
 };
 
 export type PutProgramsIdCommissionRuleResponse = {
@@ -3906,7 +4023,11 @@ export type GetProgramsIdTermsResponse = {
   } | {
     type: "months";
     months: number;
+  } | {
+    type: "first_earning_payment_after_referral";
   };
+  /** A later rule version published with an `effectiveAt` still in the future: its full terms plus `effectiveAt`. Absent when none. */
+  upcoming?: GetOpenapiJsonResponse;
   holdDays: number;
   /** The rule's cap per referred customer: the most one referral earns its partner, over every payment. */
   capPerReferral: {
@@ -4013,6 +4134,15 @@ export type PostCommissionsApproveDueResponse = {
   approved: number;
 };
 
+export type PostCommissionsIdHoldResponse = {
+  id: string;
+  holdUntil: string;
+};
+
+export type PostCommissionsIdApproveResponse = {
+  id: string;
+};
+
 export type PostCommissionsIdAdjustResponse = {
   id: string;
 };
@@ -4103,8 +4233,24 @@ export type PostBillingEventsIdReleaseResponse = {
   ignored?: "filter" | "internal_customer";
   /** Recorded as held: earns nothing until released. */
   held?: "amount_over_limit" | "occurred_in_future" | "unknown_currency";
+  /** Programs with attributionScope "payment": who this payment was credited to (the click or coupon, its link, the window used), or null when no eligible click or coupon fell in the window. */
+  attribution?: ({
+    partnerId: string;
+    linkId: string | null;
+    clickId: string | null;
+    matchedVia: "click" | "coupon";
+    windowDays: number;
+  }) | null;
+  /** Every credited group when productMatch "required" sent an order's lines to different partners. */
+  attributions?: Array<{
+    partnerId: string;
+    linkId: string | null;
+    clickId: string | null;
+    matchedVia: "click" | "coupon";
+    windowDays: number;
+  }>;
   /** Recorded as a conversion but earned no commission: the referral's click country is outside the program's countries, or a program cap is reached. */
-  withheld?: "outside_countries" | "cap_reached";
+  withheld?: "outside_countries" | "cap_reached" | "condition_unmet";
 };
 
 export type PostBillingInternalCustomersResponse = {
@@ -4776,6 +4922,35 @@ export type GetValueImportJobIdResponse = {
   error?: string;
 };
 
+export type PostImportNativeResponse = {
+  dryRun: boolean;
+  rows: number;
+  created: {
+    partners: number;
+    links: number;
+    coupons: number;
+    referrals: number;
+    commissions: number;
+    aliases: number;
+  };
+  /** Rows already imported (same row hash or `key`); skipped. */
+  duplicates: number;
+  /** Partners, codes and referrals that already existed unchanged. */
+  existing: number;
+  collisions: Array<{
+    kind: "link" | "coupon";
+    programId: string;
+    partnerExternalRef: string;
+    code: string;
+    proposed: string;
+    resolved: boolean;
+  }>;
+  errors: Array<{
+    row: number;
+    error: string;
+  }>;
+};
+
 export type GetPartnerKycStatusResponse = {
   kycStatus: string;
   sanctionsStatus: string;
@@ -4859,6 +5034,10 @@ export type GetPartnerLinksResponse = {
     code: string;
     destinationUrl: string;
     productRef?: string | null;
+    label?: string | null;
+    status?: "active" | "disabled";
+    cookieWindowDays?: number | null;
+    commission?: unknown;
     shortPath: string;
     /** Absolute link, on the merchant's verified link domain when it has one. */
     shortUrl: string;
@@ -8748,6 +8927,7 @@ export type GetGoOrgTokenCodeQuery = {
   sub?: string;
   cx?: string;
   url?: string;
+  program?: string;
 };
 export type GetGoOrgTokenCodeResponse = void;
 
@@ -9098,6 +9278,8 @@ export type PostMobilePurchasesBody = {
   amountMinor: number;
   currency?: string;
   productRef?: string;
+  commissionBaseMinor?: number;
+  maxCommissionMinor?: number;
 };
 
 /** GET /v1/org: Get the organization */
@@ -9108,6 +9290,7 @@ export type PatchOrgBody = {
   name?: string;
   settings?: Record<string, unknown>;
   payoutKycRequired?: boolean;
+  payoutTaxFormPolicy?: "required" | "delegated";
 };
 
 /** GET /v1/org/tracking-tokens: Both modes' tracking tokens */
@@ -9142,6 +9325,8 @@ export type PutOrgPayoutScheduleBody = {
   schedule?: ({
     kind: "monthly";
     dayOfMonth: number;
+  } | {
+    kind: "daily";
   } | {
     kind: "weekly";
     dayOfWeek: number;
@@ -9187,6 +9372,8 @@ export type PutProgramsIdPayoutScheduleBody = {
   schedule: (({
     kind: "monthly";
     dayOfMonth: number;
+  } | {
+    kind: "daily";
   } | {
     kind: "weekly";
     dayOfWeek: number;
@@ -9418,6 +9605,12 @@ export type PostProgramsBody = {
     holdVelocity?: number;
     holdUnverifiedEmail?: boolean;
     holdSelfReferral?: boolean;
+    /** A payment from a customer whose account (customerCreatedAt, sent on associate or on the payment event metadata) is younger than this at the payment time is held or voided, see minCustomerAgeAction. */
+    minCustomerAgeDays?: number;
+    /** `hold` (default): the commission line is earned but held until you approve it. `void`: earns nothing. */
+    minCustomerAgeAction?: "hold" | "void";
+    /** When set, a payment that is the customer's first on record (no earlier paid invoice) is held or voided. */
+    requirePriorPayment?: "hold" | "void";
   };
   widget?: {
     autoEnroll?: boolean;
@@ -9465,6 +9658,14 @@ export type PostProgramsBody = {
     allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
     notes?: string;
   };
+  exclusiveWith?: Array<string>;
+  priority?: number;
+  allowedRange?: {
+    minBps: number;
+    maxBps: number;
+  } | null;
+  attributionScope?: "customer" | "payment";
+  productMatch?: "optional" | "required";
 };
 export type PostProgramsResponse = Program;
 
@@ -9542,6 +9743,12 @@ export type PatchProgramsIdBody = {
     holdVelocity?: number;
     holdUnverifiedEmail?: boolean;
     holdSelfReferral?: boolean;
+    /** A payment from a customer whose account (customerCreatedAt, sent on associate or on the payment event metadata) is younger than this at the payment time is held or voided, see minCustomerAgeAction. */
+    minCustomerAgeDays?: number;
+    /** `hold` (default): the commission line is earned but held until you approve it. `void`: earns nothing. */
+    minCustomerAgeAction?: "hold" | "void";
+    /** When set, a payment that is the customer's first on record (no earlier paid invoice) is held or voided. */
+    requirePriorPayment?: "hold" | "void";
   };
   widget?: {
     autoEnroll?: boolean;
@@ -9589,6 +9796,14 @@ export type PatchProgramsIdBody = {
     allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
     notes?: string;
   };
+  exclusiveWith?: Array<string>;
+  priority?: number;
+  allowedRange?: {
+    minBps: number;
+    maxBps: number;
+  } | null;
+  attributionScope?: "customer" | "payment";
+  productMatch?: "optional" | "required";
   settings?: {
     publicHandle?: string | null;
     publicPage?: {
@@ -9638,6 +9853,12 @@ export type PatchProgramsIdBody = {
       holdVelocity?: number;
       holdUnverifiedEmail?: boolean;
       holdSelfReferral?: boolean;
+      /** A payment from a customer whose account (customerCreatedAt, sent on associate or on the payment event metadata) is younger than this at the payment time is held or voided, see minCustomerAgeAction. */
+      minCustomerAgeDays?: number;
+      /** `hold` (default): the commission line is earned but held until you approve it. `void`: earns nothing. */
+      minCustomerAgeAction?: "hold" | "void";
+      /** When set, a payment that is the customer's first on record (no earlier paid invoice) is held or voided. */
+      requirePriorPayment?: "hold" | "void";
     };
     widget?: {
       autoEnroll?: boolean;
@@ -9685,6 +9906,14 @@ export type PatchProgramsIdBody = {
       allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
       notes?: string;
     };
+    exclusiveWith?: Array<string>;
+    priority?: number;
+    allowedRange?: {
+      minBps: number;
+      maxBps: number;
+    } | null;
+    attributionScope?: "customer" | "payment";
+    productMatch?: "optional" | "required";
   };
   destinationUrl?: string;
 };
@@ -9933,6 +10162,27 @@ export type PostLinksBody = {
   destinationUrl: string;
   /** The product (id or sku) the link points to; on a rate card rule it is the direct product, anything else bought is indirect. */
   productRef?: string | null;
+  /** A name for the link, shown in the dashboard. */
+  label?: string | null;
+  /** A disabled link answers 404 on /go and is ignored by ?via= and associate; its history stays. */
+  status?: "active" | "disabled";
+  /** Attribution window for clicks on this link, in days; overrides the program's. null = the program's. */
+  cookieWindowDays?: number | null;
+  commission?: {
+    base: {
+      kind: "percent";
+      bps: number;
+    };
+  } | null;
+  conditions?: ({
+    countries?: Array<string>;
+    excludeCountries?: Array<string>;
+    metadata?: Array<{
+      key: string;
+      equals?: string | number | boolean;
+      in?: Array<string | number | boolean>;
+    }>;
+  }) | null;
 };
 export type PostLinksResponse = CreatedLink;
 
@@ -9940,6 +10190,7 @@ export type PostLinksResponse = CreatedLink;
 export type GetLinksQuery = {
   programId?: string;
   partnerId?: string;
+  code?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -9952,6 +10203,24 @@ export type PatchLinksIdBody = {
   destinationUrl?: string;
   code?: string;
   productRef?: string | null;
+  label?: string | null;
+  status?: "active" | "disabled";
+  cookieWindowDays?: number | null;
+  commission?: {
+    base: {
+      kind: "percent";
+      bps: number;
+    };
+  } | null;
+  conditions?: ({
+    countries?: Array<string>;
+    excludeCountries?: Array<string>;
+    metadata?: Array<{
+      key: string;
+      equals?: string | number | boolean;
+      in?: Array<string | number | boolean>;
+    }>;
+  }) | null;
 };
 export type PatchLinksIdResponse = Link;
 
@@ -9962,6 +10231,12 @@ export type PostProgramsIdLinksRepointBody = {
   to: string;
 };
 
+/** GET /v1/links/{id}/timeseries: A link's daily activity */
+export type GetLinksIdTimeseriesQuery = {
+  days?: number;
+};
+export type GetLinksIdTimeseriesResponse = LinkTimeseries;
+
 /** GET /v1/links/{id}/qr: Get a link's QR code */
 export type GetLinksIdQrResponse = string;
 
@@ -9970,18 +10245,29 @@ export type PostCouponsBody = {
   programId: string;
   partnerId: string;
   code: string;
+  label?: string | null;
+  /** A disabled coupon is ignored at checkout attribution; its history stays. */
+  status?: "active" | "disabled";
 };
 
 /** GET /v1/coupons: List coupon codes */
 export type GetCouponsQuery = {
   programId?: string;
   partnerId?: string;
+  code?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
   "created[gte]"?: string;
   "created[lte]"?: string;
 };
+
+/** PATCH /v1/coupons/{id}: Update a coupon code */
+export type PatchCouponsIdBody = {
+  label?: string | null;
+  status?: "active" | "disabled";
+};
+export type PatchCouponsIdResponse = Coupon;
 
 /** POST /v1/widget/tokens: Mint a referral widget token */
 export type PostWidgetTokensBody = {
@@ -10011,6 +10297,7 @@ export type PostReferralsAssociateBody = {
   ip?: string;
   ua?: string;
   idempotencyKey?: string;
+  customerCreatedAt?: string;
   occurredAt?: string;
   emailDomain?: string;
   consent?: {
@@ -10088,6 +10375,11 @@ export type PostTrackEventsBody = {
   ip?: string;
   ua?: string;
   type: "click";
+  customerRef?: string;
+  productRef?: string;
+  kind?: string;
+  metadata?: Record<string, unknown>;
+  occurredAt?: string;
 } | {
   programId: string;
   partnerId: string;
@@ -10124,11 +10416,17 @@ export type PostCommissionRulesBody = {
     } | {
       type: "lifetime";
     } | {
+      type: "first_earning_payment_after_referral";
+    } | {
       type: "months";
       months: number;
     };
     holdDays?: number;
     capPerReferral?: {
+      amountMinor: number;
+      currency: string;
+    };
+    capPerPayment?: {
       amountMinor: number;
       currency: string;
     };
@@ -10195,6 +10493,8 @@ export type PostCommissionRulesBody = {
       expansionBps: number;
     };
   };
+  /** When this version takes effect (ISO 8601). Payments are rated by the version in force at their occurredAt; until then /terms shows it as `upcoming`. Omit for in force once published. */
+  effectiveAt?: string;
 };
 
 /** GET /v1/commission-rules: List commission rules */
@@ -10224,11 +10524,17 @@ export type PutProgramsIdCommissionRuleBody = {
     } | {
       type: "lifetime";
     } | {
+      type: "first_earning_payment_after_referral";
+    } | {
       type: "months";
       months: number;
     };
     holdDays?: number;
     capPerReferral?: {
+      amountMinor: number;
+      currency: string;
+    };
+    capPerPayment?: {
       amountMinor: number;
       currency: string;
     };
@@ -10339,6 +10645,13 @@ export type GetPartnersIdSummaryQuery = {
 };
 
 /** POST /v1/commissions/approve-due: Approve due commissions */
+
+/** POST /v1/commissions/{id}/hold: Hold a commission until a date */
+export type PostCommissionsIdHoldBody = {
+  until: string;
+};
+
+/** POST /v1/commissions/{id}/approve: Approve a commission now */
 
 /** POST /v1/commissions/{id}/adjust: Adjust a commission */
 export type PostCommissionsIdAdjustBody = {
@@ -11114,6 +11427,11 @@ export type PostValueImportBody = {
 
 /** GET /v1/value/import/{jobId}: Get a value import job */
 
+/** POST /v1/import/native: Import partners, links, referrals and commissions (native) */
+export type PostImportNativeQuery = {
+  dryRun?: "true" | "false";
+};
+
 /** GET /v1/partner/kyc/status: Get my identity verification status */
 
 /** POST /v1/partner/kyc/submit: Submit identity verification */
@@ -11164,9 +11482,22 @@ export type PostPartnerLinksBody = {
   destinationUrl: string;
   productRef?: string | null;
   assetId?: string;
+  label?: string | null;
+  commission?: {
+    base: {
+      kind: "percent";
+      bps: number;
+    };
+  } | null;
   code?: string;
 };
 export type PostPartnerLinksResponse = CreatedLink;
+
+/** GET /v1/partner/links/{id}/timeseries: My link's daily activity */
+export type GetPartnerLinksIdTimeseriesQuery = {
+  days?: number;
+};
+export type GetPartnerLinksIdTimeseriesResponse = LinkTimeseries;
 
 /** GET /v1/partner/assets: List marketing assets */
 export type GetPartnerAssetsQuery = {
@@ -11710,6 +12041,9 @@ export type PutProgramsIdRefereeRewardBody = {
   enabled?: boolean;
   kind?: "store_credit" | "coupon" | "gift_card" | "stripe_promotion";
   amountMinor?: number;
+  amount?: {
+    mirror: "referrer_line";
+  };
   bps?: number;
   capMinor?: number;
   on?: "first_commission" | "first_payment";
@@ -11783,6 +12117,19 @@ export type PutRewardsRulesKeyBody = {
 };
 
 /** DELETE /v1/rewards/rules/{key}: Delete a reward rule */
+
+/** GET /v1/programs/{id}/linked: List linked programs */
+export type GetProgramsIdLinkedResponse = Array<LinkedProgram>;
+
+/** POST /v1/programs/{id}/linked: Link a source program */
+export type PostProgramsIdLinkedBody = {
+  sourceProgramId: string;
+  windowDays: number;
+};
+export type PostProgramsIdLinkedResponse = LinkedProgram;
+
+/** DELETE /v1/programs/{id}/linked/{sourceProgramId}: Unlink a source program */
+export type DeleteProgramsIdLinkedSourceProgramIdResponse = Ok;
 
 /** GET /v1/programs/{id}/groups: List partner groups */
 export type GetProgramsIdGroupsQuery = {
@@ -13182,6 +13529,10 @@ export type PostWebhooksBillingConnectionIdBody = {
     invoiceRef?: string;
     /** Integer minor units. */
     amountGross: number;
+    /** The part of amountGross commission is computed on, instead of the rule's appliesTo (at most amountGross). Reports still show amountGross; a refund scales the clawback by refunded over amountGross. */
+    commissionBaseMinor?: number;
+    /** The most this payment may earn across every partner line (memo "capped by event"). */
+    maxCommissionMinor?: number;
     currency: string;
     occurredAt: string;
     metadata?: Record<string, unknown>;
@@ -13353,6 +13704,8 @@ export type WebhookPayloads = {
   "tax.form_delivered": TaxFormDeliveredEvent;
   /** A referred customer earned their reward */
   "referee_reward.earned": RefereeRewardEarnedEvent;
+  /** A referred customer's reward was reversed */
+  "referee_reward.reversed": RefereeRewardReversedEvent;
   /** A partner code became a Stripe promotion code */
   "coupon.created": CouponCreatedEvent;
   /** A referee reward was redeemed */
@@ -13540,9 +13893,11 @@ export const operations = {
   getV1Links: { method: 'GET', path: '/v1/links' },
   patchV1LinksId: { method: 'PATCH', path: '/v1/links/{id}' },
   postV1ProgramsIdLinksRepoint: { method: 'POST', path: '/v1/programs/{id}/links/repoint' },
+  getV1LinksIdTimeseries: { method: 'GET', path: '/v1/links/{id}/timeseries' },
   getV1LinksIdQr: { method: 'GET', path: '/v1/links/{id}/qr' },
   postV1Coupons: { method: 'POST', path: '/v1/coupons' },
   getV1Coupons: { method: 'GET', path: '/v1/coupons' },
+  patchV1CouponsId: { method: 'PATCH', path: '/v1/coupons/{id}' },
   postV1WidgetTokens: { method: 'POST', path: '/v1/widget/tokens' },
   postV1WidgetSession: { method: 'POST', path: '/v1/widget/session' },
   postV1ReferralsAssociate: { method: 'POST', path: '/v1/referrals/associate' },
@@ -13566,6 +13921,8 @@ export const operations = {
   getV1PartnersIdStats: { method: 'GET', path: '/v1/partners/{id}/stats' },
   getV1PartnersIdSummary: { method: 'GET', path: '/v1/partners/{id}/summary' },
   postV1CommissionsApproveDue: { method: 'POST', path: '/v1/commissions/approve-due' },
+  postV1CommissionsIdHold: { method: 'POST', path: '/v1/commissions/{id}/hold' },
+  postV1CommissionsIdApprove: { method: 'POST', path: '/v1/commissions/{id}/approve' },
   postV1CommissionsIdAdjust: { method: 'POST', path: '/v1/commissions/{id}/adjust' },
   postV1CommissionsIdSettle: { method: 'POST', path: '/v1/commissions/{id}/settle' },
   postV1BillingConnections: { method: 'POST', path: '/v1/billing/connections' },
@@ -13666,6 +14023,7 @@ export const operations = {
   postV1ValueEvents: { method: 'POST', path: '/v1/value/events' },
   postV1ValueImport: { method: 'POST', path: '/v1/value/import' },
   getV1ValueImportJobId: { method: 'GET', path: '/v1/value/import/{jobId}' },
+  postV1ImportNative: { method: 'POST', path: '/v1/import/native' },
   getV1PartnerKycStatus: { method: 'GET', path: '/v1/partner/kyc/status' },
   postV1PartnerKycSubmit: { method: 'POST', path: '/v1/partner/kyc/submit' },
   getV1PartnerMe: { method: 'GET', path: '/v1/partner/me' },
@@ -13673,6 +14031,7 @@ export const operations = {
   getV1PartnerReportsProducts: { method: 'GET', path: '/v1/partner/reports/products' },
   getV1PartnerLinks: { method: 'GET', path: '/v1/partner/links' },
   postV1PartnerLinks: { method: 'POST', path: '/v1/partner/links' },
+  getV1PartnerLinksIdTimeseries: { method: 'GET', path: '/v1/partner/links/{id}/timeseries' },
   getV1PartnerAssets: { method: 'GET', path: '/v1/partner/assets' },
   getV1PartnerDisputes: { method: 'GET', path: '/v1/partner/disputes' },
   postV1PartnerDisputes: { method: 'POST', path: '/v1/partner/disputes' },
@@ -13768,6 +14127,9 @@ export const operations = {
   getV1RewardsRules: { method: 'GET', path: '/v1/rewards/rules' },
   putV1RewardsRulesKey: { method: 'PUT', path: '/v1/rewards/rules/{key}' },
   deleteV1RewardsRulesKey: { method: 'DELETE', path: '/v1/rewards/rules/{key}' },
+  getV1ProgramsIdLinked: { method: 'GET', path: '/v1/programs/{id}/linked' },
+  postV1ProgramsIdLinked: { method: 'POST', path: '/v1/programs/{id}/linked' },
+  deleteV1ProgramsIdLinkedSourceProgramId: { method: 'DELETE', path: '/v1/programs/{id}/linked/{sourceProgramId}' },
   getV1ProgramsIdGroups: { method: 'GET', path: '/v1/programs/{id}/groups' },
   postV1ProgramsIdGroups: { method: 'POST', path: '/v1/programs/{id}/groups' },
   patchV1PartnerGroupsId: { method: 'PATCH', path: '/v1/partner-groups/{id}' },

@@ -36,6 +36,7 @@ export const operations = {
   deleteProgramsIdCallNumbersNumberId: { method: "DELETE", path: "/v1/programs/{id}/call-numbers/{numberId}", pathParams: ["id","numberId"], query: [], body: false, kind: "json" },
   deleteProgramsIdEmailSettings: { method: "DELETE", path: "/v1/programs/{id}/email-settings", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProgramsIdLinkDomain: { method: "DELETE", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
+  deleteProgramsIdLinkedSourceProgramId: { method: "DELETE", path: "/v1/programs/{id}/linked/{sourceProgramId}", pathParams: ["id","sourceProgramId"], query: [], body: false, kind: "json" },
   deleteRewardsRulesKey: { method: "DELETE", path: "/v1/rewards/rules/{key}", pathParams: ["key"], query: [], body: false, kind: "json" },
   deleteStripeCreditsConnection: { method: "DELETE", path: "/v1/stripe-credits/connection", pathParams: [], query: [], body: false, kind: "json" },
   deleteSupportAppsAdapter: { method: "DELETE", path: "/v1/support/apps/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
@@ -87,7 +88,7 @@ export const operations = {
   getCommissions: { method: "GET", path: "/v1/commissions", pathParams: [], query: ["partnerId","programId","type","referralId","customerRef","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getCommissionsId: { method: "GET", path: "/v1/commissions/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getContracts: { method: "GET", path: "/v1/contracts", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
-  getCoupons: { method: "GET", path: "/v1/coupons", pathParams: [], query: ["programId","partnerId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getCoupons: { method: "GET", path: "/v1/coupons", pathParams: [], query: ["programId","partnerId","code","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getCreators: { method: "GET", path: "/v1/creators", pathParams: [], query: ["q","category","channel","minAudience","minEngagementBps","audienceCountry","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getCreatorsAccountId: { method: "GET", path: "/v1/creators/{accountId}", pathParams: ["accountId"], query: [], body: false, kind: "json" },
   getDeals: { method: "GET", path: "/v1/deals", pathParams: [], query: ["status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -111,8 +112,9 @@ export const operations = {
   getIntegrations: { method: "GET", path: "/v1/integrations", pathParams: [], query: [], body: false, kind: "json" },
   getIntegrationsDeliveries: { method: "GET", path: "/v1/integrations/deliveries", pathParams: [], query: ["kind","status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getInvitations: { method: "GET", path: "/v1/invitations", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
-  getLinks: { method: "GET", path: "/v1/links", pathParams: [], query: ["programId","partnerId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getLinks: { method: "GET", path: "/v1/links", pathParams: [], query: ["programId","partnerId","code","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getLinksIdQr: { method: "GET", path: "/v1/links/{id}/qr", pathParams: ["id"], query: [], body: false, kind: "text" },
+  getLinksIdTimeseries: { method: "GET", path: "/v1/links/{id}/timeseries", pathParams: ["id"], query: ["days"], body: false, kind: "json" },
   getMarketplaceListing: { method: "GET", path: "/v1/marketplace/listing", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getMe: { method: "GET", path: "/v1/me", pathParams: [], query: [], body: false, kind: "json" },
   getNegotiations: { method: "GET", path: "/v1/negotiations", pathParams: [], query: ["programId","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -156,6 +158,7 @@ export const operations = {
   getPartnerKycStatus: { method: "GET", path: "/v1/partner/kyc/status", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerLinks: { method: "GET", path: "/v1/partner/links", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerLinksIdQr: { method: "GET", path: "/v1/partner/links/{id}/qr", pathParams: ["id"], query: [], body: false, kind: "text" },
+  getPartnerLinksIdTimeseries: { method: "GET", path: "/v1/partner/links/{id}/timeseries", pathParams: ["id"], query: ["days"], body: false, kind: "json" },
   getPartnerLinksMatch: { method: "GET", path: "/v1/partner/links/match", pathParams: [], query: ["url"], body: false, kind: "json" },
   getPartnerMarketplace: { method: "GET", path: "/v1/partner/marketplace", pathParams: [], query: ["category","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerMe: { method: "GET", path: "/v1/partner/me", pathParams: [], query: [], body: false, kind: "json" },
@@ -221,6 +224,7 @@ export const operations = {
   getProgramsIdGraph: { method: "GET", path: "/v1/programs/{id}/graph", pathParams: ["id"], query: ["root","depth"], body: false, kind: "json" },
   getProgramsIdGroups: { method: "GET", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: ["includeArchived","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdLinkDomain: { method: "GET", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProgramsIdLinked: { method: "GET", path: "/v1/programs/{id}/linked", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdNegotiationPolicy: { method: "GET", path: "/v1/programs/{id}/negotiation-policy", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdPromotions: { method: "GET", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdRefereeReward: { method: "GET", path: "/v1/programs/{id}/referee-reward", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -282,6 +286,7 @@ export const operations = {
   patchAuthConnectionsId: { method: "PATCH", path: "/v1/auth/connections/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchAuthConnectionsIdOrigins: { method: "PATCH", path: "/v1/auth/connections/{id}/origins", pathParams: ["id"], query: [], body: true, kind: "json", public: true },
   patchBillingConnectionsId: { method: "PATCH", path: "/v1/billing/connections/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
+  patchCouponsId: { method: "PATCH", path: "/v1/coupons/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchLinksId: { method: "PATCH", path: "/v1/links/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
   patchOrg: { method: "PATCH", path: "/v1/org", pathParams: [], query: [], body: true, kind: "json" },
   patchOrgAlertsId: { method: "PATCH", path: "/v1/org/alerts/{id}", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -350,6 +355,8 @@ export const operations = {
   postCommissionRules: { method: "POST", path: "/v1/commission-rules", pathParams: [], query: [], body: true, kind: "json" },
   postCommissionsApproveDue: { method: "POST", path: "/v1/commissions/approve-due", pathParams: [], query: [], body: false, kind: "json" },
   postCommissionsIdAdjust: { method: "POST", path: "/v1/commissions/{id}/adjust", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postCommissionsIdApprove: { method: "POST", path: "/v1/commissions/{id}/approve", pathParams: ["id"], query: [], body: false, kind: "json" },
+  postCommissionsIdHold: { method: "POST", path: "/v1/commissions/{id}/hold", pathParams: ["id"], query: [], body: true, kind: "json" },
   postCommissionsIdSettle: { method: "POST", path: "/v1/commissions/{id}/settle", pathParams: ["id"], query: [], body: true, kind: "json" },
   postContracts: { method: "POST", path: "/v1/contracts", pathParams: [], query: [], body: true, kind: "json" },
   postContractsIdSend: { method: "POST", path: "/v1/contracts/{id}/send", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -373,6 +380,7 @@ export const operations = {
   postFxRatesClearOverride: { method: "POST", path: "/v1/fx-rates/clear-override", pathParams: [], query: [], body: true, kind: "json" },
   postFxRatesSync: { method: "POST", path: "/v1/fx-rates/sync", pathParams: [], query: [], body: false, kind: "json" },
   postGraphql: { method: "POST", path: "/v1/graphql", pathParams: [], query: [], body: true, kind: "json" },
+  postImportNative: { method: "POST", path: "/v1/import/native", pathParams: [], query: ["dryRun"], body: false, kind: "json" },
   postImportProvider: { method: "POST", path: "/v1/import/{provider}", pathParams: ["provider"], query: ["programId","dryRun","destinationUrl"], body: true, kind: "json" },
   postIntegrationsDeliveriesIdRetry: { method: "POST", path: "/v1/integrations/deliveries/{id}/retry", pathParams: ["id"], query: [], body: false, kind: "json" },
   postIntegrationsHubspotTest: { method: "POST", path: "/v1/integrations/hubspot/test", pathParams: [], query: [], body: true, kind: "json" },
@@ -456,6 +464,7 @@ export const operations = {
   postProgramsIdEnrollmentsEnrollmentIdReject: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/reject", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdGroups: { method: "POST", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdLinkDomainVerify: { method: "POST", path: "/v1/programs/{id}/link-domain/verify", pathParams: ["id"], query: [], body: false, kind: "json" },
+  postProgramsIdLinked: { method: "POST", path: "/v1/programs/{id}/linked", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdLinksRepoint: { method: "POST", path: "/v1/programs/{id}/links/repoint", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdPromotions: { method: "POST", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdReferrers: { method: "POST", path: "/v1/programs/{id}/referrers", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -889,6 +898,10 @@ export function buildResources(t: Transport) {
       approveDue: (options?: RequestOptions): Promise<T.PostCommissionsApproveDueResponse> => t.op("postCommissionsApproveDue", {  }, options),
       /** Adjust a commission. POST /v1/commissions/{id}/adjust */
       adjust: (id: string, body: T.PostCommissionsIdAdjustBody, options?: RequestOptions): Promise<T.PostCommissionsIdAdjustResponse> => t.op("postCommissionsIdAdjust", { path: { id }, body }, options),
+      /** Approve a commission now. POST /v1/commissions/{id}/approve */
+      approve: (id: string, options?: RequestOptions): Promise<T.PostCommissionsIdApproveResponse> => t.op("postCommissionsIdApprove", { path: { id } }, options),
+      /** Hold a commission until a date. POST /v1/commissions/{id}/hold */
+      hold: (id: string, body: T.PostCommissionsIdHoldBody, options?: RequestOptions): Promise<T.PostCommissionsIdHoldResponse> => t.op("postCommissionsIdHold", { path: { id }, body }, options),
       /** Settle a commission yourself. POST /v1/commissions/{id}/settle */
       settle: (id: string, body: T.PostCommissionsIdSettleBody, options?: RequestOptions): Promise<T.PostCommissionsIdSettleResponse> => t.op("postCommissionsIdSettle", { path: { id }, body }, options),
     },
@@ -903,6 +916,8 @@ export function buildResources(t: Transport) {
     coupons: {
       /** List coupon codes. GET /v1/coupons */
       list: (query?: (T.GetCouponsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetCouponsResponse['data'][number], T.GetCouponsResponse> => t.list("getCoupons", { query }, options),
+      /** Update a coupon code. PATCH /v1/coupons/{id} */
+      update: (id: string, body: T.PatchCouponsIdBody, options?: RequestOptions): Promise<T.PatchCouponsIdResponse> => t.op("patchCouponsId", { path: { id }, body }, options),
       /** Create a coupon code. POST /v1/coupons */
       create: (body: T.PostCouponsBody, options?: RequestOptions): Promise<T.PostCouponsResponse> => t.op("postCoupons", { body }, options),
     },
@@ -1025,6 +1040,8 @@ export function buildResources(t: Transport) {
       },
     },
     import: {
+      /** Import partners, links, referrals and commissions (native). POST /v1/import/native */
+      native: (query?: (T.PostImportNativeQuery) | RequestOptions, options?: RequestOptions): Promise<T.PostImportNativeResponse> => t.op("postImportNative", { query }, options),
       /** Import partners from another tool. POST /v1/import/{provider} */
       create: (provider: string, body: T.PostImportProviderBody, query: T.PostImportProviderQuery, options?: RequestOptions): Promise<T.PostImportProviderResponse> => t.op("postImportProvider", { path: { provider }, body, query }, options),
     },
@@ -1077,6 +1094,8 @@ export function buildResources(t: Transport) {
       list: (query?: (T.GetLinksQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetLinksResponse['data'][number], T.GetLinksResponse> => t.list("getLinks", { query }, options),
       /** Get a link's QR code. GET /v1/links/{id}/qr */
       qr: (id: string, options?: RequestOptions): Promise<string> => t.op("getLinksIdQr", { path: { id } }, options),
+      /** A link's daily activity. GET /v1/links/{id}/timeseries */
+      timeseries: (id: string, query?: (T.GetLinksIdTimeseriesQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetLinksIdTimeseriesResponse> => t.op("getLinksIdTimeseries", { path: { id }, query }, options),
       /** Update a link. PATCH /v1/links/{id} */
       update: (id: string, body: T.PatchLinksIdBody, options?: RequestOptions): Promise<T.PatchLinksIdResponse> => t.op("patchLinksId", { path: { id }, body }, options),
       /** Create a tracked link. POST /v1/links */
@@ -1384,6 +1403,8 @@ export function buildResources(t: Transport) {
         list: (query?: (T.GetPartnerLinksQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerLinksResponse['data'][number], T.GetPartnerLinksResponse> => t.list("getPartnerLinks", { query }, options),
         /** Get my link's QR code. GET /v1/partner/links/{id}/qr */
         qr: (id: string, options?: RequestOptions): Promise<string> => t.op("getPartnerLinksIdQr", { path: { id } }, options),
+        /** My link's daily activity. GET /v1/partner/links/{id}/timeseries */
+        timeseries: (id: string, query?: (T.GetPartnerLinksIdTimeseriesQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPartnerLinksIdTimeseriesResponse> => t.op("getPartnerLinksIdTimeseries", { path: { id }, query }, options),
         /** Find the programs for a page. GET /v1/partner/links/match */
         match: (query: T.GetPartnerLinksMatchQuery, options?: RequestOptions): Promise<T.GetPartnerLinksMatchResponse> => t.op("getPartnerLinksMatch", { query }, options),
         /** Create a link. POST /v1/partner/links */
@@ -1754,6 +1775,14 @@ export function buildResources(t: Transport) {
         verify: (id: string, options?: RequestOptions): Promise<T.PostProgramsIdLinkDomainVerifyResponse> => t.op("postProgramsIdLinkDomainVerify", { path: { id } }, options),
         /** Set a program's link domain. PUT /v1/programs/{id}/link-domain */
         update: (id: string, body: T.PutProgramsIdLinkDomainBody, options?: RequestOptions): Promise<T.PutProgramsIdLinkDomainResponse> => t.op("putProgramsIdLinkDomain", { path: { id }, body }, options),
+      },
+      linked: {
+        /** Unlink a source program. DELETE /v1/programs/{id}/linked/{sourceProgramId} */
+        delete: (id: string, sourceProgramId: string, options?: RequestOptions): Promise<T.DeleteProgramsIdLinkedSourceProgramIdResponse> => t.op("deleteProgramsIdLinkedSourceProgramId", { path: { id, sourceProgramId } }, options),
+        /** List linked programs. GET /v1/programs/{id}/linked */
+        retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdLinkedResponse> => t.op("getProgramsIdLinked", { path: { id } }, options),
+        /** Link a source program. POST /v1/programs/{id}/linked */
+        create: (id: string, body: T.PostProgramsIdLinkedBody, options?: RequestOptions): Promise<T.PostProgramsIdLinkedResponse> => t.op("postProgramsIdLinked", { path: { id }, body }, options),
       },
       links: {
         /** Repoint a program's links. POST /v1/programs/{id}/links/repoint */
