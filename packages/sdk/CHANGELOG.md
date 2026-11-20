@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.27 - 2026-11-20
+
+- Types for payout connections bound to programs (`programIds`, `id`), the `POST /v1/payout-runs` body `{programIds, dryRun}`, `payoutConnectionId` and `provider` on planned payouts, and the `no_payout_connection` error.
+
 ## 0.3.26 - 2026-11-19
 
 - Types for `outstandingByProgram` on `GET /v1/partners/{id}/clawbacks` and the partner portal's `GET /v1/partner/clawbacks`.

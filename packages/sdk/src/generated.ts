@@ -1029,11 +1029,21 @@ export type PayoutRunCreated = {
     /** Clawbacks of reversed paid commissions deducted from this payout, in its currency (see `GET /v1/partners/{id}/clawbacks`). */
     clawbackMinor: number;
     invoice: Invoice;
+    /** The program-bound payout connection funding this payout; null = the org-wide one (or none). */
+    payoutConnectionId: string | null;
+    /** The payout provider the method pays through (`stripe`, `paypal`, …); null for `csv`. */
+    provider: string | null;
   }>;
   skipped: Array<{
     partnerId: string;
-    reason: "missing_tax_form" | "below_threshold" | "clawback_offset" | "no_profile" | "kyc_unverified" | "sanctions_hold" | "partner_inactive" | "missing_fx_rate" | "self_billing_agreement_missing";
+    reason: "missing_tax_form" | "below_threshold" | "clawback_offset" | "no_profile" | "kyc_unverified" | "sanctions_hold" | "partner_inactive" | "missing_fx_rate" | "self_billing_agreement_missing" | "no_payout_connection";
+    /** Set when only the lines one program-bound connection funds were skipped. */
+    payoutConnectionId?: string;
+    /** `no_payout_connection`: the programs whose lines wait for a payout connection. */
+    programIds?: Array<string>;
   }>;
+  /** A dry run: nothing was stored and `runId` does not exist. */
+  dryRun?: true;
 };
 
 export type PayoutRun = {
@@ -4649,7 +4659,9 @@ export type PostFxRatesClearOverrideResponse = {
 export type GetPayoutConnectionsResponse = {
   object: "list";
   data: Array<{
+    id: string;
     provider: string;
+    programIds: Array<string> | null;
     env: string;
     status: string;
     connectedAt: string;
@@ -4660,15 +4672,18 @@ export type GetPayoutConnectionsResponse = {
 };
 
 export type PutPayoutConnectionsProviderResponse = {
+  id: string;
   provider: string;
   env: string;
   status: "active";
+  programIds: Array<string> | null;
   fromBillingConnectionId?: string;
 };
 
 export type DeletePayoutConnectionsProviderResponse = {
   provider: string;
   removed: true;
+  id?: string;
 };
 
 export type PostFraudInvalidTrafficScanResponse = {
@@ -11299,6 +11314,12 @@ export type PostPartnersIdTaxFormBody = {
 export type PostPartnersIdTaxFormResponse = Ok;
 
 /** POST /v1/payout-runs: Create a payout run */
+export type PostPayoutRunsBody = {
+  /** Only pay lines from these programs. */
+  programIds?: Array<string>;
+  /** Build the run and roll it back: the planned payouts, nothing stored, no events. */
+  dryRun?: boolean;
+};
 export type PostPayoutRunsResponse = PayoutRunCreated;
 
 /** GET /v1/payout-runs: List payout runs */
@@ -11392,35 +11413,55 @@ export type GetPayoutConnectionsQuery = {
 export type PutPayoutConnectionsProviderBody = ({
   fromBillingConnectionId: string;
   env?: "sandbox" | "live";
+  /** Fund only these programs' payouts from this account (a program-bound connection). Omitted: the org-wide connection for this provider. */
+  programIds?: Array<string>;
 }) | ({
   clientId: string;
   secret: string;
   env?: "sandbox" | "live";
+  /** Fund only these programs' payouts from this account (a program-bound connection). Omitted: the org-wide connection for this provider. */
+  programIds?: Array<string>;
 }) | ({
   secretKey: string;
   env?: "sandbox" | "live";
+  /** Fund only these programs' payouts from this account (a program-bound connection). Omitted: the org-wide connection for this provider. */
+  programIds?: Array<string>;
 }) | ({
   apiKey: string;
   walletId: string;
   defaultChain?: string;
   env?: "sandbox" | "live";
+  /** Fund only these programs' payouts from this account (a program-bound connection). Omitted: the org-wide connection for this provider. */
+  programIds?: Array<string>;
 }) | ({
   apiToken: string;
   profileId: string;
   env?: "sandbox" | "live";
+  /** Fund only these programs' payouts from this account (a program-bound connection). Omitted: the org-wide connection for this provider. */
+  programIds?: Array<string>;
 }) | ({
   clientId: string;
   secret: string;
   programId: string;
   env?: "sandbox" | "live";
+  /** Fund only these programs' payouts from this account (a program-bound connection). Omitted: the org-wide connection for this provider. */
+  programIds?: Array<string>;
 }) | ({
   apiKey: string;
   fundingSourceId: string;
   campaignId?: string;
   env?: "sandbox" | "live";
+  /** Fund only these programs' payouts from this account (a program-bound connection). Omitted: the org-wide connection for this provider. */
+  programIds?: Array<string>;
 });
+export type PutPayoutConnectionsProviderQuery = {
+  programIds?: string;
+};
 
 /** DELETE /v1/payout-connections/{provider}: Disconnect a payout provider */
+export type DeletePayoutConnectionsProviderQuery = {
+  id?: string;
+};
 
 /** POST /v1/fraud/invalid-traffic/scan: Scan for invalid traffic */
 export type PostFraudInvalidTrafficScanBody = {

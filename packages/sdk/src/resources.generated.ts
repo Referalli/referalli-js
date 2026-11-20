@@ -28,7 +28,7 @@ export const operations = {
   deletePartnerApiTokensId: { method: "DELETE", path: "/v1/partner/api-tokens/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deletePartnersId: { method: "DELETE", path: "/v1/partners/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deletePartnerSmartlinksId: { method: "DELETE", path: "/v1/partner/smartlinks/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
-  deletePayoutConnectionsProvider: { method: "DELETE", path: "/v1/payout-connections/{provider}", pathParams: ["provider"], query: [], body: false, kind: "json" },
+  deletePayoutConnectionsProvider: { method: "DELETE", path: "/v1/payout-connections/{provider}", pathParams: ["provider"], query: ["id"], body: false, kind: "json" },
   deletePortalThemeDraft: { method: "DELETE", path: "/v1/portal/theme/draft", pathParams: [], query: [], body: false, kind: "json" },
   deletePrivacyExecutorsAdapter: { method: "DELETE", path: "/v1/privacy/executors/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
   deleteProductLinksId: { method: "DELETE", path: "/v1/product-links/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -440,7 +440,7 @@ export const operations = {
   postPartnerStorefrontBarToken: { method: "POST", path: "/v1/partner/storefront-bar/token", pathParams: [], query: [], body: true, kind: "json" },
   postPartnerTermsVersionIdAccept: { method: "POST", path: "/v1/partner/terms/{versionId}/accept", pathParams: ["versionId"], query: [], body: false, kind: "json" },
   postPassportVerify: { method: "POST", path: "/v1/passport/verify", pathParams: [], query: [], body: true, kind: "json", public: true },
-  postPayoutRuns: { method: "POST", path: "/v1/payout-runs", pathParams: [], query: [], body: false, kind: "json" },
+  postPayoutRuns: { method: "POST", path: "/v1/payout-runs", pathParams: [], query: [], body: true, kind: "json" },
   postPayoutRunsIdCancel: { method: "POST", path: "/v1/payout-runs/{id}/cancel", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPayoutRunsIdExecute: { method: "POST", path: "/v1/payout-runs/{id}/execute", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPayoutRunsRunScheduled: { method: "POST", path: "/v1/payout-runs/run-scheduled", pathParams: [], query: [], body: false, kind: "json" },
@@ -546,7 +546,7 @@ export const operations = {
   putPartnersIdVat: { method: "PUT", path: "/v1/partners/{id}/vat", pathParams: ["id"], query: [], body: true, kind: "json" },
   putPartnerStorefronts: { method: "PUT", path: "/v1/partner/storefronts", pathParams: [], query: ["orgId","programId"], body: true, kind: "json" },
   putPartnerStorefrontsIdItems: { method: "PUT", path: "/v1/partner/storefronts/{id}/items", pathParams: ["id"], query: [], body: true, kind: "json" },
-  putPayoutConnectionsProvider: { method: "PUT", path: "/v1/payout-connections/{provider}", pathParams: ["provider"], query: [], body: true, kind: "json" },
+  putPayoutConnectionsProvider: { method: "PUT", path: "/v1/payout-connections/{provider}", pathParams: ["provider"], query: ["programIds"], body: true, kind: "json" },
   putPortalThemeDraft: { method: "PUT", path: "/v1/portal/theme/draft", pathParams: [], query: [], body: true, kind: "json" },
   putProfitabilityProductsProductRef: { method: "PUT", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: true, kind: "json" },
   putProfitabilitySettings: { method: "PUT", path: "/v1/profitability/settings", pathParams: [], query: [], body: true, kind: "json" },
@@ -1567,17 +1567,17 @@ export function buildResources(t: Transport) {
     },
     payoutConnections: {
       /** Disconnect a payout provider. DELETE /v1/payout-connections/{provider} */
-      delete: (provider: string, options?: RequestOptions): Promise<T.DeletePayoutConnectionsProviderResponse> => t.op("deletePayoutConnectionsProvider", { path: { provider } }, options),
+      delete: (provider: string, query?: (T.DeletePayoutConnectionsProviderQuery) | RequestOptions, options?: RequestOptions): Promise<T.DeletePayoutConnectionsProviderResponse> => t.op("deletePayoutConnectionsProvider", { path: { provider }, query }, options),
       /** List payout provider connections. GET /v1/payout-connections */
       list: (query?: (T.GetPayoutConnectionsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPayoutConnectionsResponse['data'][number], T.GetPayoutConnectionsResponse> => t.list("getPayoutConnections", { query }, options),
       /** Connect a payout provider. PUT /v1/payout-connections/{provider} */
-      update: (provider: string, body: T.PutPayoutConnectionsProviderBody, options?: RequestOptions): Promise<T.PutPayoutConnectionsProviderResponse> => t.op("putPayoutConnectionsProvider", { path: { provider }, body }, options),
+      update: (provider: string, body: T.PutPayoutConnectionsProviderBody, query?: (T.PutPayoutConnectionsProviderQuery) | RequestOptions, options?: RequestOptions): Promise<T.PutPayoutConnectionsProviderResponse> => t.op("putPayoutConnectionsProvider", { path: { provider }, body, query }, options),
     },
     payoutRuns: {
       /** List payout runs. GET /v1/payout-runs */
       list: (query?: (T.GetPayoutRunsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPayoutRunsResponse['data'][number], T.GetPayoutRunsResponse> => t.list("getPayoutRuns", { query }, options),
       /** Create a payout run. POST /v1/payout-runs */
-      create: (options?: RequestOptions): Promise<T.PostPayoutRunsResponse> => t.op("postPayoutRuns", {  }, options),
+      create: (body: T.PostPayoutRunsBody, options?: RequestOptions): Promise<T.PostPayoutRunsResponse> => t.op("postPayoutRuns", { body }, options),
       /** Cancel a payout run. POST /v1/payout-runs/{id}/cancel */
       cancel: (id: string, options?: RequestOptions): Promise<T.PostPayoutRunsIdCancelResponse> => t.op("postPayoutRunsIdCancel", { path: { id } }, options),
       /** Execute a payout run. POST /v1/payout-runs/{id}/execute */
