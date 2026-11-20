@@ -4584,6 +4584,13 @@ export type GetPartnersIdClawbacksResponse = {
     /** Integer minor units (cents). */
     amountMinor: number;
   }>;
+  /** The same per program and currency. A payout run limited to some programs deducts only their clawbacks. */
+  outstandingByProgram: Array<{
+    programId: string;
+    currency: string;
+    /** Integer minor units (cents). */
+    amountMinor: number;
+  }>;
 };
 
 export type PostPayoutsIdStatusResponse = {
@@ -5507,6 +5514,28 @@ export type GetPartnerPayoutsResponse = {
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
   next_cursor: string | null;
+};
+
+export type GetPartnerClawbacksResponse = {
+  /** Clawbacks across merchants, newest first (up to 500). */
+  data: Array<{
+    id: string;
+    orgId: string;
+    programId: string;
+    programName: string;
+    commissionId: string;
+    /** Integer minor units (cents). */
+    amountMinor: number;
+    currency: string;
+    createdAt: string;
+  }>;
+  /** What is still owed per merchant and currency; the next payouts deduct it. */
+  outstanding: Array<{
+    orgId: string;
+    currency: string;
+    /** Integer minor units (cents). */
+    amountMinor: number;
+  }>;
 };
 
 export type PutPartnerOrgsOrgIdPayoutProfileResponse = {
@@ -11995,6 +12024,8 @@ export type GetPartnerPayoutsQuery = {
   "created[lte]"?: string;
 };
 
+/** GET /v1/partner/clawbacks: List what I owe back */
+
 /** PUT /v1/partner/orgs/{orgId}/payout-profile: Set my payout details */
 export type PutPartnerOrgsOrgIdPayoutProfileBody = {
   method: "paypal" | "wise" | "stripe_connect" | "ach" | "crypto" | "payoneer" | "tremendous" | "csv";
@@ -14478,6 +14509,7 @@ export const operations = {
   getV1PartnerReferrals: { method: 'GET', path: '/v1/partner/referrals' },
   getV1PartnerReferralsIdTransparency: { method: 'GET', path: '/v1/partner/referrals/{id}/transparency' },
   getV1PartnerPayouts: { method: 'GET', path: '/v1/partner/payouts' },
+  getV1PartnerClawbacks: { method: 'GET', path: '/v1/partner/clawbacks' },
   putV1PartnerOrgsOrgIdPayoutProfile: { method: 'PUT', path: '/v1/partner/orgs/{orgId}/payout-profile' },
   postV1PartnerOrgsOrgIdTaxForm: { method: 'POST', path: '/v1/partner/orgs/{orgId}/tax-form' },
   getV1PartnerProgramsProgramIdLeaderboard: { method: 'GET', path: '/v1/partner/programs/{programId}/leaderboard' },

@@ -148,6 +148,7 @@ export const operations = {
   getPartnerAssets: { method: "GET", path: "/v1/partner/assets", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerCallNumbers: { method: "GET", path: "/v1/partner/call-numbers", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerCatalog: { method: "GET", path: "/v1/partner/catalog", pathParams: [], query: ["orgId","programId","q","category","limit","cursor"], body: false, kind: "json" },
+  getPartnerClawbacks: { method: "GET", path: "/v1/partner/clawbacks", pathParams: [], query: [], body: false, kind: "json" },
   getPartnerContracts: { method: "GET", path: "/v1/partner/contracts", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerDeals: { method: "GET", path: "/v1/partner/deals", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnerDisputes: { method: "GET", path: "/v1/partner/disputes", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
@@ -1321,6 +1322,8 @@ export function buildResources(t: Transport) {
       callNumbers: (query?: (T.GetPartnerCallNumbersQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerCallNumbersResponse['data'][number], T.GetPartnerCallNumbersResponse> => t.list("getPartnerCallNumbers", { query }, options),
       /** Search products to promote. GET /v1/partner/catalog */
       catalog: (query?: (T.GetPartnerCatalogQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPartnerCatalogResponse> => t.op("getPartnerCatalog", { query }, options),
+      /** List what I owe back. GET /v1/partner/clawbacks */
+      clawbacks: (options?: RequestOptions): Promise<T.GetPartnerClawbacksResponse> => t.op("getPartnerClawbacks", {  }, options),
       /** List my groups. GET /v1/partner/groups */
       groups: (query?: (T.GetPartnerGroupsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnerGroupsResponse['data'][number], T.GetPartnerGroupsResponse> => t.list("getPartnerGroups", { query }, options),
       /** Browse the marketplace. GET /v1/partner/marketplace */

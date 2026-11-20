@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.26 - 2026-11-19
+
+- Types for `outstandingByProgram` on `GET /v1/partners/{id}/clawbacks` and the partner portal's `GET /v1/partner/clawbacks`.
+
 ## 0.3.25 - 2026-11-19
 
 - Types for payout clawbacks: the program setting `clawbackPaidReversals`, `clawbackMinor` on payouts and invoices, `GET /v1/partners/{id}/clawbacks` and the `payout.clawback_recorded` webhook.
