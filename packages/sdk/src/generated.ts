@@ -172,6 +172,8 @@ export type ProgramSettings = {
   productMatch: "optional" | "required";
   /** Tax-form policy for this program's payouts: `required` or `delegated` (a partner paid by `stripe_connect` with a `stripeAccountId` is paid without a Referalli tax form). Null inherits the org's `payoutTaxFormPolicy`. */
   payoutTaxFormPolicy: ("required" | "delegated") | null;
+  /** Default false. When true, a refund or dispute that reverses a commission line already paid (by payout, or imported as paid) records a clawback of the part the partner received (`payout.clawback_recorded`), deducted from their next payout in the same currency. Lines settled as merchant or store credit are not clawed back. */
+  clawbackPaidReversals: boolean;
   /** Share of each money commission line (basis points, 0-10000, default 0) that a `payout` program settles as merchant credit at once: the line is recorded as two lines, a cash share paid by payout runs and a merchant credit share settled as `merchant_credit` (`commission.settled`). Refunds reverse both shares pro rata. Ignored when `settlement` is `merchant_credit` and for custom units. */
   merchantCreditBps: number;
   /** Whether clicks store the visitor's country (from the click request's Cloudflare `CF-IPCountry` header, never from a supplied IP). Default true. False: clicks carry no country, so `countries` allow/block lists see an unknown country and allow it. */
@@ -992,8 +994,10 @@ export type Invoice = {
     vatId: string | null;
   };
   currency?: string;
-  /** Integer minor units (cents). */
+  /** The lines less `clawbackMinor`; VAT is computed on it. */
   netMinor?: number;
+  /** Clawbacks of reversed paid commissions deducted from the lines. Absent on invoices issued before 2026-11. */
+  clawbackMinor?: number;
   vatTreatment?: "reverse_charge" | "domestic" | "outside_scope";
   vatRateBps?: number | null;
   /** Integer minor units (cents). */
@@ -1022,11 +1026,13 @@ export type PayoutRunCreated = {
       rate: number;
       ts: string;
     }>;
+    /** Clawbacks of reversed paid commissions deducted from this payout, in its currency (see `GET /v1/partners/{id}/clawbacks`). */
+    clawbackMinor: number;
     invoice: Invoice;
   }>;
   skipped: Array<{
     partnerId: string;
-    reason: "missing_tax_form" | "below_threshold" | "no_profile" | "kyc_unverified" | "sanctions_hold" | "partner_inactive" | "missing_fx_rate" | "self_billing_agreement_missing";
+    reason: "missing_tax_form" | "below_threshold" | "clawback_offset" | "no_profile" | "kyc_unverified" | "sanctions_hold" | "partner_inactive" | "missing_fx_rate" | "self_billing_agreement_missing";
   }>;
 };
 
@@ -1053,6 +1059,24 @@ export type Payout = {
   sentAt: string | null;
   /** True for a payout loaded by the native import: no Referalli run made it and none pays its lines again. */
   imported: boolean;
+  /** Clawbacks of reversed paid commissions deducted from this payout (its lines are paid in full; `amountMinor` is what is sent). Restored if the payout fails or is cancelled. */
+  clawbackMinor: number;
+};
+
+export type PayoutClawback = {
+  id: string;
+  partnerId: string;
+  programId: string;
+  /** The paid commission line that was reversed. */
+  commissionId: string;
+  /** The `reversed` commission event that caused it, or null when `payoutId` is set. */
+  reversalId: string | null;
+  /** The payout that sent more than a line was worth after it was reversed while the payout was pending; null for a clawback caused by a reversal. */
+  payoutId: string | null;
+  /** What the partner owes: the part of the reversal they had been paid. */
+  amountMinor: number;
+  currency: string;
+  createdAt: string;
 };
 
 export type FxRate = {
@@ -2342,7 +2366,7 @@ export type PartnerLevelUpEvent = {
   data: PartnerLevelUpEventData;
 };
 
-/** `data` of a `payout.scheduled` event: A payout run included the partner; nothing has been paid yet. */
+/** `data` of a `payout.scheduled` event: A payout run included the partner; nothing has been paid yet. `clawbackMinor` is what was deducted for clawbacks of reversed paid commissions (`amountMinor` is after it). */
 export type PayoutScheduledEventData = {
   payoutId: string;
   partnerId: string;
@@ -2350,6 +2374,8 @@ export type PayoutScheduledEventData = {
   amountMinor: number;
   /** Lowercase ISO 4217 code. */
   currency: string;
+  /** Integer minor units (cents). */
+  clawbackMinor: number;
 };
 
 /** A payout was created in a run: the `payout.scheduled` delivery body. */
@@ -2443,6 +2469,30 @@ export type PayoutCancelledEvent = {
   livemode: boolean;
   createdAt: string;
   data: PayoutCancelledEventData;
+};
+
+/** `data` of a `payout.clawback_recorded` event: With the program setting `clawbackPaidReversals`, a refund or dispute reversed a commission line the partner was already paid; `amountMinor` (the part they received) comes off their next payout in `currency`. */
+export type PayoutClawbackRecordedEventData = {
+  clawbackId: string;
+  partnerId: string;
+  programId: string;
+  commissionId: string;
+  /** Integer minor units (cents). */
+  amountMinor: number;
+  /** Lowercase ISO 4217 code. */
+  currency: string;
+};
+
+/** A paid commission is owed back: the `payout.clawback_recorded` delivery body. */
+export type PayoutClawbackRecordedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "payout.clawback_recorded";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: PayoutClawbackRecordedEventData;
 };
 
 /** `data` of a `tax.form_delivered` event: A filed 1099-NEC was accepted and delivered; `emailed` says whether the filing provider also emailed it. */
@@ -4525,6 +4575,17 @@ export type GetPayoutsResponse = {
   next_cursor: string | null;
 };
 
+export type GetPartnersIdClawbacksResponse = {
+  /** Every clawback recorded for the partner, newest first. */
+  data: Array<PayoutClawback>;
+  /** Per currency: clawbacks less what pending, submitted and sent payouts deducted. Only currencies with something outstanding are listed. */
+  outstanding: Array<{
+    currency: string;
+    /** Integer minor units (cents). */
+    amountMinor: number;
+  }>;
+};
+
 export type PostPayoutsIdStatusResponse = {
   id: string;
   status: "failed" | "reversed";
@@ -5440,6 +5501,8 @@ export type GetPartnerPayoutsResponse = {
     sentAt: string | null;
     createdAt: string;
     imported: boolean;
+    /** Integer minor units (cents). */
+    clawbackMinor: number;
   }>;
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
@@ -9991,6 +10054,7 @@ export type PostProgramsBody = {
   payoutTaxFormPolicy?: ("required" | "delegated") | null;
   recordCountry?: boolean;
   merchantCreditBps?: number;
+  clawbackPaidReversals?: boolean;
 };
 export type PostProgramsResponse = Program;
 
@@ -10133,6 +10197,7 @@ export type PatchProgramsIdBody = {
   payoutTaxFormPolicy?: ("required" | "delegated") | null;
   recordCountry?: boolean;
   merchantCreditBps?: number;
+  clawbackPaidReversals?: boolean;
   settings?: {
     publicHandle?: string | null;
     publicPage?: {
@@ -10247,6 +10312,7 @@ export type PatchProgramsIdBody = {
     payoutTaxFormPolicy?: ("required" | "delegated") | null;
     recordCountry?: boolean;
     merchantCreditBps?: number;
+    clawbackPaidReversals?: boolean;
   };
   destinationUrl?: string;
 };
@@ -11228,6 +11294,8 @@ export type GetPayoutsQuery = {
   "created[gte]"?: string;
   "created[lte]"?: string;
 };
+
+/** GET /v1/partners/{id}/clawbacks: List a partner's clawbacks */
 
 /** POST /v1/payouts/{id}/status: Record a failure or reversal of an imported payout */
 export type PostPayoutsIdStatusBody = {
@@ -14058,6 +14126,8 @@ export type WebhookPayloads = {
   "payout.failed": PayoutFailedEvent;
   /** A payout was cancelled */
   "payout.cancelled": PayoutCancelledEvent;
+  /** A paid commission is owed back */
+  "payout.clawback_recorded": PayoutClawbackRecordedEvent;
   /** A tax form was delivered to a partner */
   "tax.form_delivered": TaxFormDeliveredEvent;
   /** A referred customer earned their reward */
@@ -14317,6 +14387,7 @@ export const operations = {
   postV1PayoutRunsIdExecute: { method: 'POST', path: '/v1/payout-runs/{id}/execute' },
   postV1PayoutRunsIdCancel: { method: 'POST', path: '/v1/payout-runs/{id}/cancel' },
   getV1Payouts: { method: 'GET', path: '/v1/payouts' },
+  getV1PartnersIdClawbacks: { method: 'GET', path: '/v1/partners/{id}/clawbacks' },
   postV1PayoutsIdStatus: { method: 'POST', path: '/v1/payouts/{id}/status' },
   getV1Tax1099: { method: 'GET', path: '/v1/tax/1099' },
   postV1FxRates: { method: 'POST', path: '/v1/fx-rates' },

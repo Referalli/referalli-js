@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.25 - 2026-11-19
+
+- Types for payout clawbacks: the program setting `clawbackPaidReversals`, `clawbackMinor` on payouts and invoices, `GET /v1/partners/{id}/clawbacks` and the `payout.clawback_recorded` webhook.
+
 ## 0.3.24 - 2026-11-19
 
 - Types for native import `payout` rows and commission `orderRef`, `grossMinor`, `bps`, `strictlyBelowBase`; `Payout.imported` and `POST /v1/payouts/{id}/status`; `subId` and `productId` on server touches; `notificationEmails.disabled`; `counterpartyCustomerRef` / `counterpartyPartnerRef` on billing events.

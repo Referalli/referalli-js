@@ -179,6 +179,7 @@ export const operations = {
   getPartnerSecurity: { method: "GET", path: "/v1/partner/security", pathParams: [], query: [], body: false, kind: "json" },
   getPartnersId: { method: "GET", path: "/v1/partners/{id}", pathParams: ["id"], query: ["programId"], body: false, kind: "json" },
   getPartnersIdBalances: { method: "GET", path: "/v1/partners/{id}/balances", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getPartnersIdClawbacks: { method: "GET", path: "/v1/partners/{id}/clawbacks", pathParams: ["id"], query: [], body: false, kind: "json" },
   getPartnersIdEnrollments: { method: "GET", path: "/v1/partners/{id}/enrollments", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPartnersIdPayoutProfile: { method: "GET", path: "/v1/partners/{id}/payout-profile", pathParams: ["id"], query: [], body: false, kind: "json" },
   getPartnersIdQuality: { method: "GET", path: "/v1/partners/{id}/quality", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -1526,6 +1527,8 @@ export function buildResources(t: Transport) {
       retrieve: (id: string, query?: (T.GetPartnersIdQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPartnersIdResponse> => t.op("getPartnersId", { path: { id }, query }, options),
       /** Get a partner's balances. GET /v1/partners/{id}/balances */
       balances: (id: string, query?: (T.GetPartnersIdBalancesQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnersIdBalancesResponse['data'][number], T.GetPartnersIdBalancesResponse> => t.list("getPartnersIdBalances", { path: { id }, query }, options),
+      /** List a partner's clawbacks. GET /v1/partners/{id}/clawbacks */
+      clawbacks: (id: string, options?: RequestOptions): Promise<T.GetPartnersIdClawbacksResponse> => t.op("getPartnersIdClawbacks", { path: { id } }, options),
       /** List a partner's enrollments. GET /v1/partners/{id}/enrollments */
       enrollments: (id: string, query?: (T.GetPartnersIdEnrollmentsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPartnersIdEnrollmentsResponse['data'][number], T.GetPartnersIdEnrollmentsResponse> => t.list("getPartnersIdEnrollments", { path: { id }, query }, options),
       /** Get a partner's quality score. GET /v1/partners/{id}/quality */
