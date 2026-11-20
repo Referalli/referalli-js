@@ -58,11 +58,36 @@ export type NativeImportCommissionRow = {
   reference?: string;
   /** Your payout id. Only with `paid`; stored on the paid line. */
   payoutRef?: string;
-  /** The amount the commission was computed on, stored for reporting. */
+  /** The amount the commission was computed on, stored for reporting; with `orderRef` and `bps` it is the fee a later refund scales. */
   baseMinor?: number;
+  /** The order's invoice or charge ref. A later generic billing `refund` or `dispute` event naming it as `invoiceRef` or `metadata.chargeRef` reverses this line. Needs `grossMinor`. */
+  orderRef?: string;
+  /** What the customer paid for the order (a refund is a share of it). Needs `orderRef`. */
+  grossMinor?: number;
+  /** The commission share of `baseMinor`. With `orderRef` and `baseMinor`, a refund re-prices the line as bps of the base still earned. */
+  bps?: number;
+  /** The re-priced commission stays at least 1 minor unit below the base still earned (a full refund gives 0). */
+  strictlyBelowBase?: boolean;
 };
 
-export type NativeImportRow = NativeImportPartnerRow | NativeImportReferralRow | NativeImportCommissionRow;
+export type NativeImportPayoutRow = {
+  type: "payout";
+  /** Idempotency key of the row; default is the commission `reference`, else a hash of the row. */
+  key?: string;
+  programId: string;
+  partnerExternalRef: string;
+  amountMinor: number;
+  currency: string;
+  /** When the payout was made. */
+  paidAt: string;
+  status: "paid" | "failed" | "reversed";
+  /** The rail, e.g. `stripe_connect`. */
+  provider: string;
+  /** The provider's transfer id; also what commissions name in `payoutRef`. Default row identity. */
+  providerRef: string;
+};
+
+export type NativeImportRow = NativeImportPartnerRow | NativeImportReferralRow | NativeImportCommissionRow | NativeImportPayoutRow;
 
 export type Ok = {
   ok: true;
@@ -185,9 +210,10 @@ export type ProgramSettings = {
       sha256CertFingerprints: Array<string>;
     } | null;
   }) | null;
-  /** Referral and commission notification emails (referral_signed_up, referral_converted, commission_earned, commission_approved to the partner; referral_held to the team). On for programs created from 2026-11-11, off for older ones until enabled. */
+  /** Referral and commission notification emails (referral_signed_up, referral_converted, commission_earned, commission_approved to the partner; referral_held to the team). On for programs created from 2026-11-11, off for older ones until enabled. `enabled: false` turns those off; `disabled` lists any partner email ids to switch off (payout_sent, partner_approved, invitation_received, contract_sent, tax_document_ready, ...) or `"*"` for every partner email. Webhooks still fire. */
   notificationEmails: {
     enabled: boolean;
+    disabled?: Array<string>;
   };
   /** How referring works, in Markdown (at most 10,000 characters), shown by the referral widget. Empty when unset. */
   howItWorksMd?: string;
@@ -1014,7 +1040,8 @@ export type PayoutRun = {
 
 export type Payout = {
   id: string;
-  runId: string;
+  /** Null for an imported payout. */
+  runId: string | null;
   partnerId: string;
   /** Integer minor units (cents). */
   amountMinor: number;
@@ -1024,6 +1051,8 @@ export type Payout = {
   railRef: string | null;
   failureReason: string | null;
   sentAt: string | null;
+  /** True for a payout loaded by the native import: no Referalli run made it and none pays its lines again. */
+  imported: boolean;
 };
 
 export type FxRate = {
@@ -4496,6 +4525,12 @@ export type GetPayoutsResponse = {
   next_cursor: string | null;
 };
 
+export type PostPayoutsIdStatusResponse = {
+  id: string;
+  status: "failed" | "reversed";
+  failureReason: string | null;
+};
+
 export type GetTax1099Response = {
   object: "list";
   data: Array<{
@@ -5133,6 +5168,7 @@ export type PostImportNativeResponse = {
     coupons: number;
     referrals: number;
     commissions: number;
+    payouts: number;
     aliases: number;
   };
   /** Rows already imported (same row hash or `key`); skipped. */
@@ -5403,6 +5439,7 @@ export type GetPartnerPayoutsResponse = {
     rail: string;
     sentAt: string | null;
     createdAt: string;
+    imported: boolean;
   }>;
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
@@ -9159,6 +9196,10 @@ export type GenericBillingEvent = {
   };
   customerCreatedAt?: string;
   linkedCustomerRef?: string;
+  /** The other party of a two-sided trade, as a customer ref: a partner whose externalRef equals it earns nothing from this event, and exclusivity falls through to the next program. */
+  counterpartyCustomerRef?: string;
+  /** The other party of a two-sided trade, as a partner id or externalRef: that partner earns nothing from this event. */
+  counterpartyPartnerRef?: string;
   customerEmail?: string;
   productIds?: Array<string>;
   priceIds?: Array<string>;
@@ -9932,7 +9973,8 @@ export type PostProgramsBody = {
   supportUrl?: string | null;
   trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
   notificationEmails?: {
-    enabled: boolean;
+    enabled?: boolean;
+    disabled?: Array<"*" | "payout_sent" | "invitation_received" | "partner_approved" | "contract_sent" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved">;
   };
   trafficSources?: {
     allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
@@ -10073,7 +10115,8 @@ export type PatchProgramsIdBody = {
   supportUrl?: string | null;
   trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
   notificationEmails?: {
-    enabled: boolean;
+    enabled?: boolean;
+    disabled?: Array<"*" | "payout_sent" | "invitation_received" | "partner_approved" | "contract_sent" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved">;
   };
   trafficSources?: {
     allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
@@ -10186,7 +10229,8 @@ export type PatchProgramsIdBody = {
     supportUrl?: string | null;
     trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
     notificationEmails?: {
-      enabled: boolean;
+      enabled?: boolean;
+      disabled?: Array<"*" | "payout_sent" | "invitation_received" | "partner_approved" | "contract_sent" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved">;
     };
     trafficSources?: {
       allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
@@ -10668,6 +10712,10 @@ export type PostTrackEventsBody = {
   type: "click";
   customerRef?: string;
   productRef?: string;
+  /** Alias of `productRef`: the product id used in billing `lines[].productId`, so product reports count this click without a synced catalog. */
+  productId?: string;
+  /** The partner's sub-ID, same rules as `?sub=`; kept with the click and its referral, and grouped by in sub-ID reports. */
+  subId?: string;
   kind?: string;
   metadata?: Record<string, unknown>;
   occurredAt?: string;
@@ -11179,6 +11227,12 @@ export type GetPayoutsQuery = {
   ending_before?: string;
   "created[gte]"?: string;
   "created[lte]"?: string;
+};
+
+/** POST /v1/payouts/{id}/status: Record a failure or reversal of an imported payout */
+export type PostPayoutsIdStatusBody = {
+  status: "failed" | "reversed";
+  reason?: string;
 };
 
 /** GET /v1/tax/1099: Export 1099-NEC data */
@@ -11724,7 +11778,7 @@ export type PostValueImportBody = {
 
 /** GET /v1/value/import/{jobId}: Get a value import job */
 
-/** POST /v1/import/native: Import partners, links, referrals and commissions (native) */
+/** POST /v1/import/native: Import partners, links, referrals, commissions and payouts (native) */
 export type PostImportNativeQuery = {
   dryRun?: "true" | "false";
 };
@@ -14263,6 +14317,7 @@ export const operations = {
   postV1PayoutRunsIdExecute: { method: 'POST', path: '/v1/payout-runs/{id}/execute' },
   postV1PayoutRunsIdCancel: { method: 'POST', path: '/v1/payout-runs/{id}/cancel' },
   getV1Payouts: { method: 'GET', path: '/v1/payouts' },
+  postV1PayoutsIdStatus: { method: 'POST', path: '/v1/payouts/{id}/status' },
   getV1Tax1099: { method: 'GET', path: '/v1/tax/1099' },
   postV1FxRates: { method: 'POST', path: '/v1/fx-rates' },
   getV1FxRates: { method: 'GET', path: '/v1/fx-rates' },

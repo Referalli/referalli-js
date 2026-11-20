@@ -442,6 +442,7 @@ export const operations = {
   postPayoutRunsIdCancel: { method: "POST", path: "/v1/payout-runs/{id}/cancel", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPayoutRunsIdExecute: { method: "POST", path: "/v1/payout-runs/{id}/execute", pathParams: ["id"], query: [], body: false, kind: "json" },
   postPayoutRunsRunScheduled: { method: "POST", path: "/v1/payout-runs/run-scheduled", pathParams: [], query: [], body: false, kind: "json" },
+  postPayoutsIdStatus: { method: "POST", path: "/v1/payouts/{id}/status", pathParams: ["id"], query: [], body: true, kind: "json" },
   postPortalThemeImportBrand: { method: "POST", path: "/v1/portal/theme/import-brand", pathParams: [], query: [], body: true, kind: "json" },
   postPortalThemePreview: { method: "POST", path: "/v1/portal/theme/preview", pathParams: [], query: [], body: false, kind: "json" },
   postPortalThemePublish: { method: "POST", path: "/v1/portal/theme/publish", pathParams: [], query: [], body: true, kind: "json" },
@@ -1041,7 +1042,7 @@ export function buildResources(t: Transport) {
       },
     },
     import: {
-      /** Import partners, links, referrals and commissions (native). POST /v1/import/native */
+      /** Import partners, links, referrals, commissions and payouts (native). POST /v1/import/native */
       native: (query?: (T.PostImportNativeQuery) | RequestOptions, options?: RequestOptions): Promise<T.PostImportNativeResponse> => t.op("postImportNative", { query }, options),
       /** Import partners from another tool. POST /v1/import/{provider} */
       create: (provider: string, body: T.PostImportProviderBody, query: T.PostImportProviderQuery, options?: RequestOptions): Promise<T.PostImportProviderResponse> => t.op("postImportProvider", { path: { provider }, body, query }, options),
@@ -1583,6 +1584,8 @@ export function buildResources(t: Transport) {
       list: (query?: (T.GetPayoutsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetPayoutsResponse['data'][number], T.GetPayoutsResponse> => t.list("getPayouts", { query }, options),
       /** Get a payout's invoice. GET /v1/payouts/{id}/invoice */
       invoice: (id: string, query?: (T.GetPayoutsIdInvoiceQuery) | RequestOptions, options?: RequestOptions): Promise<T.GetPayoutsIdInvoiceResponse> => t.op("getPayoutsIdInvoice", { path: { id }, query }, options),
+      /** Record a failure or reversal of an imported payout. POST /v1/payouts/{id}/status */
+      status: (id: string, body: T.PostPayoutsIdStatusBody, options?: RequestOptions): Promise<T.PostPayoutsIdStatusResponse> => t.op("postPayoutsIdStatus", { path: { id }, body }, options),
     },
     plans: {
       /** List public plans. GET /v1/plans */
