@@ -1,2 +1,2 @@
 /** This package's version (sent in the user agent). */
-export const SDK_VERSION = '0.3.27';
+export const SDK_VERSION = '0.3.28';

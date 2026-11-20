@@ -5247,6 +5247,8 @@ export type PostImportNativeResponse = {
   /** What was created (a dry run: what would be). `aliases` counts old spellings kept for renamed codes. */
   created: {
     partners: number;
+    /** Program enrollments created, including an existing partner joining this program (with this program's externalRef when it differs from theirs). */
+    enrollments: number;
     links: number;
     coupons: number;
     referrals: number;

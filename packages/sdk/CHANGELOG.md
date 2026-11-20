@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.28 - 2026-11-20
+
+- `created.enrollments` in the native import result.
+
 ## 0.3.27 - 2026-11-20
 
 - Types for payout connections bound to programs (`programIds`, `id`), the `POST /v1/payout-runs` body `{programIds, dryRun}`, `payoutConnectionId` and `provider` on planned payouts, and the `no_payout_connection` error.
