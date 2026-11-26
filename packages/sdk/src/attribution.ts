@@ -68,8 +68,21 @@ export function newAnonId(): string {
   return out;
 }
 
-/** The referral a URL carries: the first of `params` that is set, and `ref_click_id`. */
-export function referralFromUrl(url: string | URL, params: readonly string[] = REFERRAL_PARAMS): { code: string | null; clickId: string | null } {
+/**
+ * A program's own landing parameter names (`landingParams` in its settings and
+ * `/t/{token}/config.json`). `code` replaces via/ref/aff; `click` is read before `ref_click_id`.
+ */
+export interface LandingParams {
+  code?: string;
+  click?: string;
+}
+
+/** The code params to read: the program's own `landingParams.code` alone, else `params`, else via/ref/aff. */
+export const codeParamsOf = (landing?: LandingParams, params?: readonly string[]): readonly string[] =>
+  landing?.code ? [landing.code] : (params ?? REFERRAL_PARAMS);
+
+/** The referral a URL carries: the first of `params` that is set, and `clickParam` (else `ref_click_id`). */
+export function referralFromUrl(url: string | URL, params: readonly string[] = REFERRAL_PARAMS, clickParam: string = CLICK_ID_PARAM): { code: string | null; clickId: string | null } {
   let u: URL;
   try {
     u = typeof url === 'string' ? new URL(url, 'http://localhost') : url;
@@ -84,7 +97,7 @@ export function referralFromUrl(url: string | URL, params: readonly string[] = R
       break;
     }
   }
-  const clickId = u.searchParams.get(CLICK_ID_PARAM)?.slice(0, 80) || null;
+  const clickId = (u.searchParams.get(clickParam) || u.searchParams.get(CLICK_ID_PARAM))?.slice(0, 80) || null;
   return { code, clickId };
 }
 

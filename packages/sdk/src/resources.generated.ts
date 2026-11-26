@@ -33,10 +33,12 @@ export const operations = {
   deletePrivacyExecutorsAdapter: { method: "DELETE", path: "/v1/privacy/executors/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
   deleteProductLinksId: { method: "DELETE", path: "/v1/product-links/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProfitabilityProductsProductRef: { method: "DELETE", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: false, kind: "json" },
+  deleteProgramsId: { method: "DELETE", path: "/v1/programs/{id}", pathParams: ["id"], query: ["erase"], body: false, kind: "json" },
   deleteProgramsIdCallNumbersNumberId: { method: "DELETE", path: "/v1/programs/{id}/call-numbers/{numberId}", pathParams: ["id","numberId"], query: [], body: false, kind: "json" },
   deleteProgramsIdEmailSettings: { method: "DELETE", path: "/v1/programs/{id}/email-settings", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProgramsIdLinkDomain: { method: "DELETE", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteProgramsIdLinkedSourceProgramId: { method: "DELETE", path: "/v1/programs/{id}/linked/{sourceProgramId}", pathParams: ["id","sourceProgramId"], query: [], body: false, kind: "json" },
+  deleteProgramsIdStripeConnectAccount: { method: "DELETE", path: "/v1/programs/{id}/stripe-connect-account", pathParams: ["id"], query: [], body: false, kind: "json" },
   deleteRewardsRulesKey: { method: "DELETE", path: "/v1/rewards/rules/{key}", pathParams: ["key"], query: [], body: false, kind: "json" },
   deleteStripeCreditsConnection: { method: "DELETE", path: "/v1/stripe-credits/connection", pathParams: [], query: [], body: false, kind: "json" },
   deleteSupportAppsAdapter: { method: "DELETE", path: "/v1/support/apps/{adapter}", pathParams: ["adapter"], query: [], body: false, kind: "json" },
@@ -205,7 +207,7 @@ export const operations = {
   getPortalThemeVersions: { method: "GET", path: "/v1/portal/theme/versions", pathParams: [], query: [], body: false, kind: "json" },
   getPrivacyExecutorRequests: { method: "GET", path: "/v1/privacy/executor-requests", pathParams: [], query: [], body: false, kind: "json" },
   getPrivacyExecutors: { method: "GET", path: "/v1/privacy/executors", pathParams: [], query: [], body: false, kind: "json" },
-  getPrivacyExport: { method: "GET", path: "/v1/privacy/export", pathParams: [], query: ["customerRef"], body: false, kind: "json" },
+  getPrivacyExport: { method: "GET", path: "/v1/privacy/export", pathParams: [], query: ["customerRef","programIds"], body: false, kind: "json" },
   getPrivacyRequests: { method: "GET", path: "/v1/privacy/requests", pathParams: [], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getPrivacyRequestsId: { method: "GET", path: "/v1/privacy/requests/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getPrivacyRequestsIdResult: { method: "GET", path: "/v1/privacy/requests/{id}/result", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -214,7 +216,7 @@ export const operations = {
   getProfitabilityProductsProductRef: { method: "GET", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: false, kind: "json" },
   getProfitabilityRebuildJobId: { method: "GET", path: "/v1/profitability/rebuild/{jobId}", pathParams: ["jobId"], query: [], body: false, kind: "json" },
   getProfitabilitySettings: { method: "GET", path: "/v1/profitability/settings", pathParams: [], query: ["programId"], body: false, kind: "json" },
-  getPrograms: { method: "GET", path: "/v1/programs", pathParams: [], query: ["slug","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
+  getPrograms: { method: "GET", path: "/v1/programs", pathParams: [], query: ["slug","externalRef","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsHandleAvailability: { method: "GET", path: "/v1/programs/handle-availability", pathParams: [], query: ["handle"], body: false, kind: "json" },
   getProgramsId: { method: "GET", path: "/v1/programs/{id}", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdAutopricing: { method: "GET", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -229,6 +231,7 @@ export const operations = {
   getProgramsIdLinkDomain: { method: "GET", path: "/v1/programs/{id}/link-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdLinked: { method: "GET", path: "/v1/programs/{id}/linked", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdNegotiationPolicy: { method: "GET", path: "/v1/programs/{id}/negotiation-policy", pathParams: ["id"], query: [], body: false, kind: "json" },
+  getProgramsIdPartners: { method: "GET", path: "/v1/programs/{id}/partners", pathParams: ["id"], query: ["include","status","limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdPromotions: { method: "GET", path: "/v1/programs/{id}/promotions", pathParams: ["id"], query: ["limit","starting_after","ending_before","created[gte]","created[lte]"], body: false, kind: "list" },
   getProgramsIdRefereeReward: { method: "GET", path: "/v1/programs/{id}/referee-reward", pathParams: ["id"], query: [], body: false, kind: "json" },
   getProgramsIdStoreSetup: { method: "GET", path: "/v1/programs/{id}/store-setup", pathParams: ["id"], query: [], body: false, kind: "json" },
@@ -361,6 +364,7 @@ export const operations = {
   postCommissionsIdApprove: { method: "POST", path: "/v1/commissions/{id}/approve", pathParams: ["id"], query: [], body: false, kind: "json" },
   postCommissionsIdHold: { method: "POST", path: "/v1/commissions/{id}/hold", pathParams: ["id"], query: [], body: true, kind: "json" },
   postCommissionsIdSettle: { method: "POST", path: "/v1/commissions/{id}/settle", pathParams: ["id"], query: [], body: true, kind: "json" },
+  postCommissionsSettle: { method: "POST", path: "/v1/commissions/settle", pathParams: [], query: [], body: true, kind: "json" },
   postContracts: { method: "POST", path: "/v1/contracts", pathParams: [], query: [], body: true, kind: "json" },
   postContractsIdSend: { method: "POST", path: "/v1/contracts/{id}/send", pathParams: ["id"], query: [], body: false, kind: "json" },
   postCoupons: { method: "POST", path: "/v1/coupons", pathParams: [], query: [], body: true, kind: "json" },
@@ -391,6 +395,7 @@ export const operations = {
   postIntegrationsSegmentTest: { method: "POST", path: "/v1/integrations/segment/test", pathParams: [], query: [], body: false, kind: "json" },
   postInvitationsIdWithdraw: { method: "POST", path: "/v1/invitations/{id}/withdraw", pathParams: ["id"], query: [], body: false, kind: "json" },
   postLinks: { method: "POST", path: "/v1/links", pathParams: [], query: [], body: true, kind: "json" },
+  postLinksRepoint: { method: "POST", path: "/v1/links/repoint", pathParams: [], query: [], body: true, kind: "json" },
   postMobilePurchases: { method: "POST", path: "/v1/mobile/purchases", pathParams: [], query: [], body: true, kind: "json" },
   postNotificationsIdRead: { method: "POST", path: "/v1/notifications/{id}/read", pathParams: ["id"], query: [], body: false, kind: "json" },
   postOauthToken: { method: "POST", path: "/v1/oauth/token", pathParams: [], query: [], body: true, kind: "json", public: true },
@@ -457,6 +462,7 @@ export const operations = {
   postProductLinks: { method: "POST", path: "/v1/product-links", pathParams: [], query: [], body: true, kind: "json" },
   postProfitabilityRebuild: { method: "POST", path: "/v1/profitability/rebuild", pathParams: [], query: [], body: false, kind: "json" },
   postPrograms: { method: "POST", path: "/v1/programs", pathParams: [], query: [], body: true, kind: "json" },
+  postProgramsIdApplications: { method: "POST", path: "/v1/programs/{id}/applications", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdApplyLeveling: { method: "POST", path: "/v1/programs/{id}/apply-leveling", pathParams: ["id"], query: [], body: false, kind: "json" },
   postProgramsIdAutopriceRun: { method: "POST", path: "/v1/programs/{id}/autoprice/run", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdCallNumbers: { method: "POST", path: "/v1/programs/{id}/call-numbers", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -465,7 +471,9 @@ export const operations = {
   postProgramsIdEmailSettingsVerifyDomain: { method: "POST", path: "/v1/programs/{id}/email-settings/verify-domain", pathParams: ["id"], query: [], body: false, kind: "json" },
   postProgramsIdEnrollments: { method: "POST", path: "/v1/programs/{id}/enrollments", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdEnrollmentsEnrollmentIdApprove: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/approve", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
+  postProgramsIdEnrollmentsEnrollmentIdReinstate: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/reinstate", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdEnrollmentsEnrollmentIdReject: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/reject", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
+  postProgramsIdEnrollmentsEnrollmentIdSuspend: { method: "POST", path: "/v1/programs/{id}/enrollments/{enrollmentId}/suspend", pathParams: ["id","enrollmentId"], query: [], body: false, kind: "json" },
   postProgramsIdGroups: { method: "POST", path: "/v1/programs/{id}/groups", pathParams: ["id"], query: [], body: true, kind: "json" },
   postProgramsIdLinkDomainVerify: { method: "POST", path: "/v1/programs/{id}/link-domain/verify", pathParams: ["id"], query: [], body: false, kind: "json" },
   postProgramsIdLinked: { method: "POST", path: "/v1/programs/{id}/linked", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -496,6 +504,7 @@ export const operations = {
   postTax1099Filings: { method: "POST", path: "/v1/tax/1099/filings", pathParams: [], query: [], body: true, kind: "json" },
   postTax1099FilingsIdRefresh: { method: "POST", path: "/v1/tax/1099/filings/{id}/refresh", pathParams: ["id"], query: [], body: false, kind: "json" },
   postTestClockAdvance: { method: "POST", path: "/v1/test_clock/advance", pathParams: [], query: [], body: true, kind: "json" },
+  postTestModePurge: { method: "POST", path: "/v1/test-mode/purge", pathParams: [], query: [], body: true, kind: "json" },
   postTrackEvents: { method: "POST", path: "/v1/track/events", pathParams: [], query: [], body: true, kind: "json" },
   postUnsubscribeToken: { method: "POST", path: "/v1/unsubscribe/{token}", pathParams: ["token"], query: [], body: false, kind: "json", public: true },
   postValueEvents: { method: "POST", path: "/v1/value/events", pathParams: [], query: [], body: true, kind: "json" },
@@ -550,6 +559,7 @@ export const operations = {
   putPortalThemeDraft: { method: "PUT", path: "/v1/portal/theme/draft", pathParams: [], query: [], body: true, kind: "json" },
   putProfitabilityProductsProductRef: { method: "PUT", path: "/v1/profitability/products/{productRef}", pathParams: ["productRef"], query: [], body: true, kind: "json" },
   putProfitabilitySettings: { method: "PUT", path: "/v1/profitability/settings", pathParams: [], query: [], body: true, kind: "json" },
+  putProgramsByExternalRefRef: { method: "PUT", path: "/v1/programs/by-external-ref/{ref}", pathParams: ["ref"], query: [], body: true, kind: "json" },
   putProgramsIdAutopricing: { method: "PUT", path: "/v1/programs/{id}/autopricing", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdCommissionRule: { method: "PUT", path: "/v1/programs/{id}/commission-rule", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdCreditRail: { method: "PUT", path: "/v1/programs/{id}/credit-rail", pathParams: ["id"], query: [], body: true, kind: "json" },
@@ -560,6 +570,7 @@ export const operations = {
   putProgramsIdPartnersPartnerIdGroup: { method: "PUT", path: "/v1/programs/{id}/partners/{partnerId}/group", pathParams: ["id","partnerId"], query: [], body: true, kind: "json" },
   putProgramsIdPayoutSchedule: { method: "PUT", path: "/v1/programs/{id}/payout-schedule", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdRefereeReward: { method: "PUT", path: "/v1/programs/{id}/referee-reward", pathParams: ["id"], query: [], body: true, kind: "json" },
+  putProgramsIdStripeConnectAccount: { method: "PUT", path: "/v1/programs/{id}/stripe-connect-account", pathParams: ["id"], query: [], body: true, kind: "json" },
   putProgramsIdStripeCredits: { method: "PUT", path: "/v1/programs/{id}/stripe-credits", pathParams: ["id"], query: [], body: true, kind: "json" },
   putRewardsRulesKey: { method: "PUT", path: "/v1/rewards/rules/{key}", pathParams: ["key"], query: [], body: true, kind: "json" },
   putStripeCreditsConnection: { method: "PUT", path: "/v1/stripe-credits/connection", pathParams: [], query: [], body: true, kind: "json" },
@@ -906,8 +917,12 @@ export function buildResources(t: Transport) {
       approve: (id: string, options?: RequestOptions): Promise<T.PostCommissionsIdApproveResponse> => t.op("postCommissionsIdApprove", { path: { id } }, options),
       /** Hold a commission until a date. POST /v1/commissions/{id}/hold */
       hold: (id: string, body: T.PostCommissionsIdHoldBody, options?: RequestOptions): Promise<T.PostCommissionsIdHoldResponse> => t.op("postCommissionsIdHold", { path: { id }, body }, options),
-      /** Settle a commission yourself. POST /v1/commissions/{id}/settle */
-      settle: (id: string, body: T.PostCommissionsIdSettleBody, options?: RequestOptions): Promise<T.PostCommissionsIdSettleResponse> => t.op("postCommissionsIdSettle", { path: { id }, body }, options),
+      settle: {
+        /** Settle a commission yourself. POST /v1/commissions/{id}/settle */
+        create: (id: string, body: T.PostCommissionsIdSettleBody, options?: RequestOptions): Promise<T.PostCommissionsIdSettleResponse> => t.op("postCommissionsIdSettle", { path: { id }, body }, options),
+        /** Settle a partner's commissions in bulk. POST /v1/commissions/settle */
+        postCommissionsSettle: (body: T.PostCommissionsSettleBody, options?: RequestOptions): Promise<T.PostCommissionsSettleResponse> => t.op("postCommissionsSettle", { body }, options),
+      },
     },
     contracts: {
       /** List partner contracts. GET /v1/contracts */
@@ -1104,6 +1119,8 @@ export function buildResources(t: Transport) {
       update: (id: string, body: T.PatchLinksIdBody, options?: RequestOptions): Promise<T.PatchLinksIdResponse> => t.op("patchLinksId", { path: { id }, body }, options),
       /** Create a tracked link. POST /v1/links */
       create: (body: T.PostLinksBody, options?: RequestOptions): Promise<T.PostLinksResponse> => t.op("postLinks", { body }, options),
+      /** Repoint links across programs. POST /v1/links/repoint */
+      repoint: (body: T.PostLinksRepointBody, options?: RequestOptions): Promise<T.PostLinksRepointResponse> => t.op("postLinksRepoint", { body }, options),
     },
     marketplace: {
       listing: {
@@ -1694,6 +1711,8 @@ export function buildResources(t: Transport) {
       },
     },
     programs: {
+      /** Erase a program's people and archive it. DELETE /v1/programs/{id} */
+      delete: (id: string, query: T.DeleteProgramsIdQuery, options?: RequestOptions): Promise<T.DeleteProgramsIdResponse> => t.op("deleteProgramsId", { path: { id }, query }, options),
       /** List programs. GET /v1/programs */
       list: (query?: (T.GetProgramsQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsResponse['data'][number], T.GetProgramsResponse> => t.list("getPrograms", { query }, options),
       /** Check a public handle. GET /v1/programs/handle-availability */
@@ -1712,10 +1731,14 @@ export function buildResources(t: Transport) {
       update: (id: string, body: T.PatchProgramsIdBody, options?: RequestOptions): Promise<T.PatchProgramsIdResponse> => t.op("patchProgramsId", { path: { id }, body }, options),
       /** Create a program. POST /v1/programs */
       create: (body: T.PostProgramsBody, options?: RequestOptions): Promise<T.PostProgramsResponse> => t.op("postPrograms", { body }, options),
+      /** Apply on behalf of a person. POST /v1/programs/{id}/applications */
+      applications: (id: string, body: T.PostProgramsIdApplicationsBody, options?: RequestOptions): Promise<T.PostProgramsIdApplicationsResponse> => t.op("postProgramsIdApplications", { path: { id }, body }, options),
       /** Apply partner levels. POST /v1/programs/{id}/apply-leveling */
       applyLeveling: (id: string, options?: RequestOptions): Promise<T.PostProgramsIdApplyLevelingResponse> => t.op("postProgramsIdApplyLeveling", { path: { id } }, options),
       /** Make a user a referrer. POST /v1/programs/{id}/referrers */
       referrers: (id: string, body: T.PostProgramsIdReferrersBody, options?: RequestOptions): Promise<T.PostProgramsIdReferrersResponse> => t.op("postProgramsIdReferrers", { path: { id }, body }, options),
+      /** Upsert a program by external ref. PUT /v1/programs/by-external-ref/{ref} */
+      updateByExternalRef: (ref: string, body: T.PutProgramsByExternalRefRefBody, options?: RequestOptions): Promise<T.PutProgramsByExternalRefRefResponse> => t.op("putProgramsByExternalRefRef", { path: { ref }, body }, options),
       /** Set a program's commission rule. PUT /v1/programs/{id}/commission-rule */
       updateCommissionRule: (id: string, body: T.PutProgramsIdCommissionRuleBody, options?: RequestOptions): Promise<T.PutProgramsIdCommissionRuleResponse> => t.op("putProgramsIdCommissionRule", { path: { id }, body }, options),
       /** Set the incrementality holdout. PUT /v1/programs/{id}/incrementality */
@@ -1769,8 +1792,12 @@ export function buildResources(t: Transport) {
         create: (id: string, body: T.PostProgramsIdEnrollmentsBody, options?: RequestOptions): Promise<T.PostProgramsIdEnrollmentsResponse> => t.op("postProgramsIdEnrollments", { path: { id }, body }, options),
         /** Approve an application. POST /v1/programs/{id}/enrollments/{enrollmentId}/approve */
         approve: (id: string, enrollmentId: string, options?: RequestOptions): Promise<T.PostProgramsIdEnrollmentsEnrollmentIdApproveResponse> => t.op("postProgramsIdEnrollmentsEnrollmentIdApprove", { path: { id, enrollmentId } }, options),
+        /** Reinstate a suspended partner. POST /v1/programs/{id}/enrollments/{enrollmentId}/reinstate */
+        reinstate: (id: string, enrollmentId: string, options?: RequestOptions): Promise<T.PostProgramsIdEnrollmentsEnrollmentIdReinstateResponse> => t.op("postProgramsIdEnrollmentsEnrollmentIdReinstate", { path: { id, enrollmentId } }, options),
         /** Reject an application. POST /v1/programs/{id}/enrollments/{enrollmentId}/reject */
         reject: (id: string, enrollmentId: string, options?: RequestOptions): Promise<T.PostProgramsIdEnrollmentsEnrollmentIdRejectResponse> => t.op("postProgramsIdEnrollmentsEnrollmentIdReject", { path: { id, enrollmentId } }, options),
+        /** Suspend a partner in one program. POST /v1/programs/{id}/enrollments/{enrollmentId}/suspend */
+        suspend: (id: string, enrollmentId: string, options?: RequestOptions): Promise<T.PostProgramsIdEnrollmentsEnrollmentIdSuspendResponse> => t.op("postProgramsIdEnrollmentsEnrollmentIdSuspend", { path: { id, enrollmentId } }, options),
       },
       groups: {
         /** List partner groups. GET /v1/programs/{id}/groups */
@@ -1807,6 +1834,8 @@ export function buildResources(t: Transport) {
         update: (id: string, body: T.PutProgramsIdNegotiationPolicyBody, options?: RequestOptions): Promise<T.PutProgramsIdNegotiationPolicyResponse> => t.op("putProgramsIdNegotiationPolicy", { path: { id }, body }, options),
       },
       partners: {
+        /** List a program's partners. GET /v1/programs/{id}/partners */
+        list: (id: string, query?: (T.GetProgramsIdPartnersQuery & PageParams) | RequestOptions, options?: RequestOptions): ListPromise<T.GetProgramsIdPartnersResponse['data'][number], T.GetProgramsIdPartnersResponse> => t.list("getProgramsIdPartners", { path: { id }, query }, options),
         /** Set a partner's group. PUT /v1/programs/{id}/partners/{partnerId}/group */
         updateGroup: (id: string, partnerId: string, body: T.PutProgramsIdPartnersPartnerIdGroupBody, options?: RequestOptions): Promise<T.PutProgramsIdPartnersPartnerIdGroupResponse> => t.op("putProgramsIdPartnersPartnerIdGroup", { path: { id, partnerId }, body }, options),
       },
@@ -1827,6 +1856,12 @@ export function buildResources(t: Transport) {
         retrieve: (id: string, options?: RequestOptions): Promise<T.GetProgramsIdStoreSetupResponse> => t.op("getProgramsIdStoreSetup", { path: { id } }, options),
         /** Set up a store in one call. POST /v1/programs/{id}/store-setup */
         create: (id: string, body: T.PostProgramsIdStoreSetupBody, options?: RequestOptions): Promise<T.PostProgramsIdStoreSetupResponse> => t.op("postProgramsIdStoreSetup", { path: { id }, body }, options),
+      },
+      stripeConnectAccount: {
+        /** Remove a program's Stripe connected account. DELETE /v1/programs/{id}/stripe-connect-account */
+        delete: (id: string, options?: RequestOptions): Promise<T.DeleteProgramsIdStripeConnectAccountResponse> => t.op("deleteProgramsIdStripeConnectAccount", { path: { id } }, options),
+        /** Map a Stripe connected account to a program. PUT /v1/programs/{id}/stripe-connect-account */
+        update: (id: string, body: T.PutProgramsIdStripeConnectAccountBody, options?: RequestOptions): Promise<T.PutProgramsIdStripeConnectAccountResponse> => t.op("putProgramsIdStripeConnectAccount", { path: { id }, body }, options),
       },
       stripeCredits: {
         /** Get a program's Stripe balance credit settings. GET /v1/programs/{id}/stripe-credits */
@@ -2032,6 +2067,10 @@ export function buildResources(t: Transport) {
       retrieve: (options?: RequestOptions): Promise<T.GetTestClockResponse> => t.op("getTestClock", {  }, options),
       /** Advance the test clock. POST /v1/test_clock/advance */
       advance: (body: T.PostTestClockAdvanceBody, options?: RequestOptions): Promise<T.PostTestClockAdvanceResponse> => t.op("postTestClockAdvance", { body }, options),
+    },
+    testMode: {
+      /** Purge test data. POST /v1/test-mode/purge */
+      purge: (body: T.PostTestModePurgeBody, options?: RequestOptions): Promise<T.PostTestModePurgeResponse> => t.op("postTestModePurge", { body }, options),
     },
     track: {
       /** Track an event. POST /v1/track/events */

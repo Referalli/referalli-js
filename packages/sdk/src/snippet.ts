@@ -4,8 +4,9 @@ import {
   newAnonId,
   parseReferral,
   REFERRAL_COOKIE_NAMES,
-  REFERRAL_PARAMS,
+  codeParamsOf,
   referralFromUrl,
+  type LandingParams,
   type ReferralContext,
   type StoredReferral,
 } from './attribution.js';
@@ -42,6 +43,8 @@ export interface SnippetConfig {
   baseUrl: string;
   /** Query params that carry a referral code; default via/ref/aff. */
   params?: string[];
+  /** The program's landing parameter names (its `landingParams`, from `/t/{token}/config.json`): `code` replaces `params`. */
+  landingParams?: LandingParams;
   /**
    * `referral-only`: store and send nothing unless the URL carries a referral
    * (use it before consent). Default `always`.
@@ -152,7 +155,7 @@ function persistContext(env: SnippetEnv, config: SnippetConfig, ctx: StoredConte
 export async function initSnippet(env: SnippetEnv, config: SnippetConfig): Promise<AffApi> {
   const now = env.now?.() ?? Date.now();
   const days = clampDays(config.cookieDays);
-  const { code, clickId: clickIdParam } = referralFromUrl(env.win.location.href, config.params ?? REFERRAL_PARAMS);
+  const { code, clickId: clickIdParam } = referralFromUrl(env.win.location.href, codeParamsOf(config.landingParams, config.params), config.landingParams?.click);
   const referred = Boolean(code || clickIdParam);
   const subParam = (() => {
     try {

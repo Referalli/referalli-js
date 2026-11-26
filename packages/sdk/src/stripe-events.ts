@@ -33,8 +33,11 @@ function fieldsOf(type: string, obj: any): Partial<GenericBillingEvent> | null {
     case 'invoice.paid': {
       // basil moved subscription_details under parent; read both (and the first line's subscription metadata).
       const subscription = obj.parent?.subscription_details ?? obj.subscription_details;
-      // The charge behind the invoice, so a later refund or dispute that names only the charge finds it.
-      const chargeRef = idOf(obj.charge) ?? idOf(obj.payments?.data?.[0]?.payment?.charge);
+      // The charge and payment intent behind the invoice, so a later refund or dispute that names only those finds it.
+      // Since 2025-03-31.basil they sit only in `payments`, present when the invoice was read with expand: ['payments'].
+      const payments: any[] = (obj.payments?.data ?? []).slice().sort((a: any, b: any) => Number(b?.status === 'paid') - Number(a?.status === 'paid'));
+      const chargeRef = idOf(obj.charge) ?? payments.map((p) => idOf(p?.payment?.charge)).find(Boolean);
+      const paymentIntentRef = idOf(obj.payment_intent) ?? payments.map((p) => idOf(p?.payment?.payment_intent)).find(Boolean);
       return {
         type: 'invoice_paid',
         subscriptionRef: idOf(obj.subscription) ?? idOf(subscription?.subscription),
@@ -50,6 +53,7 @@ function fieldsOf(type: string, obj: any): Partial<GenericBillingEvent> | null {
           ...obj.metadata,
           expansion: obj.metadata?.expansion === 'true',
           ...(chargeRef ? { chargeRef } : {}),
+          ...(paymentIntentRef ? { paymentIntentRef } : {}),
         },
       };
     }
@@ -104,6 +108,16 @@ function fieldsOf(type: string, obj: any): Partial<GenericBillingEvent> | null {
  * Turn a Stripe event you already received (and verified) into events for a
  * `generic` billing connection. Queue each with `createOutbox`. Other Stripe
  * types return `[]`.
+ *
+ * Stripe API versions since `2025-03-31.basil` leave the charge off a paid
+ * invoice: it is listed under `invoice.payments`, which a webhook payload never
+ * includes. Without it a later `charge.refunded` (which names the charge and
+ * its payment intent, not the invoice) can't find the payment and reverses
+ * nothing. For `invoice.paid` on those versions, re-read the invoice with your
+ * Stripe client and pass it as `data.object`; the mapper then reads
+ * `payments.data[].payment.charge` and `.payment_intent`:
+ *
+ *   if (event.type === 'invoice.paid') event.data.object = await stripe.invoices.retrieve(event.data.object.id, { expand: ['payments'] });
  *
  * A customer `customerRef` has no id for is still sent, under the Stripe id and
  * with `metadata.stripeCustomerUnmapped: true`: the payment is on record and

@@ -35,6 +35,8 @@ export interface SnippetOptions {
   firstTouch?: boolean;
   /** Extra query parameters that carry a referral code (an imported tool's, e.g. fpr), after via/ref/aff. */
   params?: string[];
+  /** A program's own landing parameter names: `code` replaces via/ref/aff and `params`; `click` is read before `ref_click_id`. */
+  landingParams?: { code?: string; click?: string };
   /** Older storage/cookie names to read a saved context from (it is re-saved under the current name). */
   legacyKeys?: string[];
   /** The org's consent default (`data-consent` on the tag overrides it). Default `none`. */
@@ -45,6 +47,9 @@ export interface SnippetOptions {
    */
   consentAdapters?: string[];
 }
+
+/** A landing parameter name safe to inline (the API validates the same way). */
+const landingName = (n: string | undefined): n is string => typeof n === 'string' && /^[A-Za-z][A-Za-z0-9_.-]{0,39}$/.test(n);
 
 /** The cookie window aff.js is served with (also published at /t/{orgToken}/config.json). */
 export const snippetCookieDays = (cookieDays?: number) => Math.max(1, Math.min(400, Math.round(cookieDays ?? 60)));
@@ -89,9 +94,9 @@ export function renderSnippetJs(token: string, baseUrl: string, opts: SnippetOpt
   function rid(){var t='a_',c='abcdefghijklmnopqrstuvwxyz0123456789';
     for(var i=0;i<20;i++)t+=c[Math.floor(Math.random()*c.length)];return t;}
   var u=new URL(window.location.href);
-  var PARAMS=${JSON.stringify(['via', 'ref', 'aff', ...(opts.params ?? []).filter((p) => /^[a-z][a-z0-9_]{0,39}$/.test(p))])};
+  var PARAMS=${JSON.stringify(landingName(opts.landingParams?.code) ? [opts.landingParams!.code] : ['via', 'ref', 'aff', ...(opts.params ?? []).filter((p) => /^[a-z][a-z0-9_]{0,39}$/.test(p))])};
   var code=null;for(var pi=0;pi<PARAMS.length&&!code;pi++)code=u.searchParams.get(PARAMS[pi]);
-  var clickId=u.searchParams.get('ref_click_id');
+  var clickId=${landingName(opts.landingParams?.click) ? `u.searchParams.get(${JSON.stringify(opts.landingParams!.click)})||` : ''}u.searchParams.get('ref_click_id');
   var sub=u.searchParams.get('sub');if(!/^[A-Za-z0-9_.-]{1,64}$/.test(sub||''))sub=null;
   var st=read()||{};
   var keep=first&&(st.code||st.clickId);

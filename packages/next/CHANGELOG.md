@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.6 - 2026-11-26
+
+- **Added:** the middleware takes `landingParams: { code?, click? }`, for a program that lands on its own parameter names instead of `via` and `ref_click_id`.
+
 ## 0.4.5 - 2026-11-19
 
 - **Added:** `forwardStripeEvent(event, opts?)` in `@referalli/next/server`: signs and forwards a verified Stripe event to your generic billing connection and returns `sent`, `skipped` or `retry`. Docs: `<ReferalliProvider>` alone covers consent-later.

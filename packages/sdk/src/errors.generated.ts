@@ -132,6 +132,11 @@ export class NoPayoutConnectionError extends ApiError {
   override readonly name: string = "NoPayoutConnectionError";
 }
 
+/** `partners_owed` (HTTP 409). */
+export class PartnersOwedError extends ApiError {
+  override readonly name: string = "PartnersOwedError";
+}
+
 /** `gone` (HTTP 410). */
 export class GoneError extends ApiError {
   override readonly name: string = "GoneError";
@@ -260,6 +265,7 @@ export const errorClasses: Record<string, typeof ApiError> = {
   test_mode_only: TestModeOnlyError,
   test_mode_unsupported: TestModeUnsupportedError,
   no_payout_connection: NoPayoutConnectionError,
+  partners_owed: PartnersOwedError,
   gone: GoneError,
   idempotency_key_reused: IdempotencyKeyReusedError,
   stripe_key_invalid: StripeKeyInvalidError,

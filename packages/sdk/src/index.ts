@@ -91,6 +91,7 @@ export {
   type GenericBillingEvent,
   type Outbox,
   type OutboxEntry,
+  type OutboxEvent,
   type OutboxOptions,
   type OutboxStore,
   type PgQuery,

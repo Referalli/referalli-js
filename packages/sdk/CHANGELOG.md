@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.29 - 2026-11-26
+
+- `landingParams` tracker option: read a program's own landing parameter names (for example `?ref=` and `lh_click=`) instead of `via` and `ref_click_id`.
+- Types for program `externalRef` and `PUT /v1/programs/by-external-ref/{ref}`, `GET /v1/programs/{id}/partners`, enrollment suspend/reinstate, applications, bulk `POST /v1/commissions/settle` and the `external` settle method, Stripe Connect account mapping, `DELETE /v1/programs/{id}?erase=`, `POST /v1/links/repoint`, `POST /v1/test-mode/purge`, and the `enrollment.suspended`, `enrollment.reinstated` and `commission.restored` topics.
+
+- Outbox for several connections: an event can carry `connectionId`, and `createOutbox({ secrets })` (a map `{ [connectionId]: secret }` or a function) signs it with that connection's secret. `connectionId` on the outbox is now optional when every event names one; the single-connection options work as before. New type `OutboxEvent`.
+- `stripeEventToBillingEvents`: a paid invoice read with `expand: ['payments']` (Stripe API versions since `2025-03-31.basil`) gives `metadata.chargeRef` and `metadata.paymentIntentRef` from `payments.data[].payment`, so refunds find it. A webhook payload has no `payments`: re-read the invoice with your Stripe client first.
+- Types for the `commission.restored` webhook topic.
+
 ## 0.3.28 - 2026-11-20
 
 - `created.enrollments` in the native import result.

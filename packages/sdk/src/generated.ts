@@ -174,8 +174,15 @@ export type ProgramSettings = {
   payoutTaxFormPolicy: ("required" | "delegated") | null;
   /** Default false. When true, a refund or dispute that reverses a commission line already paid (by payout, or imported as paid) records a clawback of the part the partner received (`payout.clawback_recorded`), deducted from their next payout in the same currency. Lines settled as merchant or store credit are not clawed back. */
   clawbackPaidReversals: boolean;
+  /** Default `runs`. `external`: you pay this program's partners yourself, outside Referalli; payout runs skip its lines (`external_payouts`), the partner portal and partner emails ask for no payout details for it, and the portal says "Paid directly by <brand name>". Record the payments with `POST /v1/commissions/settle` (`method: "external"`). */
+  payouts: "runs" | "external";
   /** Share of each money commission line (basis points, 0-10000, default 0) that a `payout` program settles as merchant credit at once: the line is recorded as two lines, a cash share paid by payout runs and a merchant credit share settled as `merchant_credit` (`commission.settled`). Refunds reverse both shares pro rata. Ignored when `settlement` is `merchant_credit` and for custom units. */
   merchantCreditBps: number;
+  /** The query parameter names a `/go/` redirect lands with: `code` (default `via`) carries the partner code, `click` (default `ref_click_id`) the click id. Echoed in `/t/{token}/config.json`; aff.js and the kits read them. */
+  landingParams: {
+    code: string;
+    click: string;
+  };
   /** Whether clicks store the visitor's country (from the click request's Cloudflare `CF-IPCountry` header, never from a supplied IP). Default true. False: clicks carry no country, so `countries` allow/block lists see an unknown country and allow it. */
   recordCountry: boolean;
   /** Whether partners of this program may publish a storefront page (default off). */
@@ -261,6 +268,8 @@ export type Program = {
   supportUrl?: string | null;
   /** aff.js consent mode for this program; null: the org's (PUT /v1/org/tracking-consent). */
   trackingConsent?: string | null;
+  /** The program's id in your own system (unique per org), or null. `PUT /v1/programs/by-external-ref/{ref}` upserts by it. */
+  externalRef: string | null;
   createdAt: string;
 };
 
@@ -288,7 +297,7 @@ export type Enrollment = {
   partnerId: string;
   /** This program's own externalRef for the partner, or null. */
   externalRef: string | null;
-  status: "applied" | "approved" | "rejected" | "removed";
+  status: "applied" | "approved" | "rejected" | "removed" | "suspended";
 };
 
 export type Link = {
@@ -478,7 +487,7 @@ export type CommissionEvent = {
   holdUntil: string | null;
   level: number | null;
   memo: string | null;
-  /** Set on paid events the merchant settled itself (store_credit). */
+  /** Set on paid events the merchant settled itself (store_credit, merchant_credit, or external: paid outside Referalli). */
   settlementMethod?: string | null;
   settlementReference?: string | null;
   ts: string;
@@ -498,7 +507,7 @@ export type CommissionLine = {
   holdUntil: string | null;
   level: number | null;
   memo: string | null;
-  /** Set on paid events the merchant settled itself (store_credit). */
+  /** Set on paid events the merchant settled itself (store_credit, merchant_credit, or external: paid outside Referalli). */
   settlementMethod?: string | null;
   settlementReference?: string | null;
   ts: string;
@@ -517,9 +526,29 @@ export type Settlement = {
   /** Integer minor units (cents). */
   amountMinor: number;
   currency: string;
-  method: "store_credit" | "merchant_credit";
+  /** `external`: paid outside Referalli (the merchant paid the partner directly). */
+  method: "store_credit" | "merchant_credit" | "external";
   reference: string;
   status: "paid";
+};
+
+export type BulkSettlement = {
+  reference: string;
+  programId: string;
+  partnerId: string;
+  method: "store_credit" | "external";
+  /** Lines settled (by the first call with this reference, on a repeat). */
+  settled: number;
+  /** Unpaid lines left unpaid: nothing left on them (reversed), or in a payout still in flight. */
+  skipped: number;
+  /** What the settled lines came to, per currency. */
+  amountByCurrency: Array<{
+    currency: string;
+    /** Integer minor units (cents). */
+    amountMinor: number;
+  }>;
+  /** True when this reference was already used: the first result, nothing new recorded. */
+  replayed: boolean;
 };
 
 export type CommissionRule = {
@@ -718,6 +747,8 @@ export type BillingConnection = {
   customerRefMetadataKey?: string | null;
   /** More metadata keys tried in order after `customerRefMetadataKey` (at most 5). */
   customerRefMetadataKeys?: Array<string>;
+  /** Stripe only (null for other providers): `connect` routes each connected account's events to the program mapped to its `account` (PUT /v1/programs/{id}/stripe-connect-account). */
+  mode?: ("direct" | "connect") | null;
   /** The Stripe webhook endpoint (`we_…`) Referalli registered for this connection with `stripeKey`. */
   stripeWebhookEndpointId?: string | null;
   /** The provider webhooks Referalli registered with `autoRegister` (one per topic for Shopify, BigCommerce, WooCommerce; Stripe's endpoint too). null when set up by hand. */
@@ -744,6 +775,8 @@ export type CreatedBillingConnection = {
   customerRefMetadataKeys?: Array<string>;
   /** Only referrals in these programs earn from this connection's events; null = every program. */
   programIds: Array<string> | null;
+  /** Stripe only (null for other providers): `connect` routes each connected account's events to the program mapped to its `account` (PUT /v1/programs/{id}/stripe-connect-account). */
+  mode?: ("direct" | "connect") | null;
   /** Things worth fixing that did not stop the create, e.g. no `programIds` in an org with several programs. */
   warnings?: Array<string>;
   /** With `stripeKey`: the Stripe webhook endpoint (`we_…`) registered or reused. */
@@ -776,8 +809,8 @@ export type BillingEvent = {
   status: "processed" | "ignored_by_filter" | "parked" | "held";
   /** When a parked event is dropped if its payment has not arrived. Null unless status is parked. */
   parkedUntil: string | null;
-  /** Why it earned nothing. no_referral_in_scope (status processed): the customer is referred only in programs outside the connection's programIds. identity_unresolved / identity_ambiguous (status processed): the customer had no customerRef and an auth connection with resolveBillingCustomers matched no user, or several. */
-  ignoredReason: ("filter" | "internal_customer" | "no_referral_in_scope" | "identity_unresolved" | "identity_ambiguous" | "amount_over_limit" | "occurred_in_future" | "unknown_currency") | null;
+  /** Why it earned nothing. unmapped_connect_account (status ignored_by_filter): a Stripe Connect event from a connected account no program is mapped to. no_referral_in_scope (status processed): the customer is referred only in programs outside the connection's programIds. identity_unresolved / identity_ambiguous (status processed): the customer had no customerRef and an auth connection with resolveBillingCustomers matched no user, or several. */
+  ignoredReason: ("filter" | "internal_customer" | "unmapped_connect_account" | "no_referral_in_scope" | "identity_unresolved" | "identity_ambiguous" | "amount_over_limit" | "occurred_in_future" | "unknown_currency") | null;
   /** The productIds, priceIds and skus the event named. */
   catalog: Record<string, Array<string>> | null;
 };
@@ -1036,10 +1069,10 @@ export type PayoutRunCreated = {
   }>;
   skipped: Array<{
     partnerId: string;
-    reason: "missing_tax_form" | "below_threshold" | "clawback_offset" | "no_profile" | "kyc_unverified" | "sanctions_hold" | "partner_inactive" | "missing_fx_rate" | "self_billing_agreement_missing" | "no_payout_connection";
+    reason: "missing_tax_form" | "below_threshold" | "clawback_offset" | "no_profile" | "kyc_unverified" | "sanctions_hold" | "partner_inactive" | "missing_fx_rate" | "self_billing_agreement_missing" | "no_payout_connection" | "external_payouts";
     /** Set when only the lines one program-bound connection funds were skipped. */
     payoutConnectionId?: string;
-    /** `no_payout_connection`: the programs whose lines wait for a payout connection. */
+    /** `no_payout_connection`: the programs whose lines wait for a payout connection. `external_payouts`: the programs set to `payouts: "external"`, whose lines are paid outside Referalli. */
     programIds?: Array<string>;
   }>;
   /** A dry run: nothing was stored and `runId` does not exist. */
@@ -2226,6 +2259,43 @@ export type CommissionReversedEvent = {
   data: CommissionReversedEventData;
 };
 
+/** `data` of a `commission.restored` event: The merchant won a dispute: what the dispute clawed back is given back as an `adjusted` ledger event (`restorationId`, memo `dispute won`). `commissionId` and `relatedCommissionId` are the original line; `amountMinor` is positive. A refund is never restored. */
+export type CommissionRestoredEventData = {
+  commissionId: string;
+  relatedCommissionId: string;
+  restorationId: string;
+  partnerId: string;
+  programId: string;
+  /** Positive: the amount given back. */
+  amountMinor: number;
+  /** Lowercase ISO 4217 code. */
+  currency: string;
+  referralId: string | null;
+  customerRef: string | null;
+  billingEventId: string | null;
+  /** The billing provider's own event id. */
+  providerEventId: string | null;
+  invoiceRef: string | null;
+  /** Your own id for the customer when known (an auth-connection user id), or null. */
+  customerExternalRef: string | null;
+  partnerExternalRef: string | null;
+  /** 0 for the direct partner, 1 to 5 for sub-affiliate levels. */
+  level: number;
+  memo: string;
+};
+
+/** A reversed commission line was restored: the `commission.restored` delivery body. */
+export type CommissionRestoredEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "commission.restored";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: CommissionRestoredEventData;
+};
+
 /** `data` of a `commission.approved` event: The line's hold period ended and it is now payable in the next payout run. `amountMinor` is its net at approval (after any reversal or adjustment); `approvalId` is the new `approved` ledger event. Lines settled by the merchant (`commission.settled`) don't send this. */
 export type CommissionApprovedEventData = {
   commissionId: string;
@@ -2262,7 +2332,7 @@ export type CommissionApprovedEvent = {
   data: CommissionApprovedEventData;
 };
 
-/** `data` of a `commission.settled` event: The merchant paid the line itself (`store_credit`, or `merchant_credit` for programs that settle as they earn), outside payout runs. */
+/** `data` of a `commission.settled` event: The merchant paid the line itself (`store_credit`, `external` when it paid the partner directly outside Referalli, or `merchant_credit` for programs that settle as they earn), outside payout runs. */
 export type CommissionSettledEventData = {
   commissionId: string;
   partnerId: string;
@@ -2272,7 +2342,7 @@ export type CommissionSettledEventData = {
   amountMinor: number;
   /** Lowercase ISO 4217 code. */
   currency: string;
-  method: "store_credit" | "merchant_credit";
+  method: "store_credit" | "merchant_credit" | "external";
   reference: string;
   /** With the program's `creditRate` in this currency: whole credits the amount buys, `floor(amountMinor / creditRate.amountMinor)`. Absent otherwise. */
   credits?: number;
@@ -2354,6 +2424,44 @@ export type PartnerApprovedEvent = {
   livemode: boolean;
   createdAt: string;
   data: PartnerApprovedEventData;
+};
+
+/** `data` of a `enrollment.suspended` event: The merchant suspended the partner's enrollment in this program: their links and coupons in it stop attributing until it is reinstated. Their other programs are unaffected. */
+export type EnrollmentSuspendedEventData = {
+  programId: string;
+  partnerId: string;
+  enrollmentId: string;
+};
+
+/** A partner was suspended in one program: the `enrollment.suspended` delivery body. */
+export type EnrollmentSuspendedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "enrollment.suspended";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: EnrollmentSuspendedEventData;
+};
+
+/** `data` of a `enrollment.reinstated` event: The enrollment is approved again, and its links and coupons in this program attribute as before. */
+export type EnrollmentReinstatedEventData = {
+  programId: string;
+  partnerId: string;
+  enrollmentId: string;
+};
+
+/** A suspended partner was reinstated in one program: the `enrollment.reinstated` delivery body. */
+export type EnrollmentReinstatedEvent = {
+  /** The event id (`evt_…`); the same event delivered to several endpoints has the same id. */
+  id: string;
+  topic: "enrollment.reinstated";
+  orgId: string;
+  /** false for events from test mode. */
+  livemode: boolean;
+  createdAt: string;
+  data: EnrollmentReinstatedEventData;
 };
 
 /** `data` of a `partner.level_up` event: Partner leveling promoted the partner; `referrals` is the count that qualified them. */
@@ -3245,6 +3353,11 @@ export type GetTOrgTokenConfigJsonResponse = {
   legacyCookieName: string;
   /** localStorage keys aff.js writes (same names and value as the cookies). */
   storageKeys: Array<string>;
+  /** The program's landing parameter names (`?program=`, or the page's program): `code` carries the partner code, `click` the click id. `via` and `ref_click_id` when the program sets none or none is named. */
+  landingParams: {
+    code: string;
+    click: string;
+  };
 };
 
 export type PostTOrgTokenVisitResponse = {
@@ -3520,6 +3633,8 @@ export type GetMeResponse = {
     scopes: Array<string>;
     /** The API version this key is pinned to (what it gets without a Referalli-Version header). */
     apiVersion: string | null;
+    /** The newest API version. When apiVersion is older, responses without a referalli-version header carry referalli-version-warning. */
+    latestApiVersion: string;
     livemode: boolean;
     publishable: boolean;
     owner: string | null;
@@ -3891,6 +4006,21 @@ export type PatchProgramsIdResponse = Program & {
   repointedLinks?: number;
 };
 
+export type PutProgramsByExternalRefRefResponse = {
+  program: Program & ({
+    /** The program's effective default link destination, or null. */
+    destinationUrl: string | null;
+  });
+  /** The program's generic billing connection (scoped to it alone); null when it has none and `billing` was not sent. */
+  billingConnectionId: string | null;
+  /** What this call changed: program fields and settings by name, plus `commissionRule` (a new rule version) and `billing` (the connection was created). On create, the fields sent. Empty when nothing changed. */
+  changed: Array<string>;
+  /** True when this call created the program. */
+  created: boolean;
+  /** Only when this call created the billing connection: its signing secret (as `webhookSecret` from POST /v1/billing/connections), shown once. */
+  secret?: string;
+};
+
 export type PostProgramsIdReferrersResponse = {
   partnerId: string;
   programId: string;
@@ -3923,6 +4053,8 @@ export type GetProgramsIdEnrollmentsResponse = {
     promotionUrl: string | null;
     /** Declared sources the program does not allow (the application still went in). */
     trafficMismatch: Array<string>;
+    /** The note sent with `POST /v1/programs/{id}/applications`, or null. */
+    applicationNote: string | null;
   }>;
   /** Whether another page follows; pass next_cursor as starting_after to get it. */
   has_more: boolean;
@@ -3937,6 +4069,87 @@ export type PostProgramsIdEnrollmentsEnrollmentIdApproveResponse = {
 export type PostProgramsIdEnrollmentsEnrollmentIdRejectResponse = {
   id: string;
   status: "rejected";
+};
+
+export type PostProgramsIdEnrollmentsEnrollmentIdSuspendResponse = {
+  id: string;
+  programId: string;
+  partnerId: string;
+  status: "suspended";
+};
+
+export type PostProgramsIdEnrollmentsEnrollmentIdReinstateResponse = {
+  id: string;
+  programId: string;
+  partnerId: string;
+  status: "approved";
+};
+
+export type GetProgramsIdPartnersResponse = {
+  object: "list";
+  data: Array<{
+    /** The enrollment; the cursor for `starting_after`. */
+    enrollmentId: string;
+    partnerId: string;
+    /** This program's own externalRef for the partner, else the partner's; null when neither is set. */
+    externalRef: string | null;
+    email: string;
+    name: string;
+    status: "applied" | "approved" | "rejected" | "removed" | "suspended";
+    enrolledAt: string;
+    /** With `include=links`: their newest active link in the program (else their newest); null when they have none. */
+    primaryLink?: {
+      code: string;
+      shortUrl: string;
+    } | null;
+    /** With `include=links`: every link of theirs in the program, newest first. */
+    links?: Array<{
+      id: string;
+      code: string;
+      shortUrl: string;
+      destinationUrl: string | null;
+      status: string;
+      createdAt: string;
+    }>;
+    /** With `include=coupons`: every coupon of theirs in the program, newest first. */
+    coupons?: Array<{
+      id: string;
+      code: string;
+      status: string;
+      createdAt: string;
+    }>;
+    /** With `include=stats`: as `GET /v1/partners/{id}/stats?programId=` (eligible clicks, customers with a payment, balances per currency), for this program. */
+    stats?: {
+      clicks: number;
+      convertedCustomers: number;
+      balances: Array<{
+        currency: string;
+        /** Integer minor units (cents). */
+        pending: number;
+        /** Integer minor units (cents). */
+        approved: number;
+        /** Integer minor units (cents). */
+        paid: number;
+      }>;
+    };
+  }>;
+  /** Whether another page follows; pass next_cursor as starting_after to get it. */
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
+export type PostProgramsIdApplicationsResponse = {
+  /** The enrollment. */
+  id: string;
+  programId: string;
+  partnerId: string;
+  email: string;
+  /** `applied` for a new application; an existing enrollment is returned with its own status. */
+  status: "applied" | "approved" | "rejected" | "removed" | "suspended";
+  note: string | null;
+  createdAt: string;
+  /** False when the email already had an enrollment in this program (returned unchanged). */
+  created: boolean;
 };
 
 export type PostProgramsIdStoreSetupResponse = {
@@ -4068,6 +4281,13 @@ export type PostTestClockAdvanceResponse = {
   payoutRuns: number;
 };
 
+export type PostTestModePurgeResponse = {
+  ok: true;
+  programId: string | null;
+  /** Rows deleted per table (referrals, links, program_enrollments, partners and everything that pointed at them). */
+  removed: Record<string, number>;
+};
+
 export type GetTestEmailsResponse = {
   object: "list";
   data: Array<{
@@ -4180,6 +4400,21 @@ export type PostProgramsIdLinksRepointResponse = {
   repointedLinks: number;
 };
 
+export type PostLinksRepointResponse = {
+  from: string;
+  to: string;
+  dryRun: boolean;
+  /** Links moved (or, with dryRun, that would move) across every program in scope. */
+  repointedLinks: number;
+  /** Every program in scope, including those with nothing to move. */
+  programs: Array<{
+    programId: string;
+    repointedLinks: number;
+    /** Whether the program's default destination (widget.destinationUrl) started with `from` and moved (would move). */
+    widgetDestinationUpdated: boolean;
+  }>;
+};
+
 export type PostCouponsResponse = {
   id: string;
   code: string;
@@ -4281,6 +4516,8 @@ export type PutProgramsIdCommissionRuleResponse = {
   config: GetOpenapiJsonResponse;
   /** False when the latest version already was this rule: nothing was published. */
   changed: boolean;
+  /** Defaults applied to what the request left out, e.g. "holdDays defaulted to 30". */
+  warnings?: Array<string>;
 };
 
 export type GetCommissionRulesResponse = {
@@ -4456,6 +4693,21 @@ export type GetBillingConnectionsResponse = {
   next_cursor: string | null;
 };
 
+export type PutProgramsIdStripeConnectAccountResponse = {
+  programId: string;
+  /** The connected Stripe account (`acct_…`) whose events earn in this program. */
+  accountId: string;
+  createdAt: string;
+  /** False when the program already had this account. */
+  changed: boolean;
+};
+
+export type DeleteProgramsIdStripeConnectAccountResponse = {
+  ok: true;
+  programId: string;
+  accountId: string;
+};
+
 export type PostBillingConnectionsIdEventsResponse = {
   received: number;
   results: Array<PostBillingEventsIdReleaseResponse>;
@@ -4518,8 +4770,10 @@ export type PostBillingEventsIdReleaseResponse = {
   conversions: number;
   linesCreated: number;
   reversals: number;
-  /** Recorded as ignored_by_filter: earned nothing. */
-  ignored?: "filter" | "internal_customer";
+  /** Recorded as ignored_by_filter: earned nothing. `unmapped_connect_account`: a Stripe Connect event from a connected account no program is mapped to. */
+  ignored?: "filter" | "internal_customer" | "unmapped_connect_account";
+  /** A won dispute: the commission lines it restored (`commission.restored`). */
+  restorations?: number;
   /** Recorded as held: earns nothing until released. */
   held?: "amount_over_limit" | "occurred_in_future" | "unknown_currency";
   /** Programs with attributionScope "payment": who this payment was credited to (the click or coupon, its link, the window used), or null when no eligible click or coupon fell in the window. */
@@ -5316,6 +5570,10 @@ export type GetPartnerMeResponse = {
       slug: string;
       enrollmentId: string;
       enrollmentStatus: string;
+      /** The program pays you directly, outside Referalli (no payout details needed for it). */
+      paidExternally: boolean;
+      /** The program's brand name, else the merchant's name. */
+      brandName: string;
     }>;
   }>;
 };
@@ -6914,6 +7172,22 @@ export type GetPrivacyRequestsIdResultResponse = {
   }>;
 };
 
+export type DeleteProgramsIdResponse = {
+  /** The completed erasure request (`GET /v1/privacy/requests/{id}`). */
+  receiptId: string;
+  programId: string;
+  status: "archived";
+  erase: Array<"partners" | "referrals">;
+  counts: {
+    /** Partners only in this program: identity, payout details and codes erased, the row kept for the ledger. */
+    partnersErased: number;
+    /** Partners also in another program: removed from this one (enrollment, links, coupons); their row and other programs' data stay. */
+    partnersRemoved: number;
+    /** Referred customers pseudonymised in this program. */
+    customersErased: number;
+  };
+};
+
 export type PostEmailSettingsVerifyDomainResponse = EmailSettings & ({
   domain: string;
   /** Why the status is not verified: the provider's own error (for example a missing scope), or what is missing on its side. Null when verified. */
@@ -7433,6 +7707,8 @@ export type GetOnchainConnectionsResponse = {
 
 export type GetPublicProgramsHandleResponse = {
   handle: string;
+  /** True when the program is paused or archived: the page says it is not accepting applications, and joining is refused. */
+  closed: boolean;
   programId: string;
   programName: string;
   /** The program's brand name when it has one, else the org name. */
@@ -7620,6 +7896,10 @@ export type GetPrivacyExecutorsResponse = Array<{
   enabled: boolean;
   hasKey: boolean;
   hasVendorSecret: boolean;
+  /** The programs the tool is limited to; null = the whole org (unless `programsCreatedByKeyId`). */
+  programIds: Array<string> | null;
+  /** The tool also reaches every program this API key created, including later ones (RF-B2). */
+  programsCreatedByKeyId: string | null;
   config: ({
     hasPublicKey: boolean;
     algorithm: string | null;
@@ -7638,6 +7918,8 @@ export type PostPrivacyExecutorKeysResponse = {
   adapter: string;
   url: string;
   enabled: boolean;
+  programIds: Array<string> | null;
+  programsCreatedByKeyId: string | null;
   key?: string;
 };
 
@@ -7922,6 +8204,10 @@ export type PostOrgsOrgIdPrivacyExecutorKeyResponse = {
   cbid: string;
   /** An earlier key existed and stopped working. */
   rotated: boolean;
+  /** The programs the key is limited to. */
+  programIds?: Array<string>;
+  /** The key reaches every program this API key created, including later ones. */
+  programsCreatedByKeyId?: string;
 };
 
 export type GetOrgHostedPagesResponse = {
@@ -10081,6 +10367,10 @@ export type PostProgramsBody = {
   faqUrl?: string | null;
   supportUrl?: string | null;
   trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
+  landingParams?: {
+    code?: string;
+    click?: string;
+  } | null;
   notificationEmails?: {
     enabled?: boolean;
     disabled?: Array<"*" | "payout_sent" | "invitation_received" | "partner_approved" | "contract_sent" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved">;
@@ -10101,12 +10391,16 @@ export type PostProgramsBody = {
   recordCountry?: boolean;
   merchantCreditBps?: number;
   clawbackPaidReversals?: boolean;
+  payouts?: "runs" | "external";
+  externalRef?: string;
+  destinationUrl?: string;
 };
 export type PostProgramsResponse = Program;
 
 /** GET /v1/programs: List programs */
 export type GetProgramsQuery = {
   slug?: string;
+  externalRef?: string;
   limit?: number;
   starting_after?: string;
   ending_before?: string;
@@ -10224,6 +10518,10 @@ export type PatchProgramsIdBody = {
   faqUrl?: string | null;
   supportUrl?: string | null;
   trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
+  landingParams?: {
+    code?: string;
+    click?: string;
+  } | null;
   notificationEmails?: {
     enabled?: boolean;
     disabled?: Array<"*" | "payout_sent" | "invitation_received" | "partner_approved" | "contract_sent" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved">;
@@ -10244,6 +10542,7 @@ export type PatchProgramsIdBody = {
   recordCountry?: boolean;
   merchantCreditBps?: number;
   clawbackPaidReversals?: boolean;
+  payouts?: "runs" | "external";
   settings?: {
     publicHandle?: string | null;
     publicPage?: {
@@ -10339,6 +10638,10 @@ export type PatchProgramsIdBody = {
     faqUrl?: string | null;
     supportUrl?: string | null;
     trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
+    landingParams?: {
+      code?: string;
+      click?: string;
+    } | null;
     notificationEmails?: {
       enabled?: boolean;
       disabled?: Array<"*" | "payout_sent" | "invitation_received" | "partner_approved" | "contract_sent" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved">;
@@ -10359,11 +10662,369 @@ export type PatchProgramsIdBody = {
     recordCountry?: boolean;
     merchantCreditBps?: number;
     clawbackPaidReversals?: boolean;
+    payouts?: "runs" | "external";
   };
   destinationUrl?: string;
+  externalRef?: string | null;
+};
+
+/** DELETE /v1/programs/{id}: Erase a program's people and archive it */
+export type DeleteProgramsIdQuery = {
+  erase: string;
 };
 
 /** GET /v1/programs/{id}/doctor-context: Read the org settings a program uses (doctor) */
+
+/** PUT /v1/programs/by-external-ref/{ref}: Upsert a program by external ref */
+export type PutProgramsByExternalRefRefBody = {
+  name?: string;
+  slug?: string;
+  attributionModel?: "last_click" | "first_click" | "position_based" | "time_decay";
+  cookieWindowDays?: number;
+  signupToConversionDays?: number;
+  termsMd?: string;
+  status?: "draft" | "active" | "paused" | "archived";
+  publicHandle?: string | null;
+  publicPage?: {
+    pitch?: string;
+    autoApprove?: boolean;
+    noindex?: boolean;
+  };
+  probabilisticPolicy?: "auto" | "review" | "off";
+  selfReferralPolicy?: "review" | "reject";
+  splitCommissions?: boolean;
+  utmTemplate?: Record<string, string>;
+  allowPaidSearch?: boolean;
+  challengeLinks?: boolean;
+  settlement?: "payout" | "merchant_credit";
+  creditRate?: {
+    amountMinor: number;
+    currency: string;
+  } | null;
+  payPerCall?: {
+    enabled?: boolean;
+    amountMinor?: number;
+    currency?: string;
+    minDurationSec?: number;
+    dedupeHours?: number;
+    forwardTo?: string | null;
+  };
+  caps?: {
+    conversionsPerDay?: number;
+    conversionsPerMonth?: number;
+    commissionPerMonthMinor?: number;
+    currency?: string;
+  };
+  countries?: {
+    allow?: Array<string>;
+    block?: Array<string>;
+  };
+  cartWindowDays?: number;
+  storefronts?: {
+    enabled: boolean;
+  };
+  signupPaymentGraceMinutes?: number;
+  riskPolicy?: {
+    holdBotScore?: number;
+    holdRiskScore?: number;
+    holdHighRiskLevel?: boolean;
+    holdDisposableEmail?: boolean;
+    holdVelocity?: number;
+    holdUnverifiedEmail?: boolean;
+    holdSelfReferral?: boolean;
+    /** A payment from a customer whose account (customerCreatedAt, sent on associate or on the payment event metadata) is younger than this at the payment time is held or voided, see minCustomerAgeAction. */
+    minCustomerAgeDays?: number;
+    /** `hold` (default): the commission line is earned but held until you approve it. `void`: earns nothing. */
+    minCustomerAgeAction?: "hold" | "void";
+    /** When set, a payment that is the customer's first on record (no earlier paid invoice) is held or voided. */
+    requirePriorPayment?: "hold" | "void";
+  };
+  widget?: {
+    autoEnroll?: boolean;
+    destinationUrl?: string | null;
+  };
+  mobileApp?: ({
+    ios?: {
+      teamId: string;
+      bundleId: string;
+    } | null;
+    android?: {
+      packageName: string;
+      sha256CertFingerprints: Array<string>;
+    } | null;
+  }) | null;
+  howItWorksMd?: string;
+  brand?: {
+    /** Shown instead of the org name: `merchant` on the public page, the join page title, partner emails. */
+    name?: string;
+    logoUrl?: string;
+    /** Design tokens (`--r-accent`, …) laid over the org theme. */
+    theme?: Record<string, string>;
+    supportUrl?: string;
+    /** Host for this program's links: one of the org's verified domains (link or portal), or this program's own verified link domain (`PUT /v1/programs/{id}/link-domain`). */
+    linkDomain?: string;
+    /** The org's verified portal domain, used as the join page's canonical host. */
+    portalDomain?: string;
+    emailFrom?: {
+      fromName?: string;
+      /** Must be on the org's verified sending domain. */
+      fromAddress?: string;
+      replyTo?: string;
+      logoUrl?: string;
+      primaryColor?: string;
+    };
+  } | null;
+  termsUrl?: string | null;
+  faqUrl?: string | null;
+  supportUrl?: string | null;
+  trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
+  landingParams?: {
+    code?: string;
+    click?: string;
+  } | null;
+  notificationEmails?: {
+    enabled?: boolean;
+    disabled?: Array<"*" | "payout_sent" | "invitation_received" | "partner_approved" | "contract_sent" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved">;
+  };
+  trafficSources?: {
+    allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
+    notes?: string;
+  };
+  exclusiveWith?: Array<string>;
+  priority?: number;
+  allowedRange?: {
+    minBps: number;
+    maxBps: number;
+  } | null;
+  attributionScope?: "customer" | "payment";
+  productMatch?: "optional" | "required";
+  payoutTaxFormPolicy?: ("required" | "delegated") | null;
+  recordCountry?: boolean;
+  merchantCreditBps?: number;
+  clawbackPaidReversals?: boolean;
+  payouts?: "runs" | "external";
+  settings?: {
+    publicHandle?: string | null;
+    publicPage?: {
+      pitch?: string;
+      autoApprove?: boolean;
+      noindex?: boolean;
+    };
+    probabilisticPolicy?: "auto" | "review" | "off";
+    selfReferralPolicy?: "review" | "reject";
+    splitCommissions?: boolean;
+    utmTemplate?: Record<string, string>;
+    allowPaidSearch?: boolean;
+    challengeLinks?: boolean;
+    settlement?: "payout" | "merchant_credit";
+    creditRate?: {
+      amountMinor: number;
+      currency: string;
+    } | null;
+    payPerCall?: {
+      enabled?: boolean;
+      amountMinor?: number;
+      currency?: string;
+      minDurationSec?: number;
+      dedupeHours?: number;
+      forwardTo?: string | null;
+    };
+    caps?: {
+      conversionsPerDay?: number;
+      conversionsPerMonth?: number;
+      commissionPerMonthMinor?: number;
+      currency?: string;
+    };
+    countries?: {
+      allow?: Array<string>;
+      block?: Array<string>;
+    };
+    cartWindowDays?: number;
+    storefronts?: {
+      enabled: boolean;
+    };
+    signupPaymentGraceMinutes?: number;
+    riskPolicy?: {
+      holdBotScore?: number;
+      holdRiskScore?: number;
+      holdHighRiskLevel?: boolean;
+      holdDisposableEmail?: boolean;
+      holdVelocity?: number;
+      holdUnverifiedEmail?: boolean;
+      holdSelfReferral?: boolean;
+      /** A payment from a customer whose account (customerCreatedAt, sent on associate or on the payment event metadata) is younger than this at the payment time is held or voided, see minCustomerAgeAction. */
+      minCustomerAgeDays?: number;
+      /** `hold` (default): the commission line is earned but held until you approve it. `void`: earns nothing. */
+      minCustomerAgeAction?: "hold" | "void";
+      /** When set, a payment that is the customer's first on record (no earlier paid invoice) is held or voided. */
+      requirePriorPayment?: "hold" | "void";
+    };
+    widget?: {
+      autoEnroll?: boolean;
+      destinationUrl?: string | null;
+    };
+    mobileApp?: ({
+      ios?: {
+        teamId: string;
+        bundleId: string;
+      } | null;
+      android?: {
+        packageName: string;
+        sha256CertFingerprints: Array<string>;
+      } | null;
+    }) | null;
+    howItWorksMd?: string;
+    brand?: {
+      /** Shown instead of the org name: `merchant` on the public page, the join page title, partner emails. */
+      name?: string;
+      logoUrl?: string;
+      /** Design tokens (`--r-accent`, …) laid over the org theme. */
+      theme?: Record<string, string>;
+      supportUrl?: string;
+      /** Host for this program's links: one of the org's verified domains (link or portal), or this program's own verified link domain (`PUT /v1/programs/{id}/link-domain`). */
+      linkDomain?: string;
+      /** The org's verified portal domain, used as the join page's canonical host. */
+      portalDomain?: string;
+      emailFrom?: {
+        fromName?: string;
+        /** Must be on the org's verified sending domain. */
+        fromAddress?: string;
+        replyTo?: string;
+        logoUrl?: string;
+        primaryColor?: string;
+      };
+    } | null;
+    termsUrl?: string | null;
+    faqUrl?: string | null;
+    supportUrl?: string | null;
+    trackingConsent?: ("auto" | "none" | "pending" | "custom" | "cookiemunch" | "onetrust" | "cookiebot" | "usercentrics" | "didomi" | "osano" | "termly" | "tcf" | "gpp" | "gcm") | null;
+    landingParams?: {
+      code?: string;
+      click?: string;
+    } | null;
+    notificationEmails?: {
+      enabled?: boolean;
+      disabled?: Array<"*" | "payout_sent" | "invitation_received" | "partner_approved" | "contract_sent" | "tax_document_ready" | "referral_signed_up" | "referral_converted" | "commission_earned" | "commission_approved">;
+    };
+    trafficSources?: {
+      allowed: Array<"content" | "social" | "email" | "paid_search" | "paid_social" | "display" | "coupon" | "cashback" | "incentivized" | "sub_network" | "mobile_app">;
+      notes?: string;
+    };
+    exclusiveWith?: Array<string>;
+    priority?: number;
+    allowedRange?: {
+      minBps: number;
+      maxBps: number;
+    } | null;
+    attributionScope?: "customer" | "payment";
+    productMatch?: "optional" | "required";
+    payoutTaxFormPolicy?: ("required" | "delegated") | null;
+    recordCountry?: boolean;
+    merchantCreditBps?: number;
+    clawbackPaidReversals?: boolean;
+    payouts?: "runs" | "external";
+  };
+  destinationUrl?: string;
+  commissionRule?: {
+    config: {
+      base: {
+        kind: "percent";
+        bps: number;
+      } | {
+        kind: "fixed";
+        amountMinor: number;
+        currency: string;
+      };
+      appliesTo?: "gross" | "net_of_tax" | "net_of_fees";
+      recurring?: {
+        type: "one_time";
+      } | {
+        type: "lifetime";
+      } | {
+        type: "first_earning_payment_after_referral";
+      } | {
+        type: "months";
+        months: number;
+      };
+      holdDays?: number;
+      capPerReferral?: {
+        amountMinor: number;
+        currency: string;
+      };
+      capPerPayment?: {
+        amountMinor: number;
+        currency: string;
+      };
+      draft?: boolean;
+      rounding?: "half_even" | "floor";
+      conditions?: {
+        countries?: Array<string>;
+        excludeCountries?: Array<string>;
+        metadata?: Array<{
+          key: string;
+          equals?: string | number | boolean;
+          in?: Array<string | number | boolean>;
+        }>;
+      };
+      overrides?: Array<{
+        match: {
+          partnerId?: string;
+          linkId?: string;
+          productRef?: string;
+          countries?: Array<string>;
+          metadata?: Array<{
+            key: string;
+            equals?: string | number | boolean;
+            in?: Array<string | number | boolean>;
+          }>;
+        };
+        base: {
+          kind: "percent";
+          bps: number;
+        } | {
+          kind: "fixed";
+          amountMinor: number;
+          currency: string;
+        };
+      }>;
+      tiers?: Array<{
+        minCustomers: number;
+        bps: number;
+      }>;
+      bounties?: Array<{
+        event: string;
+        amountMinor: number;
+        currency: string;
+      }>;
+      subAffiliate?: {
+        levels: number;
+        ratesBps: Array<number>;
+      };
+      rateCard?: {
+        rates: Record<string, number>;
+        defaultBps?: number;
+        exclude?: Array<string>;
+        productCategories?: Record<string, string>;
+        indirectBps?: number;
+      };
+      bonuses?: Array<{
+        thresholdMinor: number;
+        amountMinor: number;
+        currency: string;
+        period: "month";
+      }>;
+      newVsExpansion?: {
+        newBps: number;
+        expansionBps: number;
+      };
+    };
+    /** When this version takes effect (ISO 8601). Payments are rated by the version in force at their occurredAt; until then /terms shows it as `upcoming`. Omit for in force once published. */
+    effectiveAt?: string;
+  };
+  billing?: {
+    provider: "generic";
+  };
+};
 
 /** POST /v1/programs/{id}/referrers: Make a user a referrer */
 export type PostProgramsIdReferrersBody = {
@@ -10387,7 +11048,7 @@ export type PostProgramsIdEnrollmentsBody = {
 
 /** GET /v1/programs/{id}/enrollments: List program enrollments */
 export type GetProgramsIdEnrollmentsQuery = {
-  status?: "applied" | "approved" | "rejected" | "removed";
+  status?: "applied" | "approved" | "rejected" | "removed" | "suspended";
   partnerId?: string;
   limit?: number;
   starting_after?: string;
@@ -10399,6 +11060,28 @@ export type GetProgramsIdEnrollmentsQuery = {
 /** POST /v1/programs/{id}/enrollments/{enrollmentId}/approve: Approve an application */
 
 /** POST /v1/programs/{id}/enrollments/{enrollmentId}/reject: Reject an application */
+
+/** POST /v1/programs/{id}/enrollments/{enrollmentId}/suspend: Suspend a partner in one program */
+
+/** POST /v1/programs/{id}/enrollments/{enrollmentId}/reinstate: Reinstate a suspended partner */
+
+/** GET /v1/programs/{id}/partners: List a program's partners */
+export type GetProgramsIdPartnersQuery = {
+  include?: string;
+  status?: "applied" | "approved" | "rejected" | "removed" | "suspended";
+  limit?: number;
+  starting_after?: string;
+  ending_before?: string;
+  "created[gte]"?: string;
+  "created[lte]"?: string;
+};
+
+/** POST /v1/programs/{id}/applications: Apply on behalf of a person */
+export type PostProgramsIdApplicationsBody = {
+  email: string;
+  name?: string;
+  note?: string;
+};
 
 /** POST /v1/programs/{id}/store-setup: Set up a store in one call */
 export type PostProgramsIdStoreSetupBody = {
@@ -10541,6 +11224,12 @@ export type PostTestClockAdvanceBody = {
   seconds: number;
 };
 
+/** POST /v1/test-mode/purge: Purge test data */
+export type PostTestModePurgeBody = {
+  /** Only this program's referrals, links, enrollments and partners only it has; omit for the whole test org. */
+  programId?: string;
+};
+
 /** GET /v1/test/emails: List captured test emails */
 export type GetTestEmailsQuery = {
   limit?: number;
@@ -10676,6 +11365,20 @@ export type PostProgramsIdLinksRepointBody = {
   /** The destination to move links off (exact match). */
   from: string;
   to: string;
+};
+
+/** POST /v1/links/repoint: Repoint links across programs */
+export type PostLinksRepointBody = {
+  /** The destination, or the start of destinations (a host, a path), to move links off. */
+  from: string;
+  /** What replaces `from`; the rest of each URL is kept. */
+  to: string;
+  /** `key`: every program the calling API key created. `{programIds}`: those programs. */
+  scope: "key" | {
+    programIds: Array<string>;
+  };
+  /** Count what would move; write nothing. */
+  dryRun?: boolean;
 };
 
 /** GET /v1/links/{id}/timeseries: A link's daily activity */
@@ -11117,11 +11820,26 @@ export type PostCommissionsIdAdjustBody = {
 
 /** POST /v1/commissions/{id}/settle: Settle a commission yourself */
 export type PostCommissionsIdSettleBody = {
-  method?: "store_credit";
+  /** `store_credit`: paid as credit in your product. `external`: paid outside Referalli (you paid the partner directly); `reference` names that payment. */
+  method?: "store_credit" | "external";
   reference: string;
   memo?: string;
 };
 export type PostCommissionsIdSettleResponse = Settlement;
+
+/** POST /v1/commissions/settle: Settle a partner's commissions in bulk */
+export type PostCommissionsSettleBody = {
+  programId: string;
+  partnerId: string;
+  /** Only lines earned at or before this time (ISO 8601). */
+  upTo?: string;
+  /** `store_credit`: paid as credit in your product. `external`: paid outside Referalli (you paid the partner directly); `reference` names that payment. */
+  method: "store_credit" | "external";
+  /** Your reference for this settlement; a repeat with the same reference records nothing and answers the first result. */
+  reference: string;
+  memo?: string;
+};
+export type PostCommissionsSettleResponse = BulkSettlement;
 
 /** POST /v1/billing/connections: Create a billing connection */
 export type PostBillingConnectionsBody = {
@@ -11137,6 +11855,7 @@ export type PostBillingConnectionsBody = {
   customerRefMetadataKey?: string | null;
   customerRefMetadataKeys?: Array<string>;
   programIds?: Array<string> | null;
+  mode?: "direct" | "connect";
   stripeKey?: string;
   creditRail?: {
     enabled?: boolean;
@@ -11197,10 +11916,18 @@ export type PatchBillingConnectionsIdBody = {
   customerRefMetadataKeys?: Array<string>;
   programIds?: Array<string> | null;
   maxAmountMinor?: number | null;
+  mode?: "direct" | "connect";
 };
 export type PatchBillingConnectionsIdResponse = BillingConnection;
 
 /** DELETE /v1/billing/connections/{id}: Delete a billing connection */
+
+/** PUT /v1/programs/{id}/stripe-connect-account: Map a Stripe connected account to a program */
+export type PutProgramsIdStripeConnectAccountBody = {
+  accountId: string;
+};
+
+/** DELETE /v1/programs/{id}/stripe-connect-account: Remove a program's Stripe connected account */
 
 /** POST /v1/billing/connections/{id}/events: Send events to a generic connection */
 export type PostBillingConnectionsIdEventsBody = {
@@ -13083,6 +13810,7 @@ export type GetExportFullResponse = string;
 /** GET /v1/privacy/export: Export a customer's data */
 export type GetPrivacyExportQuery = {
   customerRef: string;
+  programIds?: string;
 };
 export type GetPrivacyExportResponse = CustomerExport;
 
@@ -13091,11 +13819,15 @@ export type PostPrivacyForgetBody = {
   email?: string;
   customerRef?: string;
   partnerId?: string;
+  /** Act only on data in these programs: a partner also in other programs keeps their row and those programs' data. Left out: the key's own programs, or the whole org for an org-wide key. `null` asks for the whole org, which a program-limited key is refused (403 `program_scoped_key`). */
+  programIds?: Array<string> | null;
 };
 
 /** POST /v1/privacy/lookup: Find a data subject by email */
 export type PostPrivacyLookupBody = {
   email: string;
+  /** Act only on data in these programs: a partner also in other programs keeps their row and those programs' data. Left out: the key's own programs, or the whole org for an org-wide key. `null` asks for the whole org, which a program-limited key is refused (403 `program_scoped_key`). */
+  programIds?: Array<string> | null;
 };
 
 /** POST /v1/privacy/requests: Open a data-subject request */
@@ -13106,6 +13838,8 @@ export type PostPrivacyRequestsBody = {
     partnerId?: string;
   };
   type: "access" | "erasure";
+  /** Act only on data in these programs: a partner also in other programs keeps their row and those programs' data. Left out: the key's own programs, or the whole org for an org-wide key. `null` asks for the whole org, which a program-limited key is refused (403 `program_scoped_key`). */
+  programIds?: Array<string> | null;
 };
 
 /** GET /v1/privacy/requests: List data-subject requests */
@@ -13777,6 +14511,8 @@ export type PostPrivacyExecutorKeysBody = {
   enabled?: boolean;
   /** Limit the tool to these programs of the org: its lookups, exports and erasures then reach only people in them. `null` reaches the whole org again; left out, the current limit stays. */
   programIds?: Array<string> | null;
+  /** Also limit the tool to every program this API key (a `programs:create` key) created, including ones it creates later; with `programIds`, both sets. `null` drops it; left out, the current setting stays. */
+  programsCreatedByKeyId?: string | null;
 };
 
 /** DELETE /v1/privacy/executors/{adapter}: Disconnect a DSAR tool */
@@ -13881,6 +14617,8 @@ export type PostOrgsOrgIdPrivacyExecutorKeyBody = {
   iat?: number;
   /** Limit the key to these programs of the org: it then answers only for people in them. Without it, the key reaches the whole org. Each set of programs has its own key, so minting one leaves the others working. */
   programIds?: Array<string>;
+  /** Limit the key to every program this API key (a `programs:create` key) created, including ones it creates later (RF-B2). Not with `programIds`, and not for a site registered for some programs. Has its own key slot. */
+  programsCreatedByKeyId?: string;
 };
 
 /** GET /v1/org/hosted-pages: Get the hosted-page consent and chat */
@@ -14178,6 +14916,8 @@ export type WebhookPayloads = {
   "commission.earned": CommissionEarnedEvent;
   /** A commission line was reversed */
   "commission.reversed": CommissionReversedEvent;
+  /** A reversed commission line was restored */
+  "commission.restored": CommissionRestoredEvent;
   /** A commission line was approved */
   "commission.approved": CommissionApprovedEvent;
   /** A commission line was settled by the merchant */
@@ -14188,6 +14928,10 @@ export type WebhookPayloads = {
   "partner.enrolled": PartnerEnrolledEvent;
   /** A partner was approved */
   "partner.approved": PartnerApprovedEvent;
+  /** A partner was suspended in one program */
+  "enrollment.suspended": EnrollmentSuspendedEvent;
+  /** A suspended partner was reinstated in one program */
+  "enrollment.reinstated": EnrollmentReinstatedEvent;
   /** A partner reached a new level */
   "partner.level_up": PartnerLevelUpEvent;
   /** A payout was created in a run */
@@ -14360,12 +15104,18 @@ export const operations = {
   getV1ProgramsHandleAvailability: { method: 'GET', path: '/v1/programs/handle-availability' },
   getV1ProgramsId: { method: 'GET', path: '/v1/programs/{id}' },
   patchV1ProgramsId: { method: 'PATCH', path: '/v1/programs/{id}' },
+  deleteV1ProgramsId: { method: 'DELETE', path: '/v1/programs/{id}' },
   getV1ProgramsIdDoctorContext: { method: 'GET', path: '/v1/programs/{id}/doctor-context' },
+  putV1ProgramsByExternalRefRef: { method: 'PUT', path: '/v1/programs/by-external-ref/{ref}' },
   postV1ProgramsIdReferrers: { method: 'POST', path: '/v1/programs/{id}/referrers' },
   postV1ProgramsIdEnrollments: { method: 'POST', path: '/v1/programs/{id}/enrollments' },
   getV1ProgramsIdEnrollments: { method: 'GET', path: '/v1/programs/{id}/enrollments' },
   postV1ProgramsIdEnrollmentsEnrollmentIdApprove: { method: 'POST', path: '/v1/programs/{id}/enrollments/{enrollmentId}/approve' },
   postV1ProgramsIdEnrollmentsEnrollmentIdReject: { method: 'POST', path: '/v1/programs/{id}/enrollments/{enrollmentId}/reject' },
+  postV1ProgramsIdEnrollmentsEnrollmentIdSuspend: { method: 'POST', path: '/v1/programs/{id}/enrollments/{enrollmentId}/suspend' },
+  postV1ProgramsIdEnrollmentsEnrollmentIdReinstate: { method: 'POST', path: '/v1/programs/{id}/enrollments/{enrollmentId}/reinstate' },
+  getV1ProgramsIdPartners: { method: 'GET', path: '/v1/programs/{id}/partners' },
+  postV1ProgramsIdApplications: { method: 'POST', path: '/v1/programs/{id}/applications' },
   postV1ProgramsIdStoreSetup: { method: 'POST', path: '/v1/programs/{id}/store-setup' },
   getV1ProgramsIdStoreSetup: { method: 'GET', path: '/v1/programs/{id}/store-setup' },
   postV1Partners: { method: 'POST', path: '/v1/partners' },
@@ -14384,6 +15134,7 @@ export const operations = {
   getV1AuditLogs: { method: 'GET', path: '/v1/audit-logs' },
   getV1TestClock: { method: 'GET', path: '/v1/test_clock' },
   postV1TestClockAdvance: { method: 'POST', path: '/v1/test_clock/advance' },
+  postV1TestModePurge: { method: 'POST', path: '/v1/test-mode/purge' },
   getV1TestEmails: { method: 'GET', path: '/v1/test/emails' },
   postV1CliDeviceCodes: { method: 'POST', path: '/v1/cli/device-codes' },
   postV1CliDeviceCodesToken: { method: 'POST', path: '/v1/cli/device-codes/token' },
@@ -14400,6 +15151,7 @@ export const operations = {
   getV1Links: { method: 'GET', path: '/v1/links' },
   patchV1LinksId: { method: 'PATCH', path: '/v1/links/{id}' },
   postV1ProgramsIdLinksRepoint: { method: 'POST', path: '/v1/programs/{id}/links/repoint' },
+  postV1LinksRepoint: { method: 'POST', path: '/v1/links/repoint' },
   getV1LinksIdTimeseries: { method: 'GET', path: '/v1/links/{id}/timeseries' },
   getV1LinksIdQr: { method: 'GET', path: '/v1/links/{id}/qr' },
   postV1Coupons: { method: 'POST', path: '/v1/coupons' },
@@ -14432,6 +15184,7 @@ export const operations = {
   postV1CommissionsIdApprove: { method: 'POST', path: '/v1/commissions/{id}/approve' },
   postV1CommissionsIdAdjust: { method: 'POST', path: '/v1/commissions/{id}/adjust' },
   postV1CommissionsIdSettle: { method: 'POST', path: '/v1/commissions/{id}/settle' },
+  postV1CommissionsSettle: { method: 'POST', path: '/v1/commissions/settle' },
   postV1BillingConnections: { method: 'POST', path: '/v1/billing/connections' },
   getV1BillingConnections: { method: 'GET', path: '/v1/billing/connections' },
   putV1BillingConnectionsIdSecret: { method: 'PUT', path: '/v1/billing/connections/{id}/secret' },
@@ -14439,6 +15192,8 @@ export const operations = {
   getV1BillingConnectionsId: { method: 'GET', path: '/v1/billing/connections/{id}' },
   patchV1BillingConnectionsId: { method: 'PATCH', path: '/v1/billing/connections/{id}' },
   deleteV1BillingConnectionsId: { method: 'DELETE', path: '/v1/billing/connections/{id}' },
+  putV1ProgramsIdStripeConnectAccount: { method: 'PUT', path: '/v1/programs/{id}/stripe-connect-account' },
+  deleteV1ProgramsIdStripeConnectAccount: { method: 'DELETE', path: '/v1/programs/{id}/stripe-connect-account' },
   postV1BillingConnectionsIdEvents: { method: 'POST', path: '/v1/billing/connections/{id}/events' },
   postV1BillingConnectionsIdStripeForward: { method: 'POST', path: '/v1/billing/connections/{id}/stripe-forward' },
   putV1BillingAccountsAccountRefOwner: { method: 'PUT', path: '/v1/billing/accounts/{accountRef}/owner' },

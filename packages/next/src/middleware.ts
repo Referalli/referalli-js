@@ -29,6 +29,8 @@ export type ConsentState = 'granted' | 'denied' | 'unknown';
 export interface CaptureOptions {
   /** Query parameters carrying a referral code. Default via, ref, aff. */
   params?: readonly string[];
+  /** The program's landing parameter names (its `landingParams`, from `/t/{token}/config.json`): `code` replaces `params`; `click` is read before `ref_click_id`. */
+  landingParams?: { code?: string; click?: string };
   /** Cookie lifetime, 1–400 days. Default 60. */
   cookieDays?: number;
   /** Keep the first referral until it expires instead of the latest (first_click programs). */
@@ -127,7 +129,7 @@ export function captureReferral<R extends NextResponse>(req: Req, res: R, opts: 
   }
   // Undecided: nothing set or sent. The browser kit records the landing when the visitor decides (once, not twice).
   if (consent !== 'granted') return res;
-  const fromUrl = referralFromUrl(req.nextUrl, opts.params ?? REFERRAL_PARAMS);
+  const fromUrl = referralFromUrl(req.nextUrl, opts.landingParams?.code ? [opts.landingParams.code] : (opts.params ?? REFERRAL_PARAMS), opts.landingParams?.click);
   if (!fromUrl.code && !fromUrl.clickId) return res;
   let stored: StoredReferral | null = null;
   for (const name of REFERRAL_COOKIE_NAMES) stored ??= parseReferral(req.cookies.get(name)?.value);

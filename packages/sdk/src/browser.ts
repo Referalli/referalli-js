@@ -34,6 +34,7 @@ export {
   serializeReferralCookie,
   serializeReferralCookies,
   clearReferralCookies,
+  type LandingParams,
   type ReferralContext,
   type StoredReferral,
 } from './attribution.js';

@@ -34,6 +34,13 @@ export interface GenericBillingEvent {
   skus?: string[];
 }
 
+/**
+ * An event as queued: optionally for a connection other than the outbox's `connectionId` (one connection per shop,
+ * say). The outbox sends it there, signed with that connection's secret from `secrets`; `connectionId` itself is
+ * stored with the event but never sent.
+ */
+export type OutboxEvent = GenericBillingEvent & { connectionId?: string };
+
 const EVENT_TYPES = new Set(['invoice_paid', 'sub_created', 'sub_updated', 'refund', 'dispute', 'sub_canceled', 'customer_updated']);
 
 /** The server's rules for a generic event: what fails here could only ever be refused later, after the caller has moved on. */
@@ -60,7 +67,7 @@ function assertSendable(e: GenericBillingEvent): void {
 export interface OutboxEntry {
   /** The event's `providerEventId`. */
   id: string;
-  event: GenericBillingEvent;
+  event: OutboxEvent;
   attempts: number;
   /** `null` once the outbox gave up on it. */
   nextAttemptAt: number | null;
@@ -92,14 +99,20 @@ export interface OutboxStore {
 
 export interface OutboxOptions {
   store: OutboxStore;
-  /** The `generic` billing connection (`bcon_…`). */
-  connectionId: string;
+  /** The `generic` billing connection (`bcon_…`) for events that name none. Optional when every event carries `connectionId`. */
+  connectionId?: string;
   /**
    * The connection's webhook secret: events go to the signed
    * `POST /webhooks/billing/{connectionId}`. Without it they go to
    * `POST /v1/billing/connections/{id}/events` with `client`'s API key.
    */
   secret?: string;
+  /**
+   * Several connections: the secret for an event's `connectionId`, as a map `{ [connectionId]: secret }` or a
+   * function (which may look it up). A connection with no secret here (and not the outbox's own `connectionId`
+   * with `secret`) is sent with the API key instead.
+   */
+  secrets?: Record<string, string> | ((connectionId: string) => string | null | undefined | Promise<string | null | undefined>);
   /** Default `new Referalli()` (reads `REFERALLI_API_KEY`). */
   client?: Referalli;
   /** The signed route's host. Default `client.baseUrl`, then https://referalli.com. */
@@ -127,8 +140,8 @@ export interface FlushResult {
 }
 
 export interface Outbox {
-  /** Queue an event durably. Then call `flush()` (right away, and on a timer). */
-  enqueue(event: GenericBillingEvent): Promise<void>;
+  /** Queue an event durably (for its own `connectionId`, if it names one). Then call `flush()` (right away, and on a timer). */
+  enqueue(event: OutboxEvent): Promise<void>;
   /** Send every due event, one at a time. Concurrent calls share one run. */
   flush(options?: { limit?: number }): Promise<FlushResult>;
 }
@@ -150,7 +163,7 @@ const LEASE_MS = 5 * 60_000;
  * workers, a crash after sending) is recorded once.
  */
 export function createOutbox(options: OutboxOptions): Outbox {
-  const { store, connectionId, secret } = options;
+  const { store, secrets } = options;
   const now = options.now ?? Date.now;
   const maxAttempts = options.maxAttempts ?? 50;
   const baseDelay = options.baseDelayMs ?? 30_000;
@@ -158,7 +171,14 @@ export function createOutbox(options: OutboxOptions): Outbox {
   let client = options.client;
   const api = () => (client ??= new Referalli());
 
-  const send = async (event: GenericBillingEvent): Promise<void> => {
+  const secretFor = async (connectionId: string): Promise<string | undefined> => {
+    const found = typeof secrets === 'function' ? await secrets(connectionId) : secrets?.[connectionId];
+    return found || (connectionId === options.connectionId ? options.secret : undefined) || undefined;
+  };
+
+  const send = async (queued: OutboxEvent): Promise<void> => {
+    const { connectionId = options.connectionId!, ...event } = queued;
+    const secret = await secretFor(connectionId);
     if (!secret) {
       // maxRetries 0: the outbox does the waiting, so a flush never blocks on backoff.
       await api().billing.connections.events(
@@ -229,6 +249,7 @@ export function createOutbox(options: OutboxOptions): Outbox {
   return {
     async enqueue(event) {
       if (!event?.providerEventId) throw new TypeError('createOutbox: an event needs a providerEventId');
+      if (!event.connectionId && !options.connectionId) throw new TypeError(`createOutbox: event ${event.providerEventId} names no connectionId and the outbox has none`);
       assertSendable(event);
       await store.add({ id: event.providerEventId, event, attempts: 0, nextAttemptAt: now(), lastError: null });
     },
